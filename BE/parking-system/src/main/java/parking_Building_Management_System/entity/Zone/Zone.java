@@ -1,0 +1,63 @@
+package parking_Building_Management_System.entity.Zone;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import parking_Building_Management_System.entity.Floor.Floor;
+import parking_Building_Management_System.entity.enums.VehicleType;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "zones", schema = "public")
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class Zone {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "uuid")
+    UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "floor_id", nullable = false)
+    Floor floor;
+
+    @Column(name = "name", nullable = false, length = 100)
+    String name;
+
+    @Column(name = "vehicle_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    VehicleType vehicleType;
+
+    @Column(name = "total_slots", nullable = false)
+    Integer totalSlots;
+
+    @Column(name = "available_slots", nullable = false)
+    Integer availableSlots;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        if (availableSlots == null) {
+            availableSlots = totalSlots;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+}
+
