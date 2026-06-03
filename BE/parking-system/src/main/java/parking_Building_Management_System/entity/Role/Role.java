@@ -2,7 +2,7 @@ package parking_Building_Management_System.entity.Role;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.team4.LaboratoryManagement.entity.Privileges.Privileges;
+import parking_Building_Management_System.entity.Privileges.Privileges;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
