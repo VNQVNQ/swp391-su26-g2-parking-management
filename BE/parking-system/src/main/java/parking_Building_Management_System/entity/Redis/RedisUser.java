@@ -1,6 +1,6 @@
 package parking_Building_Management_System.entity.Redis;
 
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;

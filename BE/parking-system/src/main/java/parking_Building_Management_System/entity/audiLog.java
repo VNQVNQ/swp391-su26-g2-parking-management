@@ -1,6 +1,6 @@
 package parking_Building_Management_System.entity;
 
-import com.team4.LaboratoryManagement.entity.User.User;
+import parking_Building_Management_System.entity.User.User;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,5 +22,5 @@ public class audiLog {
     private User user;
 
     private String action;
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 }
