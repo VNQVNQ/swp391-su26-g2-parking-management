@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.Floor.Floor;
+import parking_Building_Management_System.entity.ParkingSession.ParkingSession;
 import parking_Building_Management_System.entity.Zone.Zone;
 import parking_Building_Management_System.entity.enums.SlotStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
@@ -49,9 +50,9 @@ public class ParkingSlot {
     @Enumerated(EnumType.STRING)
     SlotStatus status;
 
-    @Column(name = "current_session_id")
-    @GeneratedValue(strategy = GenerationType.UUID)
-    UUID currentSessionId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_session_id", referencedColumnName = "id")
+    ParkingSession currentSession;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

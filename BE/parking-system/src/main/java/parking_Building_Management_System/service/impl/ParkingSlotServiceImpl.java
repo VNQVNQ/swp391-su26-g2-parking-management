@@ -200,7 +200,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 slot.getZone().getName(),
                 slot.getVehicleType(),
                 slot.getStatus(),
-                slot.getCurrentSessionId(),
+                slot.getCurrentSession().getId(),
                 slot.getCreatedAt(),
                 slot.getUpdatedAt()
         );

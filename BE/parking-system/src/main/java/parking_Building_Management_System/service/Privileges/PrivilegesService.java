@@ -1,7 +1,7 @@
 package parking_Building_Management_System.service.Privileges;
 
 import parking_Building_Management_System.entity.Privileges.Privileges;
-import parking_Building_Management_System.repository.Privileges.PrivilegesRepository;
+import parking_Building_Management_System.repository.PrivilegesRepository;
 import parking_Building_Management_System.dto.role.request.Privilege.PrivilegeRequest;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

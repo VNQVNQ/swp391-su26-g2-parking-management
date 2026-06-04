@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import parking_Building_Management_System.repository.Privileges.PrivilegesRepository;
+import parking_Building_Management_System.repository.PrivilegesRepository;
 
 @Service
 @RequiredArgsConstructor
