@@ -1,3 +1,5 @@
+
+<img width="1400" height="551" alt="image" src="https://github.com/user-attachments/assets/8f5c637b-5eb4-4ad0-b71d-bef41c4d1504" />
 <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00b894,100:00cec9&height=200&section=header&text=Parking%20BMS&fontSize=60&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Parking%20Building%20Management%20System&descAlignY=55&descSize=20&descColor=d0ffe8" width="100%"/>
@@ -51,9 +53,9 @@
 
 | # | Họ và tên | MSSV | Vai trò | Branch phụ trách |
 |:-:|-----------|:----:|---------|-----------------|
-| 1 | **Võ Nhật Quang** | SE196584 | 🔱 Team Leader · Backend Dev | `feature/BE-auth` · `feature/BE-session` |
-| 2 | **Nguyễn Phước Sanh** | SE181668 | ⚙️ Backend Dev | `feature/BE-floor-zone-slot` |
-| 3 | **Trần Hữu Trọng Nhân** | — | ⚙️ Backend Dev | `feature/BE-payment-report` |
+| 1 | **Võ Nhật Quang** | SE196584 | 🔱 Team Leader · Backend Dev | `feature/BE-floor-zone-slot`|
+| 2 | **Nguyễn Phước Sanh** | SE181668 | ⚙️ Backend Dev |  `feature/BE-auth` · `feature/BE-session` |
+| 3 | **Trần Hữu Trọng Nhân** | SE196231 | ⚙️ Backend Dev | `feature/BE-payment-report` |
 | 4 | **Nguyễn Lê Nhật Vinh** | SE193661 | 🎨 Frontend Dev | `feature/FE-staff-ui` |
 | 5 | **Nguyễn Quốc Hưng** | SE180315 | 🎨 Frontend Dev | `feature/FE-manager-ui` |
 
