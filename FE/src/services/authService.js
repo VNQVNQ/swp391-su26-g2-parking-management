@@ -26,11 +26,19 @@ const authService = {
       throw error;
     }
 
+    // Determine role from email prefix for testing
+    let role = 'STAFF';
+    if (credentials.email.toLowerCase().startsWith('admin')) {
+      role = 'ADMIN';
+    } else if (credentials.email.toLowerCase().startsWith('manager')) {
+      role = 'MANAGER';
+    }
+
     const mockUser = {
       id: 1,
       email: credentials.email,
       name: credentials.email.split('@')[0],
-      role: 'STAFF',
+      role,
       avatar: null,
     };
     const mockToken = 'mock-jwt-token-' + Date.now();

@@ -1,6 +1,5 @@
 import { TrendingUp, AlertCircle, Zap, Clock } from 'lucide-react';
 import { useParkingStore } from '../store/parkingStore';
-import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 
 // Status badge component
@@ -52,7 +51,7 @@ function ProgressBar({ percentage }) {
 
 export default function Dashboard() {
   const { vehicles, exitedVehicles, slotStats, todayRevenue, getFloorStats, zones } = useParkingStore();
-  const navigate = useNavigate();
+
 
   const overstayCount = vehicles.filter(v => v.overstay).length;
   const utilizationRate = slotStats.total > 0 ? ((slotStats.occupied / slotStats.total) * 100).toFixed(1) : '0.0';
@@ -306,51 +305,6 @@ export default function Dashboard() {
 
       {/* Right Sidebar */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Quick Actions */}
-        <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>
-            Quick Actions
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { label: 'Vehicle Entry', icon: '📥', path: '/entry' },
-              { label: 'Vehicle Exit', icon: '📤', path: '/exit' },
-              { label: 'Check Availability', icon: '🔍', path: '/slots' },
-              { label: 'Generate Report', icon: '📊', path: '/reports' },
-            ].map((action, i) => (
-              <button
-                key={i}
-                onClick={() => navigate(action.path)}
-                style={{
-                  background: '#1a1a1a',
-                  border: '1px solid #2a2a2a',
-                  color: 'var(--text-primary)',
-                  padding: '12px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  fontFamily: 'inherit',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#252525';
-                  e.currentTarget.style.borderColor = '#3a3a3a';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#1a1a1a';
-                  e.currentTarget.style.borderColor = '#2a2a2a';
-                }}
-              >
-                <span>{action.icon}</span>
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Statistics */}
         <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>

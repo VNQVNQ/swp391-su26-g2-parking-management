@@ -15,6 +15,31 @@ import { ParkingProvider } from './store/parkingStore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useState } from 'react';
 
+// ── Role → allowed routes mapping ──────────────────────────────────────
+const ROLE_ROUTES = {
+  ADMIN:   ['/dashboard', '/pricing', '/reports', '/settings'],
+  MANAGER: ['/dashboard', '/slots', '/passes', '/exceptions'],
+  STAFF:   ['/entry', '/exit'],
+};
+
+// ── Role → default landing page ────────────────────────────────────────
+const ROLE_DEFAULT = {
+  ADMIN:   '/dashboard',
+  MANAGER: '/dashboard',
+  STAFF:   '/entry',
+};
+
+/* ── Route guard: redirects if user role doesn't have access ─────────── */
+function RoleRoute({ allowedRoles, children }) {
+  const { user } = useAuth();
+  const role = user?.role || 'STAFF';
+
+  if (!allowedRoles.includes(role)) {
+    return <Navigate to={ROLE_DEFAULT[role] || '/entry'} replace />;
+  }
+  return children;
+}
+
 /* ── Loading spinner shown while AuthContext checks stored session ──── */
 function AuthLoading() {
   return (
@@ -68,6 +93,10 @@ function AppShell() {
     );
   }
 
+  // Determine role-based default page
+  const userRole = user?.role || 'STAFF';
+  const defaultPage = ROLE_DEFAULT[userRole] || '/entry';
+
   return (
     <ParkingProvider>
       <div className="app-layout">
@@ -79,17 +108,71 @@ function AppShell() {
         />
         <main className={`main-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/entry" element={<VehicleEntry />} />
-            <Route path="/exit" element={<VehicleExit />} />
-            <Route path="/slots" element={<SlotManagement />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/passes" element={<PassesBookings />} />
-            <Route path="/exceptions" element={<Exceptions />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to={defaultPage} replace />} />
+
+            {/* Dashboard: Admin, Manager */}
+            <Route path="/dashboard" element={
+              <RoleRoute allowedRoles={['ADMIN', 'MANAGER']}>
+                <Dashboard />
+              </RoleRoute>
+            } />
+
+            {/* Vehicle Entry & Exit: Staff */}
+            <Route path="/entry" element={
+              <RoleRoute allowedRoles={['STAFF']}>
+                <VehicleEntry />
+              </RoleRoute>
+            } />
+            <Route path="/exit" element={
+              <RoleRoute allowedRoles={['STAFF']}>
+                <VehicleExit />
+              </RoleRoute>
+            } />
+
+            {/* Slot Management: Manager */}
+            <Route path="/slots" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
+                <SlotManagement />
+              </RoleRoute>
+            } />
+
+            {/* Pricing: Admin */}
+            <Route path="/pricing" element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <Pricing />
+              </RoleRoute>
+            } />
+
+            {/* Passes & Bookings: Manager */}
+            <Route path="/passes" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
+                <PassesBookings />
+              </RoleRoute>
+            } />
+
+            {/* Exceptions: Manager */}
+            <Route path="/exceptions" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
+                <Exceptions />
+              </RoleRoute>
+            } />
+
+            {/* Reports: Admin */}
+            <Route path="/reports" element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <Reports />
+              </RoleRoute>
+            } />
+
+            {/* Settings: Admin */}
+            <Route path="/settings" element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <Settings />
+              </RoleRoute>
+            } />
+
+            {/* Catch-all: redirect to role-appropriate default */}
+            <Route path="*" element={<Navigate to={defaultPage} replace />} />
           </Routes>
         </main>
       </div>
@@ -108,3 +191,4 @@ function App() {
 }
 
 export default App;
+
