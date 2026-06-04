@@ -2,7 +2,7 @@ package parking_Building_Management_System.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import parking_Building_Management_System.entity.PricingRule.PricingRule;
+import parking_Building_Management_System.entity.PricingRule;
 import parking_Building_Management_System.entity.enums.TicketType;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.List;

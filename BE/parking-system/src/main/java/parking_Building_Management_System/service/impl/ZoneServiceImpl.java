@@ -2,10 +2,10 @@ package parking_Building_Management_System.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import parking_Building_Management_System.dto.request.ZoneRequest;
-import parking_Building_Management_System.dto.response.ZoneResponse;
-import parking_Building_Management_System.entity.Floor.Floor;
-import parking_Building_Management_System.entity.Zone.Zone;
+import parking_Building_Management_System.dto.zone.request.ZoneRequest;
+import parking_Building_Management_System.dto.zone.response.ZoneResponse;
+import parking_Building_Management_System.entity.Floor;
+import parking_Building_Management_System.entity.Zone;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.repository.FloorRepository;
 import parking_Building_Management_System.repository.ZoneRepository;

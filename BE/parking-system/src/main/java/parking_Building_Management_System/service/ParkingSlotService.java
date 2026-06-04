@@ -1,9 +1,9 @@
 package parking_Building_Management_System.service;
 
-import parking_Building_Management_System.dto.request.BulkParkingSlotRequest;
-import parking_Building_Management_System.dto.request.ParkingSlotRequest;
-import parking_Building_Management_System.dto.response.AvailableSlotResponse;
-import parking_Building_Management_System.dto.response.ParkingSlotResponse;
+import parking_Building_Management_System.dto.parkingSlot.request.BulkParkingSlotRequest;
+import parking_Building_Management_System.dto.parkingSlot.request.ParkingSlotRequest;
+import parking_Building_Management_System.dto.parkingSlot.response.AvailableSlotResponse;
+import parking_Building_Management_System.dto.parkingSlot.response.ParkingSlotResponse;
 import parking_Building_Management_System.entity.enums.SlotStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.List;

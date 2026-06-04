@@ -3,7 +3,7 @@ package parking_Building_Management_System.controller;
 import parking_Building_Management_System.dto.user.request.UserChangePasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserRequestForUpdate;
 import parking_Building_Management_System.dto.user.response.UserResponse;
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.service.User.UserService; // ĐÚNG: Viết hoa chữ U
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.UserUtils.UtilsUser;

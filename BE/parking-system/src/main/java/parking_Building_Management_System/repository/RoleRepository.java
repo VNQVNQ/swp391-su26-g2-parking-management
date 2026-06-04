@@ -1,6 +1,6 @@
 package parking_Building_Management_System.repository;
 
-import parking_Building_Management_System.entity.Role.Role;
+import parking_Building_Management_System.entity.role.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

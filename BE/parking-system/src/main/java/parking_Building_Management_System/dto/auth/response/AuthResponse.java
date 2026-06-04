@@ -1,7 +1,7 @@
 package parking_Building_Management_System.dto.auth.response;
 
 import parking_Building_Management_System.dto.user.response.UserResponse;
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

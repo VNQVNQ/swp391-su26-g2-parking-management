@@ -2,7 +2,7 @@ package parking_Building_Management_System.controller;
 
 import parking_Building_Management_System.dto.role.request.Role.RoleRequest;
 import parking_Building_Management_System.dto.role.response.Role.RoleResponse;
-import parking_Building_Management_System.entity.Role.Role;
+import parking_Building_Management_System.entity.role.Role;
 import parking_Building_Management_System.service.Role.RoleService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.RoleUtils.UtilsGetRole;

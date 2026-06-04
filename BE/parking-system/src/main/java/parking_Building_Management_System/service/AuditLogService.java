@@ -1,6 +1,6 @@
 package parking_Building_Management_System.service;
 
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.entity.AuditLog;
 import parking_Building_Management_System.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;

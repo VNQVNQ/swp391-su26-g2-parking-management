@@ -1,7 +1,7 @@
 package parking_Building_Management_System.controller;
 
 import parking_Building_Management_System.dto.role.request.Privilege.PrivilegeRequest;
-import parking_Building_Management_System.entity.Privileges.Privileges;
+import parking_Building_Management_System.entity.privileges.Privileges;
 import parking_Building_Management_System.service.Privileges.PrivilegesService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.RoleUtils.UtilsPrivileges;

@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import java.time.LocalDateTime;
 import java.util.UUID;
 

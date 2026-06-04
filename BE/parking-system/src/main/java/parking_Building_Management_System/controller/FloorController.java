@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import parking_Building_Management_System.dto.request.FloorRequest;
-import parking_Building_Management_System.dto.response.FloorResponse;
+import parking_Building_Management_System.dto.floor.request.FloorRequest;
+import parking_Building_Management_System.dto.floor.response.FloorResponse;
 import parking_Building_Management_System.service.FloorService;
 
 import java.util.List;

@@ -1,6 +1,6 @@
 package parking_Building_Management_System.repository;
 
-import parking_Building_Management_System.entity.Privileges.Privileges;
+import parking_Building_Management_System.entity.privileges.Privileges;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

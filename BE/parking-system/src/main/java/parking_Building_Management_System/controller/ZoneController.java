@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import parking_Building_Management_System.dto.request.ZoneRequest;
-import parking_Building_Management_System.dto.response.ZoneResponse;
+import parking_Building_Management_System.dto.zone.request.ZoneRequest;
+import parking_Building_Management_System.dto.zone.response.ZoneResponse;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.service.ZoneService;
 

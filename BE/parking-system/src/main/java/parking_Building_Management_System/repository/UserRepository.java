@@ -1,6 +1,6 @@
 package parking_Building_Management_System.repository;
 
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

@@ -1,8 +1,8 @@
 package parking_Building_Management_System.service;
 
-import parking_Building_Management_System.dto.request.VehicleRequest;
+import parking_Building_Management_System.dto.vehicle.request.VehicleRequest;
 import parking_Building_Management_System.dto.vehicle.response.MonthlyPassCheckResponse;
-import parking_Building_Management_System.dto.response.VehicleResponse;
+import parking_Building_Management_System.dto.vehicle.response.VehicleResponse;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.List;
 import java.util.UUID;

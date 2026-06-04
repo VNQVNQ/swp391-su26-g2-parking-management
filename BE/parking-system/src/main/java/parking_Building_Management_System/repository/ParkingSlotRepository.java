@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import parking_Building_Management_System.entity.ParkingSlot.ParkingSlot;
+import parking_Building_Management_System.entity.ParkingSlot;
 import parking_Building_Management_System.entity.enums.SlotStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.List;

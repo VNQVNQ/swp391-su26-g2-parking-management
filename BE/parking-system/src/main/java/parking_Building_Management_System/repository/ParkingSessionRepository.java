@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import parking_Building_Management_System.entity.ParkingSession.ParkingSession;
+import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
 import parking_Building_Management_System.entity.enums.ParkingSessionStatus;
 import java.time.LocalDateTime;

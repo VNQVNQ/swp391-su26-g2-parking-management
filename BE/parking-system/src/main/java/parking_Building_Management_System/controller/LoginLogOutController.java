@@ -5,7 +5,7 @@ import parking_Building_Management_System.dto.auth.request.ForgotPasswordRequest
 import parking_Building_Management_System.dto.auth.response.AuthResponse;
 import parking_Building_Management_System.dto.user.request.ResetPasswordRequest;
 import parking_Building_Management_System.dto.user.response.UserResponse;
-import parking_Building_Management_System.entity.User.User;
+import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.service.Auth.AuthenticationService;
 import parking_Building_Management_System.service.Auth.JWTService;
 import parking_Building_Management_System.service.User.UserService; // ĐÚNG: userService -> UserService

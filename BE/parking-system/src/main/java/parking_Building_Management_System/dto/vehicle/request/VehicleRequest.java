@@ -1,4 +1,4 @@
-package parking_Building_Management_System.dto.request;
+package parking_Building_Management_System.dto.vehicle.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

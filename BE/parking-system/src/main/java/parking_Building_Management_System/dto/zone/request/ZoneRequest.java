@@ -1,4 +1,4 @@
-package parking_Building_Management_System.dto.request;
+package parking_Building_Management_System.dto.zone.request;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

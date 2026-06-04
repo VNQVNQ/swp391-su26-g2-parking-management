@@ -2,9 +2,9 @@ package parking_Building_Management_System.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import parking_Building_Management_System.dto.request.FloorRequest;
-import parking_Building_Management_System.dto.response.FloorResponse;
-import parking_Building_Management_System.entity.Floor.Floor;
+import parking_Building_Management_System.dto.floor.request.FloorRequest;
+import parking_Building_Management_System.dto.floor.response.FloorResponse;
+import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.repository.FloorRepository;
 import parking_Building_Management_System.service.FloorService;
 import java.util.List;
