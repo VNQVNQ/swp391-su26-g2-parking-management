@@ -10,11 +10,11 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "audi_log")
-public class audiLog {
+@Table(name = "Audit_log")
+public class AuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "audi_log_id")
+    @Column(name = "audit_log_id")
     private Long audiLogId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -22,5 +22,5 @@ public class audiLog {
     private User user;
 
     private String action;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 }

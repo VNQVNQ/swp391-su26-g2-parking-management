@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class authResponse {
+public class AuthResponse {
     boolean auth;
     String accessToken;
     String refreshToken;
