@@ -19,8 +19,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "payments", schema = "public", indexes = {
-    @Index(name = "idx_session_id", columnList = "session_id"),
-    @Index(name = "idx_payment_status", columnList = "status"),
+    @Index(name = "idx_payment_session_id", columnList = "session_id"),
+    @Index(name = "idx_payment_table_status", columnList = "status"),
     @Index(name = "idx_paid_at", columnList = "paid_at"),
     @Index(name = "idx_collected_by", columnList = "collected_by")
 })

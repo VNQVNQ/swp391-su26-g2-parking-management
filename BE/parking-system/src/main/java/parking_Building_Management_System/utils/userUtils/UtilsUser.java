@@ -1,4 +1,4 @@
-package parking_Building_Management_System.utils.UserUtils;
+package parking_Building_Management_System.utils.userUtils;
 
 import parking_Building_Management_System.dto.user.response.UserResponse;
 import parking_Building_Management_System.entity.user.User;

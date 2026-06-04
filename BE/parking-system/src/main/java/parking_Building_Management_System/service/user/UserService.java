@@ -1,4 +1,4 @@
-package parking_Building_Management_System.service.User;
+package parking_Building_Management_System.service.user;
 
 import parking_Building_Management_System.dto.user.request.ResetPasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserChangePasswordRequest;
@@ -8,8 +8,8 @@ import parking_Building_Management_System.entity.role.Role;
 import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.repository.RoleRepository;
 import parking_Building_Management_System.repository.UserRepository;
-import parking_Building_Management_System.service.Auth.EmailService;
-import parking_Building_Management_System.service.Auth.JWTService;
+import parking_Building_Management_System.service.auth.EmailService;
+import parking_Building_Management_System.service.auth.JWTService;
 import parking_Building_Management_System.service.AuditLogService; // Đã sửa chính tả tên import
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

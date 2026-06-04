@@ -18,9 +18,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "bookings", schema = "public", indexes = {
-    @Index(name = "idx_slot_id", columnList = "slot_id"),
-    @Index(name = "idx_booking_start_time", columnList = "booking_start_time"),
-    @Index(name = "idx_status", columnList = "status")
+        @Index(name = "idx_slot_id", columnList = "slot_id"),
+        @Index(name = "idx_booking_start_time", columnList = "booking_start_time"),
+        @Index(name = "idx_bookings_status", columnList = "status") // <-- Đã đổi tên ở đây
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Booking {

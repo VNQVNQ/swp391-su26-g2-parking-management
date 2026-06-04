@@ -1,4 +1,4 @@
-package parking_Building_Management_System.service.Privileges;
+package parking_Building_Management_System.service.privileges;
 
 import parking_Building_Management_System.entity.privileges.Privileges;
 import parking_Building_Management_System.repository.PrivilegesRepository;

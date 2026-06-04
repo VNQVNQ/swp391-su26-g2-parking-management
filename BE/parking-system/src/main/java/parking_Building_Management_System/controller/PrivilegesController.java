@@ -2,9 +2,9 @@ package parking_Building_Management_System.controller;
 
 import parking_Building_Management_System.dto.role.request.Privilege.PrivilegeRequest;
 import parking_Building_Management_System.entity.privileges.Privileges;
-import parking_Building_Management_System.service.Privileges.PrivilegesService;
+import parking_Building_Management_System.service.privileges.PrivilegesService;
 import parking_Building_Management_System.utils.ApiResponse;
-import parking_Building_Management_System.utils.RoleUtils.UtilsPrivileges;
+import parking_Building_Management_System.utils.roleUtils.UtilsPrivileges;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

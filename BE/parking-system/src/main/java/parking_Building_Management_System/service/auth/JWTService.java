@@ -1,4 +1,4 @@
-package parking_Building_Management_System.service.Auth;
+package parking_Building_Management_System.service.auth;
 
 import parking_Building_Management_System.entity.user.User;
 import io.jsonwebtoken.Claims;

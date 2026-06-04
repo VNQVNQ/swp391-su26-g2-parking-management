@@ -6,10 +6,10 @@ import parking_Building_Management_System.dto.auth.response.AuthResponse;
 import parking_Building_Management_System.dto.user.request.ResetPasswordRequest;
 import parking_Building_Management_System.dto.user.response.UserResponse;
 import parking_Building_Management_System.entity.user.User;
-import parking_Building_Management_System.service.Auth.AuthenticationService;
-import parking_Building_Management_System.service.Auth.JWTService;
-import parking_Building_Management_System.service.User.UserService; // ĐÚNG: userService -> UserService
-import parking_Building_Management_System.utils.UserUtils.CheckCountLogin;
+import parking_Building_Management_System.service.auth.AuthenticationService;
+import parking_Building_Management_System.service.auth.JWTService;
+import parking_Building_Management_System.service.user.UserService; // ĐÚNG: userService -> UserService
+import parking_Building_Management_System.utils.userUtils.CheckCountLogin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

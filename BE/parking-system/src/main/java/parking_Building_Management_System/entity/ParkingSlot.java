@@ -22,7 +22,7 @@ import java.util.UUID;
     @Index(name = "idx_slot_code", columnList = "slot_code", unique = true),
     @Index(name = "idx_floor_id", columnList = "floor_id"),
     @Index(name = "idx_zone_id", columnList = "zone_id"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_parking_slot_status", columnList = "status")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingSlot {

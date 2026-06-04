@@ -1,6 +1,6 @@
 package parking_Building_Management_System.config;
 
-import parking_Building_Management_System.service.Auth.JWTAuthenticationFilter;
+import parking_Building_Management_System.service.auth.JWTAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +27,14 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // ĐÃ SỬA: Cho phép truy cập công khai vào /auth và toàn bộ tài liệu Swagger UI
+                        .requestMatchers(
+                                "/auth/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/webjars/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -35,4 +42,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

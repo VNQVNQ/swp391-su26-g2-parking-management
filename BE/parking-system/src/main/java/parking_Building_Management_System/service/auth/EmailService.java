@@ -1,4 +1,4 @@
-package parking_Building_Management_System.service.Auth;
+package parking_Building_Management_System.service.auth;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;

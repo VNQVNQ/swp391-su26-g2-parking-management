@@ -1,4 +1,4 @@
-package parking_Building_Management_System.utils.RoleUtils;
+package parking_Building_Management_System.utils.roleUtils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;

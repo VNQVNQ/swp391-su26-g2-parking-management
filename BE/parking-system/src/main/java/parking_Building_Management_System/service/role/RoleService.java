@@ -1,4 +1,4 @@
-package parking_Building_Management_System.service.Role;
+package parking_Building_Management_System.service.role;
 
 import parking_Building_Management_System.dto.role.request.Role.RoleRequest;
 import parking_Building_Management_System.entity.privileges.Privileges;

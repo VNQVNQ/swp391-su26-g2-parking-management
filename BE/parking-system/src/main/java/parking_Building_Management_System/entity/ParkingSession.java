@@ -21,11 +21,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "parking_sessions", schema = "public", indexes = {
-    @Index(name = "idx_vehicle_id", columnList = "vehicle_id"),
-    @Index(name = "idx_slot_id", columnList = "slot_id"),
-    @Index(name = "idx_entry_time", columnList = "entry_time"),
-    @Index(name = "idx_payment_status", columnList = "payment_status"),
-    @Index(name = "idx_status", columnList = "status")
+        @Index(name = "idx_parking_session_vehicle_id", columnList = "vehicle_id"),
+        @Index(name = "idx_parking_session_slot_id", columnList = "slot_id"),
+        @Index(name = "idx_parking_session_entry_time", columnList = "entry_time"),
+        @Index(name = "idx_parking_session_payment_status", columnList = "payment_status"),
+        @Index(name = "idx_parking_session_status", columnList = "status")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingSession {

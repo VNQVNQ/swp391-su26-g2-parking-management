@@ -10,10 +10,11 @@ import java.util.UUID;
 
 @Repository
 public interface MonthlyPassRepository extends JpaRepository<MonthlyPass, UUID> {
+
     List<MonthlyPass> findByVehicleId(UUID vehicleId);
 
-    List<MonthlyPass> findByStatus(PaymentStatus status);
+    // ĐÃ SỬA: Đổi từ findByStatus thành findByPaymentStatus để khớp với Entity
+    List<MonthlyPass> findByPaymentStatus(PaymentStatus status);
 
     List<MonthlyPass> findByEndDateGreaterThanEqual(LocalDate endDate);
 }
-

@@ -4,9 +4,9 @@ import parking_Building_Management_System.dto.user.request.UserChangePasswordReq
 import parking_Building_Management_System.dto.user.request.UserRequestForUpdate;
 import parking_Building_Management_System.dto.user.response.UserResponse;
 import parking_Building_Management_System.entity.user.User;
-import parking_Building_Management_System.service.User.UserService; // ĐÚNG: Viết hoa chữ U
+import parking_Building_Management_System.service.user.UserService; // ĐÚNG: Viết hoa chữ U
 import parking_Building_Management_System.utils.ApiResponse;
-import parking_Building_Management_System.utils.UserUtils.UtilsUser;
+import parking_Building_Management_System.utils.userUtils.UtilsUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

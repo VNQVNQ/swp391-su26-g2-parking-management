@@ -1,7 +1,7 @@
-package parking_Building_Management_System.utils.RoleUtils;
+package parking_Building_Management_System.utils.roleUtils;
 
 import parking_Building_Management_System.entity.privileges.Privileges;
-import parking_Building_Management_System.service.Privileges.PrivilegesService;
+import parking_Building_Management_System.service.privileges.PrivilegesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
