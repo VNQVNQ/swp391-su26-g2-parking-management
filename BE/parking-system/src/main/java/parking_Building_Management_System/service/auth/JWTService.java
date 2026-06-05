@@ -33,7 +33,7 @@ public class JWTService {
                 "userId", user.getUser_id()
         );
 
-        String access = createToken(claims, user.getEmail(), 15 * 60 * 1000);
+        String access = createToken(claims, user.getEmail(), 24 * 60 * 60 * 1000);
         String refresh = createToken(Map.of(), user.getEmail(), 30L * 24 * 60 * 60 * 1000);
 
         return Map.of("accessToken", access, "refreshToken", refresh);
@@ -91,7 +91,7 @@ public class JWTService {
             String newAccessToken = createToken(
                     Map.of("username", username),
                     username,
-                    15 * 60 * 1000
+                    24 * 60 * 60 * 1000
             );
             return Map.of("accessToken", newAccessToken);
         }catch (Exception e){
