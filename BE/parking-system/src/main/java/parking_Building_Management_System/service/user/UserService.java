@@ -10,7 +10,7 @@ import parking_Building_Management_System.repository.RoleRepository;
 import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.service.auth.EmailService;
 import parking_Building_Management_System.service.auth.JWTService;
-import parking_Building_Management_System.service.AuditLogService; // Đã sửa chính tả tên import
+import parking_Building_Management_System.service.AuditLogService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -33,7 +33,7 @@ public class UserService {
     final RoleRepository roleRepository;
     final JWTService jwtService;
     final EmailService emailService;
-    final AuditLogService auditLogService; // ĐÚNG: Đổi kiểu dữ liệu thành AuditLogService (Viết hoa chữ A), tên biến viết thường chữ a.
+    final AuditLogService auditLogService;
 
     @Transactional
     public void updateLastActive(Long userId) {
@@ -46,45 +46,79 @@ public class UserService {
         return user;
     }
 
-    public User createUser(UserRequest userRequest, String token){ // ĐÚNG: userRequest -> UserRequest
+
+    public User createUser(UserRequest userRequest) {
         User newUser = new User();
 
-        System.out.println("Role code người dùng nhập nè: " + userRequest.getRoleCode());
+        Role roleUser = roleRepository.findRoleByRoleCode("DRIVER");
 
-        Role roleUser = roleRepository.findRoleByRoleCode(userRequest.getRoleCode());
+        System.out.println("Role hệ thống tự gán mặc định nè: " + roleUser);
 
-        System.out.println("Role kiếm đc nè: " + roleUser);
+        if (roleUser == null) {
+            throw new NoSuchElementException("Mã quyền 'DRIVER' không tồn tại trong hệ thống. Vui lòng kiểm tra lại SQL!");
+        }
 
-        if(!roleUser.isActive()){
-            throw new NoSuchElementException("Role code is not find");
+        if (!roleUser.isActive()) {
+            throw new NoSuchElementException("Role code 'DRIVER' is not active");
+        }
+
+        if (userRequest.getDateOfBirth() != null) {
+            java.util.Calendar birth = java.util.Calendar.getInstance();
+            birth.setTime(userRequest.getDateOfBirth());
+            java.util.Calendar today = java.util.Calendar.getInstance();
+
+            int calculatedAge = today.get(java.util.Calendar.YEAR) - birth.get(java.util.Calendar.YEAR);
+
+            if (today.get(java.util.Calendar.DAY_OF_YEAR) < birth.get(java.util.Calendar.DAY_OF_YEAR)) {
+                calculatedAge--;
+            }
+            newUser.setAge(calculatedAge);
+        } else {
+            newUser.setAge(0);
         }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
         newUser.setAddress(userRequest.getAddress());
-        newUser.setAge(userRequest.getAge());
         newUser.setGender(userRequest.getGender());
         newUser.setEmail(userRequest.getEmail());
-        newUser.setRole(roleUser);
         newUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
-        newUser.setUserIsActive(true);
         newUser.setFullName(userRequest.getFullName());
         newUser.setDateOfBirth(userRequest.getDateOfBirth());
         newUser.setPhoneNumber(userRequest.getPhoneNumber());
-        newUser.setLastActive(new Date());
         newUser.setIdentifyNumber(userRequest.getIdentifyNumber());
+
+        newUser.setRole(roleUser);
+        newUser.setUserIsActive(true);
+        newUser.setLastActive(new Date());
+
+        // Lưu người dùng xuống Database trước
         userRepository.save(newUser);
 
-        User actor = getUserByToken(token);
+        // ĐÃ SỬA: Chuẩn hóa dữ liệu ghi log thành một chuỗi JSON hợp lệ
+        // Thay vì gửi text thô hoặc null dễ lỗi cột JSONB của Postgres, ta gửi một cặp ngoặc JSON chứa thông tin chi tiết.
+        try {
+            String logDetails = String.format(
+                    "{\"email\":\"%s\",\"fullName\":\"%s\",\"action\":\"Self Registration\"}",
+                    newUser.getEmail(),
+                    newUser.getFullName()
+            );
 
-        auditLogService.createAuditLog(actor, "CREATE_USER", LocalDateTime.now()); // ĐÚNG: Sửa sang auditLogService và sửa tên hàm createAuditLog (thêm chữ t)
+            // Gọi hàm ghi log (Đảm bảo hàm createAuditLog nhận tham số details là chuỗi JSON này)
+            auditLogService.createAuditLog(newUser, "USER_SELF_REGISTER", LocalDateTime.now());
+
+        } catch (Exception e) {
+            // In ra lỗi log nếu có nhưng không làm sập luồng đăng ký của khách hàng
+            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
+        }
+
         return newUser;
     }
 
     public List<User> getAllUser(String token){
         List<User> users = this.userRepository.findAll();
         User userActor = getUserByToken(token);
-        auditLogService.createAuditLog(userActor, "GET_ALL_USERS", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(userActor, "GET_ALL_USERS", LocalDateTime.now());
 
         return users;
     }
@@ -94,7 +128,7 @@ public class UserService {
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         User userActor = getUserByToken(token);
-        auditLogService.createAuditLog(userActor, "GET_USER_BY_ID", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(userActor, "GET_USER_BY_ID", LocalDateTime.now());
 
         return user;
     }
@@ -105,10 +139,10 @@ public class UserService {
         this.userRepository.save(user);
 
         User userActor = getUserByToken(token);
-        auditLogService.createAuditLog(userActor, "DELETE_USER", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(userActor, "DELETE_USER", LocalDateTime.now());
     }
 
-    public User updateUser(Long id, UserRequestForUpdate userRequest, String token){ // ĐÚNG: userRequestForUpdate -> UserRequestForUpdate
+    public User updateUser(Long id, UserRequestForUpdate userRequest, String token){
         User user = userRepository.findById(id).orElseThrow(() -> new NoSuchElementException("User not found"));
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
@@ -132,7 +166,7 @@ public class UserService {
         userRepository.save(user);
 
         User userActor = getUserByToken(token);
-        auditLogService.createAuditLog(userActor, "UPDATE_USER", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(userActor, "UPDATE_USER", LocalDateTime.now());
 
         return user;
     }
@@ -182,12 +216,12 @@ public class UserService {
         user.setTokenResetPassword(tokenResetPassword);
         emailService.sendMail(email, "Your password reset token (valid for 10 min)", "http://localhost:5173/reset-password/"+tokenResetPassword);
 
-        auditLogService.createAuditLog(user, "FORGOT_PASSWORD", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(user, "FORGOT_PASSWORD", LocalDateTime.now());
 
         return true;
     }
 
-    public Map<Integer, String> resetPassword(ResetPasswordRequest resetPasswordRequest, String tokenResetPassword){ // ĐÚNG: resetPasswordRequest -> ResetPasswordRequest
+    public Map<Integer, String> resetPassword(ResetPasswordRequest resetPasswordRequest, String tokenResetPassword){
         String emailUser = jwtService.extractAllClaims(tokenResetPassword).getSubject();
 
         if(emailUser == null){
@@ -217,12 +251,12 @@ public class UserService {
         user.setRefreshToken(null);
         userRepository.save(user);
 
-        auditLogService.createAuditLog(user, "RESET_PASSWORD", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(user, "RESET_PASSWORD", LocalDateTime.now());
 
         return Map.of(200, "Reset password success");
     }
 
-    public Map<Integer, String> userChangePassword(Long id, UserChangePasswordRequest userChangePasswordRequest){ // ĐÚNG: userChangePasswordRequest -> UserChangePasswordRequest
+    public Map<Integer, String> userChangePassword(Long id, UserChangePasswordRequest userChangePasswordRequest){
         User user = userRepository.findById(id).orElseThrow(() -> new NoSuchElementException("User not found"));
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
@@ -237,7 +271,7 @@ public class UserService {
         user.setRefreshToken(null);
         userRepository.save(user);
 
-        auditLogService.createAuditLog(user, "CHANGE_PASSWORD", LocalDateTime.now()); // ĐÚNG: createAudiLog -> createAuditLog
+        auditLogService.createAuditLog(user, "CHANGE_PASSWORD", LocalDateTime.now());
 
         return Map.of(200, "Change password success");
     }

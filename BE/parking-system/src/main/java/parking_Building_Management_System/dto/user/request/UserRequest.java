@@ -13,16 +13,14 @@ import java.util.Date;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserRequest {
+
     String email;
     String password;
+    String confirmPassword;
     String fullName;
     String phoneNumber;
     String identifyNumber;
     String gender;
-    int age;
-    String address;
     Date dateOfBirth;
-    String roleCode;
-    Date lastActive;
-    String confirmPassword;
+    String address;
 }
