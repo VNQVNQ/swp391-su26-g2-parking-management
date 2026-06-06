@@ -48,7 +48,7 @@ const authService = {
 
   /**
    * POST /auth/register
-   * @param {{ fullName, email, phone, password }} data
+   * @param {{ fullName, email, phone, gender, dateOfBirth, address, identityNumber, password }} data
    * @returns {{ token: string, user: object }}
    */
   register: async (data) => {
@@ -70,6 +70,10 @@ const authService = {
       email: data.email,
       name: data.fullName,
       phone: data.phone,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      address: data.address,
+      identityNumber: data.identityNumber,
       role: 'STAFF',
       avatar: null,
     };

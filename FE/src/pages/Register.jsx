@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, UserPlus } from 'lucide-react';
+import { Car, Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, UserPlus, Calendar, MapPin, Users, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Register() {
@@ -10,6 +10,10 @@ export default function Register() {
     fullName: '',
     email: '',
     phone: '',
+    gender: '',
+    dateOfBirth: '',
+    address: '',
+    identityNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -32,6 +36,17 @@ export default function Register() {
     else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
     if (!form.phone.trim()) errs.phone = 'Phone number is required';
     else if (!/^[0-9]{10,11}$/.test(form.phone.replace(/\s|-/g, ''))) errs.phone = 'Invalid phone number';
+    if (!form.gender) errs.gender = 'Please select your gender';
+    if (!form.dateOfBirth) errs.dateOfBirth = 'Date of birth is required';
+    else {
+      const dob = new Date(form.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      if (age < 16) errs.dateOfBirth = 'You must be at least 16 years old';
+    }
+    if (!form.address.trim()) errs.address = 'Address is required';
+    if (!form.identityNumber.trim()) errs.identityNumber = 'Identity number is required';
+    else if (!/^[0-9]{9}$|^[0-9]{12}$/.test(form.identityNumber.replace(/\s/g, ''))) errs.identityNumber = 'Must be 9 or 12 digits';
     if (!form.password) errs.password = 'Password is required';
     else if (form.password.length < 6) errs.password = 'Password must be at least 6 characters';
     if (!form.confirmPassword) errs.confirmPassword = 'Please confirm your password';
@@ -70,6 +85,10 @@ export default function Register() {
       fullName: form.fullName,
       email: form.email,
       phone: form.phone,
+      gender: form.gender,
+      dateOfBirth: form.dateOfBirth,
+      address: form.address,
+      identityNumber: form.identityNumber,
       password: form.password,
     });
     setLoading(false);
@@ -223,6 +242,76 @@ export default function Register() {
                   </div>
                   {errors.phone && <span className="auth-error">{errors.phone}</span>}
                 </div>
+              </div>
+
+              {/* Gender & Date of Birth row */}
+              <div className="auth-field-row">
+                <div className="auth-field">
+                  <label htmlFor="register-gender">Gender</label>
+                  <div className={`auth-input-wrapper ${errors.gender ? 'error' : ''}`}>
+                    <Users size={18} className="auth-input-icon" />
+                    <select
+                      id="register-gender"
+                      value={form.gender}
+                      onChange={(e) => update('gender', e.target.value)}
+                      style={{ color: form.gender ? 'inherit' : 'rgba(255,255,255,0.4)' }}
+                    >
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  {errors.gender && <span className="auth-error">{errors.gender}</span>}
+                </div>
+
+                <div className="auth-field">
+                  <label htmlFor="register-dob">Date of Birth</label>
+                  <div className={`auth-input-wrapper ${errors.dateOfBirth ? 'error' : ''}`}>
+                    <Calendar size={18} className="auth-input-icon" />
+                    <input
+                      id="register-dob"
+                      type="date"
+                      value={form.dateOfBirth}
+                      onChange={(e) => update('dateOfBirth', e.target.value)}
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                  {errors.dateOfBirth && <span className="auth-error">{errors.dateOfBirth}</span>}
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="auth-field">
+                <label htmlFor="register-address">Address</label>
+                <div className={`auth-input-wrapper ${errors.address ? 'error' : ''}`}>
+                  <MapPin size={18} className="auth-input-icon" />
+                  <input
+                    id="register-address"
+                    type="text"
+                    placeholder="123 Main Street, District 1, Ho Chi Minh City"
+                    value={form.address}
+                    onChange={(e) => update('address', e.target.value)}
+                    autoComplete="street-address"
+                  />
+                </div>
+                {errors.address && <span className="auth-error">{errors.address}</span>}
+              </div>
+
+              {/* Identity Number */}
+              <div className="auth-field">
+                <label htmlFor="register-identity">Identity Number (CMND/CCCD)</label>
+                <div className={`auth-input-wrapper ${errors.identityNumber ? 'error' : ''}`}>
+                  <CreditCard size={18} className="auth-input-icon" />
+                  <input
+                    id="register-identity"
+                    type="text"
+                    placeholder="001234567890"
+                    value={form.identityNumber}
+                    onChange={(e) => update('identityNumber', e.target.value)}
+                    maxLength={12}
+                  />
+                </div>
+                {errors.identityNumber && <span className="auth-error">{errors.identityNumber}</span>}
               </div>
 
               {/* Password */}
