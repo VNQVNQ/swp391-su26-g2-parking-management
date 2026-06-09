@@ -90,11 +90,13 @@ export default function Register() {
       address: form.address,
       identityNumber: form.identityNumber,
       password: form.password,
+      confirmPassword: form.confirmPassword,
     });
     setLoading(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      // Backend register doesn't return a token → redirect to login
+      navigate('/login', { state: { registrationSuccess: true } });
     }
     // If registration failed, authError will be set by the context
   };

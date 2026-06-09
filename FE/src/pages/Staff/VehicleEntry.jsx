@@ -19,7 +19,7 @@ import {
   Truck as TruckLucide,
   Plus,
 } from 'lucide-react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 /* ========== VEHICLE TYPES ========== */
 const vehicleTypesList = [

@@ -21,9 +21,12 @@ export function AuthProvider({ children }) {
           // Validate the token with the server
           const { user: freshUser } = await authService.getCurrentUser();
           setUser(freshUser);
+          // Update stored user with fresh data
+          localStorage.setItem('user', JSON.stringify(freshUser));
         } catch {
           // Token invalid / expired – clean up
           localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
         }
       }
@@ -36,8 +39,9 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     setError(null);
     try {
-      const { token, user: userData } = await authService.login(credentials);
-      localStorage.setItem('accessToken', token);
+      const { accessToken, refreshToken, user: userData } = await authService.login(credentials);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       return { success: true };
@@ -50,14 +54,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ── Register ───────────────────────────────────────────────────────
+  // NOTE: Backend register does NOT return a token.
+  // After successful registration, user must navigate to login page.
   const register = useCallback(async (data) => {
     setError(null);
     try {
-      const { token, user: userData } = await authService.register(data);
-      localStorage.setItem('accessToken', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      return { success: true };
+      const result = await authService.register(data);
+      // Do NOT auto-login: backend register endpoint doesn't return tokens
+      return { success: true, message: result.message };
     } catch (err) {
       const message =
         err.response?.data?.message || err.message || 'Registration failed';
@@ -74,6 +78,7 @@ export function AuthProvider({ children }) {
       // ignore – we clear local state regardless
     }
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
     setError(null);

@@ -1,6 +1,6 @@
 import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 const usersData = [
   { id: 1, username: 'admin', fullName: 'Admin User', email: 'admin@parking.vn', role: 'Admin', active: true },

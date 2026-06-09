@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Car, Mail, Lock, Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, error: authError, clearError } = useAuth();
+  const registrationSuccess = location.state?.registrationSuccess;
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -112,6 +114,26 @@ export default function Login() {
               <h2>Welcome Back</h2>
               <p>Enter your credentials to access the dashboard</p>
             </div>
+
+            {/* Registration success message */}
+            {registrationSuccess && !authError && (
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '10px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: '#10b981',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Đăng ký thành công! Vui lòng đăng nhập.
+              </div>
+            )}
 
             {/* Server-side error from AuthContext */}
             {authError && (

@@ -1,6 +1,6 @@
 import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 // Slot component
 function SlotCard({ slot, onSlotClick }) {

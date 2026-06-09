@@ -1,6 +1,6 @@
 import { LogOut, Search, MapPin, Clock, DollarSign, CheckCircle, Printer, RotateCcw } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 // Helper function to calculate duration between two dates
 const calculateDuration = (entryDate, currentDate = new Date()) => {

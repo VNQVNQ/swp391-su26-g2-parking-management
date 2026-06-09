@@ -39,9 +39,9 @@ const ROLE_LABELS = {
 export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }) {
   const location = useLocation();
 
-  const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-    : 'U';
+  const displayName = user?.fullName || user?.name || 'User';
+  const initials = displayName
+    .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   // Filter nav items based on user role
   const userRole = user?.role || 'STAFF';
@@ -83,7 +83,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout })
         <div className="user-card">
           <div className="user-avatar">{initials}</div>
           <div className="user-info">
-            <h4>{user?.name || 'User'}</h4>
+            <h4>{displayName}</h4>
             <p>{ROLE_LABELS[userRole] || userRole}</p>
           </div>
         </div>

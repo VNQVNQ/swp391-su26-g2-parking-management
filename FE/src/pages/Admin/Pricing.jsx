@@ -1,6 +1,6 @@
 import { DollarSign, Clock, Settings, Shield, Plus, X } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 export default function Pricing() {
   const store = useParkingStore();

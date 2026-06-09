@@ -1,6 +1,6 @@
 import { CalendarCheck, CreditCard, Car, Bike, Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 export default function PassesBookings() {
   const store = useParkingStore();

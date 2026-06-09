@@ -2,109 +2,127 @@ import api from './api';
 
 // ── Auth API service ───────────────────────────────────────────────────
 // Thin wrapper around the shared Axios instance for auth-specific
-// endpoints.  When the real backend is ready, only the endpoint paths
-// here need updating.
+// endpoints. Connects to the Spring Boot backend at /auth/*.
 
 const authService = {
   /**
    * POST /auth/login
    * @param {{ email: string, password: string }} credentials
-   * @returns {{ token: string, user: object }}
+   * @returns {{ accessToken: string, refreshToken: string, user: object }}
    */
   login: async (credentials) => {
-    // TODO: Replace with real API call when backend is ready
-    // const response = await api.post('/auth/login', credentials);
-    // return response.data;
-
-    // ── Mock implementation ──
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    // Simulate invalid credentials
-    if (credentials.email === 'fail@test.com') {
-      const error = new Error('Invalid email or password');
-      error.response = { status: 401, data: { message: 'Invalid email or password' } };
-      throw error;
-    }
-
-    // Determine role from email prefix for testing
-    let role = 'STAFF';
-    if (credentials.email.toLowerCase().startsWith('admin')) {
-      role = 'ADMIN';
-    } else if (credentials.email.toLowerCase().startsWith('manager')) {
-      role = 'MANAGER';
-    }
-
-    const mockUser = {
-      id: 1,
+    const response = await api.post('/auth/login', {
       email: credentials.email,
-      name: credentials.email.split('@')[0],
-      role,
-      avatar: null,
-    };
-    const mockToken = 'mock-jwt-token-' + Date.now();
+      password: credentials.password,
+    });
 
-    return { token: mockToken, user: mockUser };
+    // Backend returns: { accessToken, refreshToken, user: UserResponse }
+    const { accessToken, refreshToken, user } = response.data;
+
+    return {
+      accessToken,
+      refreshToken,
+      user: mapUserResponse(user),
+    };
   },
 
   /**
    * POST /auth/register
-   * @param {{ fullName, email, phone, gender, dateOfBirth, address, identityNumber, password }} data
-   * @returns {{ token: string, user: object }}
+   * Backend expects UserRequest: { email, password, confirmPassword, fullName, phoneNumber, identifyNumber, gender, dateOfBirth, address }
+   * Backend returns: ApiResponse<UserResponse> = { statusCode, message, data: UserResponse }
+   * NOTE: Register does NOT return a token. User must login after registering.
+   * @param {object} data - Form data from Register page
+   * @returns {{ success: boolean, message: string, user: object }}
    */
   register: async (data) => {
-    // TODO: Replace with real API call when backend is ready
-    // const response = await api.post('/auth/register', data);
-    // return response.data;
-
-    // ── Mock implementation ──
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    if (data.email === 'exists@test.com') {
-      const error = new Error('Email already registered');
-      error.response = { status: 409, data: { message: 'Email already registered' } };
-      throw error;
-    }
-
-    const mockUser = {
-      id: Date.now(),
+    const response = await api.post('/auth/register', {
+      fullName: data.fullName,
       email: data.email,
-      name: data.fullName,
-      phone: data.phone,
+      phoneNumber: data.phone,           // FE uses 'phone', BE expects 'phoneNumber'
+      identifyNumber: data.identityNumber, // FE uses 'identityNumber', BE expects 'identifyNumber'
       gender: data.gender,
-      dateOfBirth: data.dateOfBirth,
+      dateOfBirth: data.dateOfBirth,       // Send as ISO string (yyyy-MM-dd)
       address: data.address,
-      identityNumber: data.identityNumber,
-      role: 'STAFF',
-      avatar: null,
-    };
-    const mockToken = 'mock-jwt-token-' + Date.now();
+      password: data.password,
+      confirmPassword: data.confirmPassword || data.password,
+    });
 
-    return { token: mockToken, user: mockUser };
+    // Backend returns ApiResponse<UserResponse>: { statusCode, message, data }
+    const apiResponse = response.data;
+    return {
+      success: true,
+      message: apiResponse.message || 'Registration successful',
+      user: apiResponse.data ? mapUserResponse(apiResponse.data) : null,
+    };
   },
 
   /**
-   * POST /auth/logout
+   * POST /auth/Logout (note: capital 'L' in backend)
    */
   logout: async () => {
-    // TODO: Replace with real API call when backend is ready
-    // await api.post('/auth/logout');
+    try {
+      await api.post('/auth/Logout');
+    } catch {
+      // Ignore errors – we clear local state regardless
+    }
     return true;
   },
 
   /**
-   * GET /auth/me  – validate token & fetch current user
+   * GET /auth/users/me – validate token & fetch current user
+   * Backend returns: ApiResponse<UserResponse> = { statusCode, message, data: UserResponse }
    * @returns {{ user: object }}
    */
   getCurrentUser: async () => {
-    // TODO: Replace with real API call when backend is ready
-    // const response = await api.get('/auth/me');
-    // return response.data;
+    const response = await api.get('/auth/users/me');
 
-    // ── Mock implementation ──
-    const stored = localStorage.getItem('user');
-    if (!stored) throw new Error('No user');
-    return { user: JSON.parse(stored) };
+    // Backend wraps in ApiResponse: { statusCode, message, data: UserResponse }
+    const apiResponse = response.data;
+    return {
+      user: mapUserResponse(apiResponse.data),
+    };
+  },
+
+  /**
+   * POST /auth/refresh – refresh the access token
+   * @param {string} refreshToken
+   * @returns {{ accessToken: string }}
+   */
+  refreshToken: async (refreshToken) => {
+    const response = await api.post('/auth/refresh', { refreshToken });
+    return response.data;
   },
 };
+
+/**
+ * Maps backend UserResponse to the frontend user object format.
+ * Backend UserResponse fields:
+ *   id, email, password, fullName, phoneNumber, identifyNumber,
+ *   gender, userIsActivated, age, address, dateOfBirth, roleCode, roleName, lastActive
+ *
+ * Frontend expects:
+ *   id, email, name, fullName, role, phone, gender, dateOfBirth, address,
+ *   identityNumber, avatar, isActive, lastActive
+ */
+function mapUserResponse(backendUser) {
+  if (!backendUser) return null;
+  return {
+    id: backendUser.id,
+    email: backendUser.email,
+    name: backendUser.fullName,         // Sidebar uses 'name' for display
+    fullName: backendUser.fullName,
+    role: backendUser.roleCode,          // FE uses 'role', BE sends 'roleCode'
+    phone: backendUser.phoneNumber,
+    identityNumber: backendUser.identifyNumber,
+    gender: backendUser.gender,
+    dateOfBirth: backendUser.dateOfBirth,
+    address: backendUser.address,
+    age: backendUser.age,
+    isActive: backendUser.userIsActivated,
+    lastActive: backendUser.lastActive,
+    roleName: backendUser.roleName,
+    avatar: null,
+  };
+}
 
 export default authService;

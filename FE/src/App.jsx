@@ -1,16 +1,19 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
-import VehicleEntry from './pages/VehicleEntry';
 import Dashboard from './pages/Dashboard';
-import VehicleExit from './pages/VehicleExit';
-import SlotManagement from './pages/SlotManagement';
-import Pricing from './pages/Pricing';
-import PassesBookings from './pages/PassesBookings';
-import Exceptions from './pages/Exceptions';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+// Admin pages
+import Pricing from './pages/Admin/Pricing';
+import Reports from './pages/Admin/Reports';
+import Settings from './pages/Admin/Settings';
+// Manager pages
+import SlotManagement from './pages/Manager/SlotManagement';
+import PassesBookings from './pages/Manager/PassesBookings';
+import Exceptions from './pages/Manager/Exceptions';
+// Staff pages
+import VehicleEntry from './pages/Staff/VehicleEntry';
+import VehicleExit from './pages/Staff/VehicleExit';
 import { ParkingProvider } from './store/parkingStore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useState } from 'react';

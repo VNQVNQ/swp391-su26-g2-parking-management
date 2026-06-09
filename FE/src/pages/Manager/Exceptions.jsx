@@ -1,6 +1,6 @@
 import { AlertTriangle, Clock, CheckCircle, Ticket, DollarSign, Plus, X, Search, FileText } from 'lucide-react';
 import { useState } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 export default function Exceptions() {
   const store = useParkingStore();

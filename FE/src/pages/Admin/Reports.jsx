@@ -1,6 +1,6 @@
 import { BarChart3, DollarSign, Car, Activity, Clock } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { useParkingStore } from '../store/parkingStore';
+import { useParkingStore } from '../../store/parkingStore';
 
 function AreaChart({ data }) {
   const W = 700, H = 200, pad = 40;
