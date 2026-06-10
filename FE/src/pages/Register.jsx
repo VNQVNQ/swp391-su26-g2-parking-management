@@ -258,6 +258,7 @@ export default function Register() {
                       onChange={(e) => update('gender', e.target.value)}
                       style={{ color: form.gender ? 'inherit' : 'rgba(255,255,255,0.4)' }}
                     >
+                      <option value="" disabled>Select gender</option>
                       <option value="MALE">Male</option>
                       <option value="FEMALE">Female</option>
                       <option value="OTHER">Other</option>
