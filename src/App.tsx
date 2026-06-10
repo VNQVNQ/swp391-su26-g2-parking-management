@@ -1,53 +1,77 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ParkingProvider } from "./store/parkingStore";
 
 import Login           from "./pages/Login";
 import Register        from "./pages/Register";
 import Unauthorized    from "./pages/Unauthorized";
 import Dashboard       from "./pages/manager/Dashboard";
 import PricingConfig   from "./pages/manager/PricingConfig";
+import Exceptions      from "./pages/manager/Exceptions";
+import PassesBookings  from "./pages/manager/PassesBookings";
 import StaffDashboard  from "./pages/staff/Dashboard";
 import VehicleEntry    from "./pages/staff/VehicleEntry";
 import VehicleExit     from "./pages/staff/VehicleExit";
 import SlotView        from "./pages/staff/SlotView";
+import DriverDashboard    from "./pages/driver/Dashboard";
+import RegisterTicket     from "./pages/driver/RegisterTicket";
+import MyTickets          from "./pages/driver/MyTickets";
+import DriverSlotView     from "./pages/driver/SlotView";
+import Booking            from "./pages/driver/Booking";
 import SidebarLayout   from "./layouts/SidebarLayout";
 import RouteGuard      from "./components/RouteGuard";
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      {/* ParkingProvider bọc toàn bộ — cung cấp state chung cho VehicleEntry, VehicleExit, Exceptions, PassesBookings */}
+      <ParkingProvider>
+        <Routes>
 
-        {/* Public — không cần login */}
-        <Route path="/"             element={<Login />} />
-        <Route path="/register"     element={<Register />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
+          {/* Public */}
+          <Route path="/"             element={<Login />} />
+          <Route path="/register"     element={<Register />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Manager only — BR-13 */}
-        <Route element={
-          <RouteGuard allowedRoles={["MANAGER"]}>
-            <SidebarLayout />
-          </RouteGuard>
-        }>
-          <Route path="/dashboard"  element={<Dashboard />} />
-          <Route path="/pricing"    element={<PricingConfig />} />
-          <Route path="/reports"    element={<PlaceholderPage title="Reports" />} />
-          <Route path="/exceptions" element={<PlaceholderPage title="Exceptions" />} />
-        </Route>
+          {/* MANAGER only */}
+          <Route element={
+            <RouteGuard allowedRoles={["MANAGER"]}>
+              <SidebarLayout />
+            </RouteGuard>
+          }>
+            <Route path="/dashboard"  element={<Dashboard />} />
+            <Route path="/pricing"    element={<PricingConfig />} />
+            <Route path="/exceptions" element={<Exceptions />} />
+            <Route path="/passes"     element={<PassesBookings />} />
+            <Route path="/reports"    element={<PlaceholderPage title="Reports" />} />
+          </Route>
 
-        {/* Staff only */}
-        <Route element={
-          <RouteGuard allowedRoles={["STAFF"]}>
-            <SidebarLayout />
-          </RouteGuard>
-        }>
-          {/* FIX: thêm route /staff/dashboard — Sidebar đang trỏ tới đây */}
-          <Route path="/staff/dashboard" element={<StaffDashboard />} />
-          <Route path="/staff/entry"     element={<VehicleEntry />} />
-          <Route path="/staff/exit"      element={<VehicleExit />} />
-          <Route path="/staff/slots"     element={<SlotView />} />
-        </Route>
+          {/* STAFF only */}
+          <Route element={
+            <RouteGuard allowedRoles={["STAFF"]}>
+              <SidebarLayout />
+            </RouteGuard>
+          }>
+            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/entry"     element={<VehicleEntry />} />
+            <Route path="/staff/exit"      element={<VehicleExit />} />
+            <Route path="/staff/slots"     element={<SlotView />} />
+          </Route>
 
-      </Routes>
+          {/* DRIVER only */}
+          <Route element={
+            <RouteGuard allowedRoles={["DRIVER"]}>
+              <SidebarLayout />
+            </RouteGuard>
+          }>
+            <Route path="/driver/dashboard"       element={<DriverDashboard />} />
+            <Route path="/driver/register-ticket" element={<RegisterTicket />} />
+            <Route path="/driver/my-tickets"      element={<MyTickets />} />
+            <Route path="/driver/slots"           element={<DriverSlotView />} />
+            <Route path="/driver/booking"         element={<Booking />} />
+          </Route>
+
+        </Routes>
+      </ParkingProvider>
     </BrowserRouter>
   );
 }

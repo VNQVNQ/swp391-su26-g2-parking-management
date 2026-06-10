@@ -16,8 +16,11 @@ export default function Login() {
   }, [isLoggedIn, user]);
 
   const redirectByRole = (role: string) => {
-    if (role === "MANAGER") navigate("/dashboard",       { replace: true });
-    else                    navigate("/staff/dashboard", { replace: true });
+    if      (role === "MANAGER")      navigate("/dashboard",        { replace: true });
+    else if (role === "STAFF")        navigate("/staff/dashboard",  { replace: true });
+    else if (role === "DRIVER")       navigate("/driver/dashboard", { replace: true });
+    else if (role === "SYSTEM_ADMIN") navigate("/dashboard",        { replace: true });
+    else                              navigate("/driver/dashboard", { replace: true });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,15 +41,15 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#080d08] flex items-center justify-center px-4 relative overflow-hidden">
 
-      {/* Background grid — match theme các trang khác */}
+      {/* Background grid */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,200,83,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,200,83,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
-      {/* Glow effect */}
+      {/* Glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#00c853]/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-sm">
 
-        {/* ── Logo ── */}
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#00c853] shadow-lg shadow-[#00c853]/20 mb-4">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round">
@@ -58,7 +61,7 @@ export default function Login() {
           <p className="text-sm text-gray-500 mt-1">Parking Building Management System</p>
         </div>
 
-        {/* ── Card ── */}
+        {/* Card */}
         <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-2xl p-7 shadow-2xl">
 
           <h2 className="text-lg font-semibold text-white mb-5">Đăng nhập</h2>
@@ -107,7 +110,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#00c853] hover:bg-[#00e060] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-xl text-sm transition-all duration-150 shadow-lg shadow-[#00c853]/20 mt-1"
+              className="w-full bg-[#00c853] hover:bg-[#00e060] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-xl text-sm transition-all shadow-lg shadow-[#00c853]/20 mt-1"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -122,13 +125,13 @@ export default function Login() {
 
             {/* Register link */}
             <div className="text-center pt-1">
-              <span className="text-xs text-gray-600">Chưa có tài khoản?    </span>
+              <span className="text-xs text-gray-600">Chưa có tài khoản? </span>
               <button
                 type="button"
                 onClick={() => navigate("/register")}
                 className="text-xs text-[#00c853] hover:text-[#00e060] font-medium transition"
               >
-                  Đăng ký tài khoản
+                Đăng ký tài khoản
               </button>
             </div>
 

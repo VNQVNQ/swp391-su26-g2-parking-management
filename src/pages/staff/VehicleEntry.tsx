@@ -1,507 +1,346 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import type { VehicleType, ParkingSlot } from "../../types/staff.types";
-import {
-  
-  mockSlotsByFloor,
-  getFloorSummaries,
-  autoAssignSlot,
-} from "../../data/mockStaff";
+import { useState, useRef, useEffect } from 'react';
+import { useParkingStore } from '../../store/parkingStore';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-type TicketType = "HOURLY" | "DAILY" | "MONTHLY";
-type Step = 1 | 2 | 3 | 4;
-
-interface FormData {
-  licensePlate: string;
-  vehicleType: VehicleType | null;
-  ticketType: TicketType;
-  ownerName: string;
-}
-
-// ── Available count per vehicleType ─────────────────────────────────────────
-function getAvailableCount(vehicleType: VehicleType): number {
-  return Object.values(mockSlotsByFloor)
-    .flat()
-    .filter((s) => s.status === "FREE" && s.vehicleType === vehicleType)
-    .length;
-}
-
-// ── Sidebar: Slot Status ─────────────────────────────────────────────────────
-function SlotStatusSidebar() {
-  const summaries = getFloorSummaries();
+// ── Icons ─────────────────────────────────────────────────────────────────────
+function MotorbikeIcon() {
   return (
-    <div className="w-72 flex-shrink-0 space-y-4">
-      {/* Slot Status card */}
-      <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-4">Slot Status</h3>
-        <div className="space-y-4">
-          {summaries.map(({ floor, occupied, motorbike, car }) => (
-            <div key={floor.id} className="border-b border-[#1e2a1e] pb-4 last:border-0 last:pb-0">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-300 text-sm font-medium">{floor.name}</span>
-                <span className="text-gray-400 text-xs">{occupied}/{floor.totalSlots}</span>
-              </div>
-              {/* Progress bar */}
-              <div className="h-1 bg-[#1e2a1e] rounded-full mb-2">
-                <div
-                  className="h-full bg-[#00c853] rounded-full transition-all"
-                  style={{ width: `${(occupied / floor.totalSlots) * 100}%` }}
-                />
-              </div>
-              <div className="flex gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <span>🏍️</span> {motorbike}
-                </span>
-                <span className="flex items-center gap-1">
-                  <span>🚗</span> {car}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-3">Instructions</h3>
-        <ol className="space-y-1.5 text-xs text-gray-500">
-          <li>1. Enter license plate in correct format</li>
-          <li>2. Select appropriate vehicle type</li>
-          <li>3. Capture face for verification (optional)</li>
-          <li>4. Confirm to complete registration</li>
-        </ol>
-      </div>
-
-      {/* Face Recognition info */}
-      <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
-        <h3 className="text-white font-semibold text-sm mb-2 flex items-center gap-2">
-          <span className="text-[#00c853]">👁</span> Face Recognition
-        </h3>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          Face registration helps verify vehicle owner identity in case of lost ticket.
-          The face data is securely stored and only used for verification purposes.
-        </p>
-      </div>
-    </div>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/>
+      <path d="M12 17h-7"/><path d="M19 17h-2l-3-6h-4l-1 3"/><path d="M17 11l-1-4h-2"/><path d="M9 7h4"/>
+    </svg>
+  );
+}
+function CarIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C1.4 11.3 1 12.1 1 13v3c0 .6.4 1 1 1h2"/>
+      <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/>
+    </svg>
+  );
+}
+function TruckIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+      <path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+      <circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>
+    </svg>
   );
 }
 
-// ── Step indicator ───────────────────────────────────────────────────────────
-function StepIndicator({ current }: { current: Step }) {
-  const steps = [1, 2, 3, 4] as Step[];
-  return (
-    <div className="flex items-center justify-center gap-0 mb-8">
-      {steps.map((s, i) => (
-        <div key={s} className="flex items-center">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-            s < current
-              ? "bg-[#00c853] text-black"
-              : s === current
-              ? "bg-[#00c853] text-black ring-4 ring-[#00c853]/20"
-              : "bg-[#1e2a1e] text-gray-500"
-          }`}>
-            {s < current ? "✓" : s}
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`w-16 h-0.5 transition-all ${
-              s < current ? "bg-[#00c853]" : "bg-[#1e2a1e]"
-            }`} />
-          )}
-        </div>
-      ))}
-    </div>
-  );
+const VEHICLE_TYPES = [
+  { id: 'Motorbike', label: 'Motorbike', icon: <MotorbikeIcon /> },
+  { id: 'Car',       label: 'Car',       icon: <CarIcon /> },
+  { id: 'Truck',     label: 'Truck',     icon: <TruckIcon /> },
+];
+
+const STEPS = [
+  { num: 1, label: 'Vehicle Info'      },
+  { num: 2, label: 'Face Registration' },
+  { num: 3, label: 'Confirm'           },
+  { num: 4, label: 'Complete'          },
+];
+
+function getSlotLocation(slot: string) {
+  if (!slot) return 'Unknown';
+  const prefix = slot.split('-')[0];
+  const map: Record<string,string> = { A:'Basement 1', B:'Basement 1', C:'Basement 2', D:'Basement 2', E:'Floor 1', F:'Floor 1', G:'Floor 2', H:'Floor 2' };
+  return map[prefix] || 'Floor 1';
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
 export default function VehicleEntry() {
-  const [step, setStep]       = useState<Step>(1);
-  const [form, setForm]       = useState<FormData>({
-    licensePlate: "", vehicleType: null, ticketType: "HOURLY", ownerName: "",
-  });
-  const [assignedSlot, setAssignedSlot] = useState<ParkingSlot | null>(null);
-  const [faceCapture, setFaceCapture]   = useState<string | null>(null); // base64
-  const [error, setError]     = useState("");
-  const [loading, setLoading] = useState(false);
-  const [entryTime, setEntryTime] = useState("");
+  const store = useParkingStore() as any;
+  const [step,         setStep]         = useState(1);
+  const [plate,        setPlate]        = useState('');
+  const [vehicleType,  setVehicleType]  = useState('');
+  const [ticketType,   setTicketType]   = useState('hourly');
+  const [ownerName,    setOwnerName]    = useState('');
+  const [faceReg,      setFaceReg]      = useState(false);
+  const [assignedSlot, setAssignedSlot] = useState('');
+  const [assignedFloor,setAssignedFloor]= useState('');
+  const [entryTime,    setEntryTime]    = useState('');
+  const [error,        setError]        = useState('');
+  const [camError,     setCamError]     = useState('');
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream|null>(null);
 
-  // Camera refs
-  const videoRef    = useRef<HTMLVideoElement>(null);
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const streamRef   = useRef<MediaStream | null>(null);
-  const [cameraOn, setCameraOn] = useState(false);
-
-  // cleanup camera on unmount
-  useEffect(() => {
-    return () => { stopCamera(); };
-  }, []);
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setCameraOn(false);
-  };
+  const isStep1Valid = plate.trim() !== '' && vehicleType !== '' && ownerName.trim() !== '';
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setCamError('');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraOn(true);
-    } catch {
-      setError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.");
+    } catch (err: any) {
+      setCamError(err.name === 'NotAllowedError' ? 'Camera permission denied.' : 'No camera found.');
     }
   };
 
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
-    canvasRef.current.width  = videoRef.current.videoWidth;
-    canvasRef.current.height = videoRef.current.videoHeight;
-    ctx.drawImage(videoRef.current, 0, 0);
-    setFaceCapture(canvasRef.current.toDataURL("image/jpeg"));
-    stopCamera();
-  }, []);
-
-  // ── Step 1: Validate & go to step 2 ────────────────────────────────────
-  const handleStep1Continue = () => {
-    if (!form.licensePlate.trim()) { setError("Vui lòng nhập biển số xe"); return; }
-    if (!form.vehicleType)         { setError("Vui lòng chọn loại xe"); return; }
-    setError("");
-    setStep(2);
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
   };
 
-  // ── Step 2: Skip or capture face, then go to step 3 ────────────────────
-  const handleStep2Continue = () => {
-    stopCamera();
-    // Auto-assign slot theo vehicleType
-    const slot = autoAssignSlot(form.vehicleType!);
-    setAssignedSlot(slot);
-    setStep(3);
+  useEffect(() => {
+    if (step === 2) startCamera();
+    else stopCamera();
+    return () => stopCamera();
+  }, [step]);
+
+  const handleConfirm = () => {
+    const result = store.registerVehicle({ plate: plate.trim(), type: vehicleType, owner: ownerName.trim(), ticketType, faceRegistered: faceReg });
+    if (!result.success) { setError(result.error); return; }
+    setAssignedSlot(result.slot);
+    setAssignedFloor(result.floor || getSlotLocation(result.slot));
+    setEntryTime(new Date().toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }));
+    setStep(4);
   };
 
-  // ── Step 3: Confirm entry ───────────────────────────────────────────────
-  const handleConfirmEntry = async () => {
-    setLoading(true);
-    try {
-      // TODO: gọi POST /api/v1/sessions/entry khi BE có
-      await new Promise((r) => setTimeout(r, 700));
+  const reset = () => { setStep(1); setPlate(''); setVehicleType(''); setTicketType('hourly'); setOwnerName(''); setFaceReg(false); setAssignedSlot(''); setEntryTime(''); setError(''); };
 
-      // Cập nhật mock: đổi slot về OCCUPIED
-      if (assignedSlot) {
-        const slots = mockSlotsByFloor[assignedSlot.floorId];
-        const idx = slots.findIndex((s) => s.id === assignedSlot.id);
-        if (idx !== -1) slots[idx].status = "OCCUPIED";
-      }
-
-      setEntryTime(new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit", minute: "2-digit", hour12: true,
-      }));
-      setStep(4);
-    } catch {
-      setError("Đăng ký thất bại. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Reset ───────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    setStep(1);
-    setForm({ licensePlate: "", vehicleType: null, ticketType: "HOURLY", ownerName: "" });
-    setAssignedSlot(null);
-    setFaceCapture(null);
-    setError("");
-    stopCamera();
-  };
-
-  const VEHICLE_TYPES: { type: VehicleType; label: string; icon: string }[] = [
-    { type: "MOTORBIKE", label: "Motorbike", icon: "🏍️" },
-    { type: "CAR",       label: "Car",       icon: "🚗" },
-    { type: "TRUCK",     label: "Truck",     icon: "🚛" },
-  ];
-
-  const TICKET_TYPES: { value: TicketType; label: string }[] = [
-    { value: "HOURLY",  label: "Hourly Ticket (per hour)" },
-    { value: "DAILY",   label: "Daily Ticket (per day)"   },
-    { value: "MONTHLY", label: "Monthly Pass"             },
-  ];
+  const floorData = store.getFloorStats;
 
   return (
-    <div className="min-h-screen bg-[#080d08] text-white">
-      <div className="p-6 max-w-screen-xl mx-auto">
+    <div className="min-h-screen bg-[#080d08] text-white p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">🚗 Vehicle Entry</h1>
+        <p className="text-sm text-gray-500 mt-1">Register a new vehicle entering the parking facility</p>
+      </div>
 
-        {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="text-[#00c853]">→</span> Vehicle Entry
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">Register vehicle entry to parking lot</p>
-        </div>
+      <div className="flex gap-6">
+        {/* ── Main ── */}
+        <div className="flex-1 min-w-0">
 
-        {/* Step indicator */}
-        <StepIndicator current={step} />
-
-        <div className="flex gap-6">
-
-          {/* ── Main content ── */}
-          <div className="flex-1 min-w-0">
-
-            {/* ════ STEP 1 ════ */}
-            {step === 1 && (
-              <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-6">
-                <h2 className="text-base font-semibold text-white mb-1">Step 1: Enter Vehicle Information</h2>
-                <p className="text-xs text-gray-500 mb-6">Enter license plate and select vehicle type to register</p>
-
-                {/* License Plate */}
-                <div className="mb-5">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    License Plate <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    value={form.licensePlate}
-                    onChange={(e) => setForm({ ...form, licensePlate: e.target.value.toUpperCase() })}
-                    placeholder="e.g., 30A-123.45"
-                    className="w-full bg-[#080d08] border border-[#1e2a1e] rounded-lg px-4 py-3 text-white placeholder-gray-600 text-sm outline-none focus:border-[#00c853]/50 focus:ring-1 focus:ring-[#00c853]/20 transition font-mono"
-                  />
-                </div>
-
-                {/* Vehicle Type */}
-                <div className="mb-5">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Vehicle Type <span className="text-red-400">*</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {VEHICLE_TYPES.map(({ type, label, icon }) => {
-                      const count = getAvailableCount(type);
-                      const isSelected = form.vehicleType === type;
-                      return (
-                        <button
-                          key={type}
-                          onClick={() => setForm({ ...form, vehicleType: type })}
-                          className={`flex flex-col items-center gap-2 py-5 px-4 rounded-xl border transition-all ${
-                            isSelected
-                              ? "border-[#00c853] bg-[#00c853]/5"
-                              : "border-[#1e2a1e] bg-[#080d08] hover:border-[#2a3d2a]"
-                          }`}
-                        >
-                          <span className="text-2xl">{icon}</span>
-                          <span className="text-sm font-medium text-white">{label}</span>
-                          <span className="text-xs text-gray-500">{count} available</span>
-                        </button>
-                      );
-                    })}
+          {/* Step indicator */}
+          <div className="flex items-center gap-0 mb-6">
+            {STEPS.map((s, i) => (
+              <div key={s.num} className="flex items-center">
+                <div className={`flex flex-col items-center gap-1`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    step === s.num ? 'bg-[#00c853] text-black ring-4 ring-[#00c853]/20' :
+                    step > s.num  ? 'bg-[#00c853] text-black' : 'bg-[#1e2a1e] text-gray-500'
+                  }`}>
+                    {step > s.num ? '✓' : s.num}
                   </div>
+                  <span className={`text-[10px] whitespace-nowrap ${step === s.num ? 'text-[#00c853]' : 'text-gray-600'}`}>{s.label}</span>
                 </div>
-
-                {/* Ticket Type */}
-                <div className="mb-5">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Ticket Type</label>
-                  <div className="relative">
-                    <select
-                      value={form.ticketType}
-                      onChange={(e) => setForm({ ...form, ticketType: e.target.value as TicketType })}
-                      className="w-full appearance-none bg-[#080d08] border border-[#1e2a1e] rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[#00c853]/50 cursor-pointer"
-                    >
-                      {TICKET_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                    <span className="absolute right-3 top-3.5 text-gray-500 pointer-events-none">▾</span>
-                  </div>
-                </div>
-
-                {/* Owner Name */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Owner Name (optional)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-3 text-gray-600 text-sm">👤</span>
-                    <input
-                      value={form.ownerName}
-                      onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
-                      placeholder="Enter owner name"
-                      className="w-full bg-[#080d08] border border-[#1e2a1e] rounded-lg pl-9 pr-4 py-3 text-white placeholder-gray-600 text-sm outline-none focus:border-[#00c853]/50 transition"
-                    />
-                  </div>
-                </div>
-
-                {error && <p className="text-red-400 text-xs mb-4">⚠️ {error}</p>}
-
-                <button
-                  onClick={handleStep1Continue}
-                  className="w-full bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                >
-                  Continue →
-                </button>
+                {i < STEPS.length - 1 && <div className={`w-12 h-0.5 mx-1 mb-4 ${step > s.num ? 'bg-[#00c853]' : 'bg-[#1e2a1e]'}`} />}
               </div>
-            )}
-
-            {/* ════ STEP 2: Face Registration ════ */}
-            {step === 2 && (
-              <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-6">
-                <h2 className="text-base font-semibold text-white mb-1">Step 2: Face Registration</h2>
-                <p className="text-xs text-gray-500 mb-4">Capture owner's face for identity verification when exiting (in case of lost ticket)</p>
-
-                {/* Info banner */}
-                <div className="bg-blue-950/30 border border-blue-800/30 rounded-lg px-4 py-3 mb-5">
-                  <p className="text-xs text-blue-300">
-                    Face data will be used to verify identity if the parking ticket is lost. This step is optional but recommended for security.
-                  </p>
-                </div>
-
-                {/* Camera area */}
-                <div className="relative bg-[#080d08] border border-[#1e2a1e] rounded-xl overflow-hidden mb-4"
-                  style={{ minHeight: 360 }}>
-                  {faceCapture ? (
-                    <img src={faceCapture} alt="captured" className="w-full h-full object-cover" />
-                  ) : (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={`w-full h-full object-cover ${cameraOn ? "block" : "hidden"}`}
-                    />
-                  )}
-
-                  {!cameraOn && !faceCapture && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-600">
-                      <span className="text-5xl opacity-30">📷</span>
-                      <span className="text-sm">Camera is off</span>
-                    </div>
-                  )}
-                </div>
-
-                <canvas ref={canvasRef} className="hidden" />
-
-                {/* Camera controls */}
-                <div className="flex gap-3 mb-6">
-                  {!cameraOn && !faceCapture && (
-                    <button onClick={startCamera}
-                      className="flex-1 bg-[#00c853]/10 hover:bg-[#00c853]/20 border border-[#00c853]/30 text-[#00c853] font-semibold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                      📷 Start Camera
-                    </button>
-                  )}
-                  {cameraOn && (
-                    <button onClick={capturePhoto}
-                      className="flex-1 bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-2.5 rounded-lg text-sm transition">
-                      📸 Capture Photo
-                    </button>
-                  )}
-                  {faceCapture && (
-                    <button onClick={() => { setFaceCapture(null); setCameraOn(false); }}
-                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2.5 rounded-lg text-sm transition">
-                      🔄 Retake
-                    </button>
-                  )}
-                </div>
-
-                {error && <p className="text-red-400 text-xs mb-3">⚠️ {error}</p>}
-
-                <div className="flex gap-3">
-                  <button onClick={() => { setStep(1); stopCamera(); }}
-                    className="flex-1 bg-transparent border border-[#1e2a1e] hover:border-gray-600 text-gray-400 font-semibold py-3 rounded-lg text-sm transition">
-                    Back
-                  </button>
-                  <button onClick={handleStep2Continue}
-                    className="flex-1 bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3 rounded-lg text-sm transition">
-                    {faceCapture ? "Continue →" : "Skip →"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ════ STEP 3: Confirm Information ════ */}
-            {step === 3 && (
-              <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-6">
-                <h2 className="text-base font-semibold text-white mb-1">Step 3: Confirm Information</h2>
-                <p className="text-xs text-gray-500 mb-6">Review information before registering vehicle entry</p>
-
-                {/* Info table */}
-                <div className="border border-[#1e2a1e] rounded-xl overflow-hidden mb-6">
-                  {[
-                    { label: "License Plate",     value: form.licensePlate,
-                      render: () => <span className="font-mono font-bold text-white text-base">{form.licensePlate}</span> },
-                    { label: "Vehicle Type",      value: form.vehicleType,
-                      render: () => <span className="text-white font-medium">{form.vehicleType === "MOTORBIKE" ? "🏍️ Motorbike" : form.vehicleType === "CAR" ? "🚗 Car" : "🚛 Truck"}</span> },
-                    { label: "Ticket Type",       value: form.ticketType,
-                      render: () => <span className="bg-[#00c853]/10 text-[#00c853] border border-[#00c853]/30 text-xs font-bold px-2 py-0.5 rounded">{form.ticketType === "HOURLY" ? "Hourly" : form.ticketType === "DAILY" ? "Daily" : "Monthly"}</span> },
-                    { label: "Assigned Slot",     value: assignedSlot?.slotCode ?? "N/A",
-                      render: () => <span className="font-mono text-[#00c853] font-bold">{assignedSlot?.slotCode ?? "N/A"}</span> },
-                    { label: "Face Registration", value: faceCapture ? "Registered" : "Not registered",
-                      render: () => <span className={faceCapture ? "text-[#00c853]" : "text-gray-500"}>{faceCapture ? "✅ Registered" : "Not registered"}</span> },
-                    { label: "Owner",             value: form.ownerName || "—",
-                      render: () => <span className="text-gray-300">{form.ownerName || "—"}</span> },
-                  ].map((row, i) => (
-                    <div key={row.label}
-                      className={`flex items-center justify-between px-5 py-3.5 ${i < 5 ? "border-b border-[#1e2a1e]" : ""}`}>
-                      <span className="text-gray-500 text-sm">{row.label}</span>
-                      {row.render()}
-                    </div>
-                  ))}
-                </div>
-
-                {error && <p className="text-red-400 text-xs mb-4">⚠️ {error}</p>}
-
-                <div className="flex gap-3">
-                  <button onClick={() => setStep(2)}
-                    className="flex-1 bg-transparent border border-[#1e2a1e] hover:border-gray-600 text-gray-400 font-semibold py-3 rounded-lg text-sm transition">
-                    Back
-                  </button>
-                  <button onClick={handleConfirmEntry} disabled={loading}
-                    className="flex-1 bg-[#00c853] hover:bg-[#00e060] disabled:opacity-50 text-black font-semibold py-3 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                    {loading
-                      ? <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Processing...</>
-                      : "✓ Confirm Entry"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ════ STEP 4: Success ════ */}
-            {step === 4 && (
-              <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-8">
-                {/* Success icon */}
-                <div className="flex justify-center mb-5">
-                  <div className="w-16 h-16 rounded-full bg-[#00c853]/10 border-2 border-[#00c853]/30 flex items-center justify-center">
-                    <span className="text-[#00c853] text-2xl">✓</span>
-                  </div>
-                </div>
-
-                <h2 className="text-xl font-bold text-white text-center mb-1">Registration Successful!</h2>
-                <p className="text-sm text-gray-500 text-center mb-6">Vehicle has been registered to the parking lot</p>
-
-                {/* Ticket card */}
-                <div className="bg-[#080d08] border border-[#00c853]/20 rounded-xl p-6 mb-6">
-                  <p className="text-xs text-gray-500 text-center mb-2 uppercase tracking-widest">LICENSE PLATE</p>
-                  <p className="text-3xl font-bold text-white text-center font-mono mb-6">
-                    {form.licensePlate}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 border-t border-[#1e2a1e] pt-4">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">LOCATION</p>
-                      <p className="text-[#00c853] font-bold font-mono">{assignedSlot?.slotCode ?? "N/A"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">ENTRY TIME</p>
-                      <p className="text-white font-bold">{entryTime}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <button onClick={handleReset}
-                  className="w-full bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-                  🔄 Register New Vehicle
-                </button>
-              </div>
-            )}
-
+            ))}
           </div>
 
-          {/* ── Sidebar ── */}
-          <SlotStatusSidebar />
+          {/* ── STEP 1 ── */}
+          {step === 1 && (
+            <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-2xl p-6 space-y-5">
+              <h2 className="text-base font-semibold text-white">Step 1: Enter Vehicle Information</h2>
 
+              {/* License Plate */}
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1.5">License Plate <span className="text-red-400">*</span></label>
+                <input value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="e.g. 79H-113.56"
+                  className="w-full bg-[#080d08] border border-[#1e2a1e] rounded-xl px-4 py-3 text-white font-mono placeholder-gray-600 outline-none focus:border-[#00c853]/50 transition"/>
+              </div>
+
+              {/* Vehicle Type */}
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-2">Vehicle Type <span className="text-red-400">*</span></label>
+                <div className="grid grid-cols-3 gap-3">
+                  {VEHICLE_TYPES.map(v => (
+                    <button key={v.id} type="button" onClick={() => setVehicleType(v.id)}
+                      className={`flex flex-col items-center gap-2 py-5 rounded-xl border transition-all ${
+                        vehicleType === v.id ? 'border-[#00c853] bg-[#00c853]/5 text-[#00c853]' : 'border-[#1e2a1e] text-gray-500 hover:border-[#2a3d2a]'
+                      }`}>
+                      {v.icon}
+                      <span className="text-sm font-medium">{v.label}</span>
+                      <span className="text-xs">{store.getVehicleAvailability(v.id)} available</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ticket Type */}
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1.5">Ticket Type</label>
+                <div className="relative">
+                  <select value={ticketType} onChange={e => setTicketType(e.target.value)}
+                    className="w-full appearance-none bg-[#080d08] border border-[#1e2a1e] rounded-xl px-4 py-3 text-white outline-none focus:border-[#00c853]/50 cursor-pointer">
+                    <option value="hourly">Hourly Ticket (per hour)</option>
+                    <option value="daily">Daily Ticket (per day)</option>
+                  </select>
+                  <span className="absolute right-3 top-3.5 text-gray-600 pointer-events-none">▾</span>
+                </div>
+              </div>
+
+              {/* Owner Name */}
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1.5">Owner Name <span className="text-red-400">*</span></label>
+                <input value={ownerName} onChange={e => setOwnerName(e.target.value)} placeholder="Enter owner name"
+                  className="w-full bg-[#080d08] border border-[#1e2a1e] rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-[#00c853]/50 transition"/>
+              </div>
+
+              <button type="button" disabled={!isStep1Valid} onClick={() => setStep(2)}
+                className="w-full bg-[#00c853] hover:bg-[#00e060] disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+                Continue →
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 2 ── */}
+          {step === 2 && (
+            <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-2xl p-6 space-y-4">
+              <h2 className="text-base font-semibold text-white">Step 2: Face Registration</h2>
+              <p className="text-xs text-gray-500">Face data is securely stored and only used for identity verification in case of lost ticket.</p>
+
+              {camError && <div className="bg-red-950/40 border border-red-800/40 rounded-xl px-4 py-3 text-xs text-red-400">⚠️ {camError}</div>}
+
+              <div className="bg-[#080d08] border border-[#1e2a1e] rounded-xl overflow-hidden relative" style={{ minHeight: 320 }}>
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                {!streamRef.current && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                    <span className="text-5xl mb-2 opacity-30">📷</span>
+                    <span className="text-sm">Camera is off</span>
+                  </div>
+                )}
+                {faceReg && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#00c853] text-black text-xs font-bold px-3 py-1 rounded-full">
+                    ✓ Face Captured
+                  </div>
+                )}
+              </div>
+
+              <button type="button" onClick={() => setFaceReg(true)}
+                className="w-full bg-[#00c853]/10 hover:bg-[#00c853]/20 border border-[#00c853]/30 text-[#00c853] font-semibold py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                📷 {faceReg ? 'Retake Photo' : 'Capture Face'}
+              </button>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setStep(1)}
+                  className="flex-1 bg-transparent border border-[#1e2a1e] hover:border-gray-600 text-gray-400 font-semibold py-3 rounded-xl transition">
+                  ← Back
+                </button>
+                <button type="button" onClick={() => { setFaceReg(false); setStep(3); }}
+                  className="flex-1 bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3 rounded-xl transition">
+                  {faceReg ? 'Continue →' : 'Skip →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3 ── */}
+          {step === 3 && (
+            <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-2xl p-6">
+              <h2 className="text-base font-semibold text-white mb-1">Step 3: Confirm Information</h2>
+              <p className="text-xs text-gray-500 mb-5">Review the details below before confirming vehicle entry.</p>
+
+              {error && <div className="bg-red-950/40 border border-red-800/40 rounded-xl px-4 py-3 text-xs text-red-400 mb-4">⚠️ {error}</div>}
+
+              <div className="border border-[#1e2a1e] rounded-xl overflow-hidden mb-5">
+                {[
+                  { label: 'License Plate',     value: plate,                                            mono: true },
+                  { label: 'Vehicle Type',       value: vehicleType },
+                  { label: 'Ticket Type',        value: ticketType === 'hourly' ? 'Hourly Ticket' : 'Daily Ticket' },
+                  { label: 'Assigned Slot',      value: 'Auto-assigned on confirm' },
+                  { label: 'Face Registration',  value: faceReg ? '✅ Registered' : 'Not registered' },
+                  { label: 'Owner Name',         value: ownerName },
+                ].map((r, i) => (
+                  <div key={r.label} className={`flex justify-between items-center px-5 py-3.5 ${i < 5 ? 'border-b border-[#1e2a1e]' : ''}`}>
+                    <span className="text-gray-500 text-sm">{r.label}</span>
+                    <span className={`text-white font-semibold text-sm ${r.mono ? 'font-mono' : ''}`}>{r.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setStep(2)}
+                  className="flex-1 bg-transparent border border-[#1e2a1e] hover:border-gray-600 text-gray-400 font-semibold py-3 rounded-xl transition">
+                  ← Back
+                </button>
+                <button type="button" onClick={handleConfirm}
+                  className="flex-1 bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                  ✓ Confirm Entry
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 4 ── */}
+          {step === 4 && (
+            <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-2xl p-8 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-[#00c853]/10 border-2 border-[#00c853]/30 flex items-center justify-center">
+                  <span className="text-[#00c853] text-2xl">✓</span>
+                </div>
+              </div>
+              <h2 className="text-xl font-bold text-white mb-1">Registration Successful!</h2>
+              <p className="text-sm text-gray-500 mb-6">The vehicle has been registered and a parking slot has been assigned.</p>
+
+              <div className="bg-[#080d08] border border-[#1e2a1e] rounded-xl p-5 text-left space-y-3 mb-6">
+                {[
+                  { label: 'License Plate', value: plate },
+                  { label: 'Location',      value: `${assignedFloor} — Slot ${assignedSlot}` },
+                  { label: 'Entry Time',    value: entryTime },
+                ].map(r => (
+                  <div key={r.label} className="flex justify-between text-sm">
+                    <span className="text-gray-500">{r.label}</span>
+                    <span className="text-white font-medium">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" onClick={reset}
+                className="w-full bg-[#00c853] hover:bg-[#00e060] text-black font-semibold py-3.5 rounded-xl transition">
+                ➕ Register New Vehicle
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sidebar ── */}
+        <div className="w-72 flex-shrink-0 space-y-4">
+          {/* Slot Status */}
+          <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
+            <h3 className="text-white font-semibold text-sm mb-4">Slot Status</h3>
+            <div className="space-y-4">
+              {floorData.map((floor: any, i: number) => {
+                const pct = Math.round(((floor.total - floor.available) / floor.total) * 100);
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-white font-medium">{floor.name}</span>
+                      <span className="text-gray-500">{floor.available}/{floor.total}</span>
+                    </div>
+                    <div className="h-1.5 bg-[#1e2a1e] rounded-full overflow-hidden mb-1">
+                      <div className="h-full bg-[#00c853] rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
+            <h3 className="text-white font-semibold text-sm mb-3">Instructions</h3>
+            <ol className="space-y-2 text-xs text-gray-500">
+              {['Enter license plate & vehicle info', 'Capture face for verification (optional)', 'Review and confirm information', 'Registration complete'].map((t, i) => (
+                <li key={i} className={`${step === i + 1 ? 'text-[#00c853] font-semibold' : step > i + 1 ? 'text-gray-700 line-through' : ''}`}>
+                  {i + 1}. {t}
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Face Recognition info */}
+          <div className="bg-[#0d1117] border border-[#1e2a1e] rounded-xl p-5">
+            <h3 className="text-white font-semibold text-sm mb-2 flex items-center gap-2">
+              <span className="text-[#00c853]">👁</span> Face Recognition
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Face registration helps verify vehicle owner identity in case of lost ticket. Data is securely stored.
+            </p>
+          </div>
         </div>
       </div>
     </div>
