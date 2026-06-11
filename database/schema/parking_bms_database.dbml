@@ -1,0 +1,467 @@
+// ============================================================
+// PARKING BUILDING MANAGEMENT SYSTEM — Database Schema v2.0
+// SWP391 · SU26SWP07 · Optimized for production
+// ============================================================
+
+// --- ENUMS ---
+
+Enum vehicle_type_enum {
+  MOTORBIKE   [note: 'Xe máy']
+  CAR         [note: 'Ô tô']
+  TRUCK       [note: 'Xe tải']
+}
+
+Enum slot_maintenance_enum {
+  AVAILABLE
+  MAINTENANCE
+}
+
+Enum session_status_enum {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+Enum payment_status_enum {
+  UNPAID
+  PAID
+  REFUNDED
+  FAILED
+}
+
+Enum ticket_type_enum {
+  HOURLY
+  DAILY
+  MONTHLY
+  LOST_TICKET
+  OVERSTAY
+}
+
+Enum booking_status_enum {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+Enum exception_type_enum {
+  LOST_TICKET
+  OVERSTAY
+  WRONG_ZONE
+  UNPAID_EXIT
+}
+
+Enum exception_status_enum {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum report_type_enum {
+  REVENUE
+  UTILIZATION
+  PEAK_HOURS
+  VEHICLE_COUNT
+}
+
+Enum notification_type_enum {
+  OVERSTAY_ALERT
+  EXCEPTION_PENDING
+  BOOKING_EXPIRED
+  UNPAID_SESSION
+}
+
+// --- ROLES & PERMISSIONS ---
+
+Table roles {
+  role_id bigint [pk, increment]
+  role_code varchar(50) [not null, unique, note: 'ADMIN | MANAGER | STAFF']
+  role_name varchar(100) [not null, unique]
+  role_description varchar(255) [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table privileges {
+  id bigint [pk, increment]
+  privilege_code varchar(50) [not null, unique, note: 'e.g. SESSION_CREATE, REPORT_VIEW']
+  privilege_name varchar(100) [not null, unique]
+  is_active boolean [not null, default: true]
+}
+
+Table role_privileges {
+  role_id bigint [not null]
+  privilege_id bigint [not null]
+
+  Indexes {
+    (role_id, privilege_id) [pk]
+  }
+}
+
+// --- USERS ---
+
+Table users {
+  user_id bigint [pk, increment]
+  role_id bigint [not null]
+  full_name varchar(255) [not null]
+  email varchar(255) [not null]
+  phone_number varchar(20)
+  identify_number varchar(50)
+  password varchar(255) [not null]
+  address varchar(255)
+  date_of_birth date
+  gender varchar(10) [note: 'MALE | FEMALE | OTHER']
+  user_is_active boolean [not null, default: true]
+  last_active timestamp
+  locked_until timestamp
+  locked_token varchar(255)
+  refresh_token varchar(255)
+  token_reset_password varchar(255)
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    email [unique, note: 'Partial index: WHERE user_is_active = true']
+    phone_number [unique, note: 'Partial index: WHERE user_is_active = true']
+    identify_number [unique, note: 'Partial index: WHERE user_is_active = true']
+  }
+}
+
+// --- PARKING STRUCTURE ---
+
+Table floors {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar(50) [not null, note: 'Tên hiển thị, ví dụ: Hầm B1, Tầng 1']
+  level_number integer [not null, note: 'Sắp xếp vật lý: -1, 1, 2, 3...']
+  description varchar(255)
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    level_number [unique, note: 'Mỗi level_number là duy nhất trong toàn tòa nhà']
+  }
+}
+
+Table zones {
+  id uuid [pk, default: `gen_random_uuid()`]
+  floor_id uuid [not null]
+  name varchar(100) [not null]
+  vehicle_type vehicle_type_enum [not null]
+  total_slots integer [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Note: 'Không lưu available_slots để tránh row-level lock khi concurrent entry/exit. Dùng View hoặc Redis đếm real-time từ parking_slots.'
+}
+
+Table parking_slots {
+  id uuid [pk, default: `gen_random_uuid()`]
+  slot_code varchar(20) [not null, unique, note: 'Unique toàn hệ thống, ví dụ: A1-01']
+  floor_id uuid [not null]
+  zone_id uuid [not null]
+  vehicle_type vehicle_type_enum [not null]
+  maintenance_status slot_maintenance_enum [not null, default: 'AVAILABLE', note: 'AVAILABLE | MAINTENANCE. Free/Occupied xác định qua current_session_id']
+  current_session_id uuid [note: 'NULL = Free. Có value = Occupied. Quan hệ 1-1 với parking_sessions. Không dùng FK để tránh circular dependency — enforce ở application layer.']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    zone_id [name: 'idx_slots_zone_id']
+    (zone_id, current_session_id) [name: 'idx_slots_zone_free', note: 'Đếm Free slots: WHERE current_session_id IS NULL AND maintenance_status = AVAILABLE']
+    maintenance_status [name: 'idx_slots_maintenance']
+  }
+
+  Note: 'Xóa cột status. current_session_id IS NULL = FREE. Tách maintenance_status riêng để phân biệt Maintenance với Free.'
+}
+
+// --- VEHICLES ---
+
+Table vehicles {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id bigint [note: 'NULL cho phép với khách vãng lai chưa đăng ký tài khoản']
+  license_plate varchar(20) [not null]
+  vehicle_type vehicle_type_enum [not null]
+  has_monthly_pass boolean [not null, default: false]
+  monthly_pass_expiry date
+  face_descriptor vector(128) [note: 'pgvector — cosine similarity để match khuôn mặt khi ra không cần vé']
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    license_plate [unique, note: 'Partial index: WHERE is_active = true']
+    user_id [name: 'idx_vehicles_user_id']
+  }
+}
+
+// --- MONTHLY PASSES ---
+
+Table monthly_passes {
+  id uuid [pk, default: `gen_random_uuid()`]
+  vehicle_id uuid [not null]
+  slot_id uuid [note: 'NULL nếu không giữ slot cố định']
+  start_date date [not null]
+  end_date date [not null]
+  fee numeric(15,0) [not null, note: 'numeric(15,0) cho VNĐ không cần thập phân']
+  payment_status payment_status_enum [not null, default: 'UNPAID']
+  is_active boolean [not null, default: true]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (vehicle_id, is_active) [name: 'idx_monthly_pass_vehicle_active']
+    end_date [name: 'idx_monthly_pass_expiry', note: 'Scheduler check pass sắp hết hạn']
+  }
+}
+
+// --- BOOKINGS ---
+
+Table bookings {
+  id uuid [pk, default: `gen_random_uuid()`]
+  vehicle_id uuid [not null]
+  slot_id uuid [not null]
+  booking_code varchar(20) [not null, unique, note: 'BR-47: Mã Staff dùng để tra cứu xe vào, sinh ngẫu nhiên uppercase+số']
+  start_time timestamp [not null]
+  end_time timestamp [not null]
+  booking_expiry_at timestamp [not null, note: 'BR-05: = start_time + 30 phút. Scheduler tự release slot khi vượt mốc này']
+  status booking_status_enum [not null, default: 'PENDING']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    booking_code [unique]
+    (vehicle_id, status) [name: 'idx_bookings_vehicle_status', note: 'BR-46: check xe đã có booking PENDING chưa']
+    booking_expiry_at [name: 'idx_bookings_expiry', note: 'Scheduler query: WHERE status=PENDING AND booking_expiry_at < now()']
+  }
+}
+
+// --- PRICING RULES ---
+
+Table pricing_rules {
+  id uuid [pk, default: `gen_random_uuid()`]
+  zone_id uuid [note: 'NULL = áp dụng toàn bộ, có value = chỉ áp zone đó']
+  name varchar(100) [not null]
+  vehicle_type vehicle_type_enum [not null]
+  ticket_type ticket_type_enum [not null]
+  rate_per_hour numeric(15,0) [note: 'VNĐ/giờ']
+  minimum_fee numeric(15,0) [not null, note: 'BR-26: > 0, enforce ở DB CHECK constraint']
+  maximum_daily_fee numeric(15,0) [note: 'Cap tối đa 1 ngày nếu có']
+  overstay_rate_multiplier numeric(3,2) [note: 'BR-04: Hệ số nhân khi Overstay, ví dụ: 2.00']
+  peak_hour_start time
+  peak_hour_end time
+  peak_hour_multiplier numeric(3,2) [note: 'Hệ số giờ cao điểm, ví dụ: 1.50']
+  effective_from date [not null, default: `CURRENT_DATE`, note: 'BR-29: Rule mới chỉ áp session tạo sau ngày này']
+  effective_to date [note: 'NULL = còn hiệu lực vô thời hạn']
+  is_active boolean [not null, default: true]
+  created_by bigint [not null, note: 'BR-30: Chỉ Manager được tạo rule']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (vehicle_type, ticket_type, is_active) [name: 'idx_pricing_lookup']
+    (effective_from, effective_to) [name: 'idx_pricing_effective']
+  }
+}
+
+// --- PARKING SESSIONS ---
+
+Table parking_sessions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  booking_id uuid [note: 'NULL nếu xe vào không đặt trước']
+  vehicle_id uuid [not null]
+  slot_id uuid [not null]
+  staff_entry_id bigint [not null]
+  staff_exit_id bigint
+  applied_rule_id uuid [note: 'FK → pricing_rules: lưu rule đã dùng để tính phí, phục vụ audit']
+  entry_time timestamp [not null, note: 'BR-18: Set bởi server, không cho Staff nhập tay']
+  exit_time timestamp
+  fee numeric(15,0) [note: 'BR-01: ceil((exit-entry)/60) × rate, áp minimum_fee']
+  discount_amount numeric(15,0) [default: 0, note: 'Giảm giá vé tháng / khuyến mãi']
+  final_fee numeric(15,0) [note: 'fee - discount_amount, cột computed hoặc set khi exit']
+  payment_status payment_status_enum [not null, default: 'UNPAID']
+  status session_status_enum [not null, default: 'ACTIVE']
+  ticket_type ticket_type_enum [not null]
+  face_verified_at_exit boolean [default: false]
+  staff_override_used boolean [default: false, note: 'BR-02: True nếu Staff đã dùng override, bắt buộc có ExceptionRecord đi kèm']
+  overstay_flagged_at timestamp [note: 'BR-04: Scheduler set khi session > 24h, NULL = chưa flag. Tránh tạo duplicate exception.']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    status [name: 'idx_sessions_status', note: 'Query xe đang trong bãi: WHERE status = ACTIVE']
+    entry_time [name: 'idx_sessions_entry_time', note: 'Query báo cáo theo ngày']
+    vehicle_id [name: 'idx_sessions_vehicle_id', note: 'BR-03: check nợ phí theo biển số']
+    (slot_id, status) [name: 'idx_sessions_slot_active', note: 'BR-16: check 1 slot chỉ có 1 ACTIVE session']
+    overstay_flagged_at [name: 'idx_sessions_overstay', note: 'Scheduler: WHERE overstay_flagged_at IS NULL AND entry_time < now()-24h']
+  }
+}
+
+// --- PAYMENTS ---
+
+Table payments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  session_id uuid [not null]
+  amount numeric(15,0) [not null]
+  method varchar(50) [not null, note: 'CASH | INTERNAL_TRANSFER']
+  status payment_status_enum [not null]
+  reference_code varchar(50)
+  note text
+  paid_at timestamp
+  collected_by bigint [not null]
+  refunded_by bigint
+  refunded_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    session_id [name: 'idx_payments_session_id']
+    created_at [name: 'idx_payments_created_at', note: 'Query doanh thu theo ngày']
+    collected_by [name: 'idx_payments_collector', note: 'Đối soát thu ngân theo ca']
+  }
+}
+
+// --- EXCEPTIONS ---
+
+Table exceptions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  session_id uuid [not null]
+  exception_type exception_type_enum [not null, note: 'BR-31→BR-33: LOST_TICKET|OVERSTAY|WRONG_ZONE|UNPAID_EXIT']
+  status exception_status_enum [not null, default: 'PENDING']
+  reason text [not null]
+  resolution text [note: 'BR-34: Bắt buộc điền trước khi đóng exception, ≥20 ký tự']
+  resolved_at timestamp
+  created_by bigint [not null, note: 'BR-36: StaffID đang đăng nhập, không cho nhập tay']
+  approved_by bigint [note: 'BR-33: Manager duyệt Overstay']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (session_id, exception_type) [name: 'idx_exceptions_session_type']
+    status [name: 'idx_exceptions_status', note: 'Query danh sách PENDING cho Manager duyệt']
+    created_by [name: 'idx_exceptions_staff']
+  }
+}
+
+// --- NOTIFICATIONS ---
+
+Table notifications {
+  id uuid [pk, default: `gen_random_uuid()`]
+  recipient_id bigint [not null, note: 'Manager nhận alert Overstay, Exception pending']
+  type notification_type_enum [not null]
+  reference_id uuid [note: 'ID của session / exception liên quan']
+  message text [not null]
+  is_read boolean [not null, default: false]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (recipient_id, is_read) [name: 'idx_notif_unread', note: 'Lấy unread của 1 user']
+    created_at [name: 'idx_notif_created']
+  }
+}
+
+// --- REPORTS ---
+
+Table reports {
+  id uuid [pk, default: `gen_random_uuid()`]
+  generated_by bigint [not null, note: 'BR-41: Chỉ Manager được generate']
+  report_type report_type_enum [not null]
+  period_from date [not null]
+  period_to date [not null]
+  total_vehicles integer
+  total_revenue numeric(15,0)
+  utilization_rate numeric(5,2) [note: 'BR-39: (Occupied+Reserved)/(Total-Maintenance)*100']
+  peak_hour time [note: 'BR-40: Khung giờ 60 phút có nhiều session nhất']
+  snapshot_data jsonb [note: 'BR-42: Lưu toàn bộ data lúc generate để xem lại sau']
+  generated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    generated_by [name: 'idx_reports_manager']
+    (period_from, period_to) [name: 'idx_reports_period']
+  }
+}
+
+// --- AUDIT LOGS ---
+
+Table audit_logs {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id bigint [not null]
+  action varchar(100) [not null, note: 'SESSION_CREATE | SESSION_EXIT | SLOT_OVERRIDE | PRICING_UPDATE | EXCEPTION_CREATE | ACCOUNT_CHANGE']
+  entity_name varchar(100) [note: 'Tên bảng bị tác động, ví dụ: parking_sessions']
+  entity_id varchar(100) [note: 'ID của record bị tác động']
+  old_values jsonb [note: 'Snapshot trước khi sửa']
+  new_values jsonb [note: 'Snapshot sau khi sửa']
+  ip_address varchar(45) [note: 'IPv4 hoặc IPv6']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    user_id [name: 'idx_audit_user']
+    (entity_name, entity_id) [name: 'idx_audit_entity', note: 'Xem lịch sử của 1 record cụ thể']
+    created_at [name: 'idx_audit_time']
+  }
+
+  Note: 'Immutable — không UPDATE, không DELETE. Append-only.'
+}
+
+// --- FLYWAY ---
+
+Table flyway_schema_history {
+  installed_rank integer [pk]
+}
+
+// ============================================================
+// RELATIONSHIPS
+// ============================================================
+
+// Roles & Users
+Ref: role_privileges.role_id > roles.role_id [delete: cascade]
+Ref: role_privileges.privilege_id > privileges.id [delete: cascade]
+Ref: users.role_id > roles.role_id
+
+// Parking Structure
+Ref: zones.floor_id > floors.id [delete: cascade]
+Ref: parking_slots.floor_id > floors.id [delete: cascade]
+Ref: parking_slots.zone_id > zones.id [delete: cascade]
+
+// Vehicles
+Ref: vehicles.user_id > users.user_id [delete: set null]
+Ref: monthly_passes.vehicle_id > vehicles.id [delete: cascade]
+Ref: monthly_passes.slot_id > parking_slots.id [delete: set null]
+
+// Bookings
+Ref: bookings.vehicle_id > vehicles.id
+Ref: bookings.slot_id > parking_slots.id
+
+// Pricing
+Ref: pricing_rules.zone_id > zones.id
+Ref: pricing_rules.created_by > users.user_id
+
+// Sessions
+// NOTE: parking_slots.current_session_id → parking_sessions.id là circular reference.
+// Không khai báo FK ở đây. Enforce tại application layer + index riêng.
+// Quy tắc: INSERT session trước → SET current_session_id sau trong cùng transaction.
+Ref: parking_sessions.vehicle_id > vehicles.id
+Ref: parking_sessions.slot_id > parking_slots.id
+Ref: parking_sessions.staff_entry_id > users.user_id
+Ref: parking_sessions.staff_exit_id > users.user_id
+Ref: parking_sessions.booking_id > bookings.id
+Ref: parking_sessions.applied_rule_id > pricing_rules.id
+
+// Payments
+Ref: payments.session_id > parking_sessions.id
+Ref: payments.collected_by > users.user_id
+Ref: payments.refunded_by > users.user_id
+
+// Exceptions
+Ref: exceptions.session_id > parking_sessions.id
+Ref: exceptions.created_by > users.user_id
+Ref: exceptions.approved_by > users.user_id
+
+// Notifications
+Ref: notifications.recipient_id > users.user_id
+
+// Reports
+Ref: reports.generated_by > users.user_id
+
+// Audit
+Ref: audit_logs.user_id > users.user_id
