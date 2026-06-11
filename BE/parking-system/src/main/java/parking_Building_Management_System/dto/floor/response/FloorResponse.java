@@ -15,8 +15,9 @@ import java.util.UUID;
 public class FloorResponse {
     UUID id;
     String name;
-    Integer level;
-    Integer totalSlots;
+    Integer levelNumber;
+    String description;
+    Boolean isActive;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

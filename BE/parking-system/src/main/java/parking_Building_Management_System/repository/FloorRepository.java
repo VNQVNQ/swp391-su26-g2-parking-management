@@ -9,5 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface FloorRepository extends JpaRepository<Floor, UUID> {
-    Floor findByLevel(Integer level);
+    Optional<Floor> findByLevelNumber(Integer levelNumber);
 }
+
+

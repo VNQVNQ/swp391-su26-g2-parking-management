@@ -18,7 +18,10 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "monthly_passes", schema = "public")
+@Table(name = "monthly_passes", schema = "public", indexes = {
+    @Index(name = "idx_monthly_pass_vehicle_active", columnList = "vehicle_id, is_active"),
+    @Index(name = "idx_monthly_pass_expiry", columnList = "end_date")
+})
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class MonthlyPass {
     @Id
@@ -40,7 +43,7 @@ public class MonthlyPass {
     @Column(name = "end_date", nullable = false)
     LocalDate endDate;
 
-    @Column(name = "fee", nullable = false, precision = 10, scale = 2)
+    @Column(name = "fee", nullable = false, precision = 15, scale = 0)
     BigDecimal fee;
 
     @Column(name = "payment_status", nullable = false)
@@ -73,4 +76,6 @@ public class MonthlyPass {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

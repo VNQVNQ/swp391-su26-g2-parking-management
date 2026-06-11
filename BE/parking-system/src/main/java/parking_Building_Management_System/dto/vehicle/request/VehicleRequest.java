@@ -23,11 +23,7 @@ public class VehicleRequest {
     @NotNull(message = "Vehicle type is required")
     VehicleType vehicleType;
 
-    String ownerName;
-
-    @Pattern(regexp = "^(\\+84|0)?[0-9]{9,10}$",
-            message = "Phone number must be a valid Vietnamese phone number")
-    String phone;
+    Long userId;
 
     Boolean hasMonthlyPass;
 }

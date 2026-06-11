@@ -10,7 +10,6 @@ import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.entity.enums.ExceptionStatus;
 import parking_Building_Management_System.entity.enums.ExceptionType;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,10 +18,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "exceptions", schema = "public", indexes = {
-    @Index(name = "idx_session_id", columnList = "session_id"),
-    @Index(name = "idx_type", columnList = "type"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_created_at", columnList = "created_at")
+    @Index(name = "idx_exceptions_session_type", columnList = "session_id, exception_type"),
+    @Index(name = "idx_exceptions_status", columnList = "status"),
+    @Index(name = "idx_exceptions_staff", columnList = "created_by")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingException {
@@ -35,19 +33,22 @@ public class ParkingException {
     @JoinColumn(name = "session_id", nullable = false)
     ParkingSession session;
 
-    @Column(name = "type", nullable = false)
+    @Column(name = "exception_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    ExceptionType type;
+    ExceptionType exceptionType;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    String description;
+    @Column(name = "reason", nullable = false, columnDefinition = "TEXT")
+    String reason;
 
-    @Column(name = "surcharge", precision = 10, scale = 2)
-    BigDecimal surcharge;
+    @Column(name = "resolution", columnDefinition = "TEXT")
+    String resolution;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     ExceptionStatus status;
+
+    @Column(name = "resolved_at")
+    LocalDateTime resolvedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
@@ -57,21 +58,25 @@ public class ParkingException {
     @JoinColumn(name = "approved_by")
     User approvedBy;
 
-    @Column(name = "resolution", columnDefinition = "TEXT")
-    String resolution;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 
-    @Column(name = "resolved_at")
-    LocalDateTime resolvedAt;
+    @Column(name = "updated_at", nullable = false)
+    LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
         if (status == null) {
             status = ExceptionStatus.PENDING;
         }
     }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
+
 

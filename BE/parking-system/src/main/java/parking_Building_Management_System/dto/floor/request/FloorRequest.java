@@ -12,7 +12,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FloorRequest {
     String name;
-    Integer level;
-    Integer totalSlots;
+    Integer levelNumber;
+    String description;
 }
 

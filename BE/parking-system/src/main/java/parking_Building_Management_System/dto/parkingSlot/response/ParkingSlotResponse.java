@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import parking_Building_Management_System.entity.enums.SlotStatus;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,7 +22,7 @@ public class ParkingSlotResponse {
     UUID zoneId;
     String zoneName;
     VehicleType vehicleType;
-    SlotStatus status;
+    SlotMaintenanceStatus maintenanceStatus;
     UUID currentSessionId;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

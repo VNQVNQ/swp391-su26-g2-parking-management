@@ -37,8 +37,8 @@ public class Zone {
     @Column(name = "total_slots", nullable = false)
     Integer totalSlots;
 
-    @Column(name = "available_slots", nullable = false)
-    Integer availableSlots;
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
+    Boolean isActive;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
@@ -50,8 +50,8 @@ public class Zone {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (availableSlots == null) {
-            availableSlots = totalSlots;
+        if (isActive == null) {
+            isActive = true;
         }
     }
 
@@ -60,4 +60,6 @@ public class Zone {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

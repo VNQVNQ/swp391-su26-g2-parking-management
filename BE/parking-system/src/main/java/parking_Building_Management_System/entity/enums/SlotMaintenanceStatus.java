@@ -1,14 +1,12 @@
 package parking_Building_Management_System.entity.enums;
 
-public enum PaymentStatus {
-    UNPAID("Unpaid"),
-    PAID("Paid"),
-    REFUNDED("Refunded"),
-    FAILED("Failed");
+public enum SlotMaintenanceStatus {
+    AVAILABLE("Available"),
+    MAINTENANCE("Maintenance");
 
     private final String displayName;
 
-    PaymentStatus(String displayName) {
+    SlotMaintenanceStatus(String displayName) {
         this.displayName = displayName;
     }
 

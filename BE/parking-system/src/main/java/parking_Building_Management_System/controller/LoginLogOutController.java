@@ -8,12 +8,15 @@ import parking_Building_Management_System.dto.user.response.UserResponse;
 import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.service.auth.AuthenticationService;
 import parking_Building_Management_System.service.auth.JWTService;
-import parking_Building_Management_System.service.user.UserService; // ĐÚNG: userService -> UserService
+import parking_Building_Management_System.service.user.UserService;
 import parking_Building_Management_System.utils.userUtils.CheckCountLogin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,20 +27,21 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LoginLogOutController {
 
     private final AuthenticationService authenticationService;
-    private final CheckCountLogin checkCountLogin; // ĐÚNG: checkCountLogin -> CheckCountLogin
-    private final UserService userService; // ĐÚNG: userService -> UserService
+    private final CheckCountLogin checkCountLogin;
+    private final UserService userService;
     private final JWTService jwtService;
 
     private final ConcurrentHashMap<String, Integer> loginAttempts = new ConcurrentHashMap<>();
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest authRequest) { // ĐÚNG: authRequest -> AuthRequest
+    public ResponseEntity<?> login(@RequestBody AuthRequest authRequest) {
         String email = authRequest.getEmail();
         User user = userService.findUserByEmail(email);
 
-        if (user.getLockedUntil() != null && user.getLockedUntil().after(new Date())) {
-            long remaining = (user.getLockedUntil().getTime() - System.currentTimeMillis()) / 1000;
-            Map<String, String> error = Map.of("message", "Tài khoản đang bị khóa. Vui lòng thử lại sau " + remaining / 60 + " phút.");
+        // ĐÃ SỬA: Thay thế .after() và .getTime() bằng các hàm của LocalDateTime
+        if (user != null && user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
+            long remainingMinutes = ChronoUnit.MINUTES.between(LocalDateTime.now(), user.getLockedUntil());
+            Map<String, String> error = Map.of("message", "Tài khoản đang bị khóa. Vui lòng thử lại sau " + remainingMinutes + " phút.");
             return ResponseEntity.status(403).body(error);
         }
 
@@ -61,20 +65,31 @@ public class LoginLogOutController {
             userService.saveUser(user);
 
             Map<String, String> token = jwtService.generateTokens(user);
-            UserResponse responseData = UserResponse.builder() // ĐÚNG: userResponse -> UserResponse
+
+            // ĐÃ SỬA: Ép kiểu LocalDateTime về Date để khớp với UserResponse (tránh lỗi dòng 68)
+            Date lastActiveDate = user.getLastActive() != null
+                    ? Date.from(user.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                    : null;
+
+            Date dobDate = user.getDateOfBirth() != null
+                    ? Date.from(user.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                    : null;
+
+            UserResponse responseData = UserResponse.builder()
                     .fullName(user.getFullName())
                     .email(user.getEmail())
-                    .roleCode(user.getRole().getRoleCode())
-                    .lastActive(user.getLastActive())
+                    .roleCode(user.getRole() != null ? user.getRole().getRoleCode() : null)
+                    .lastActive(lastActiveDate)
                     .phoneNumber(user.getPhoneNumber())
                     .identifyNumber(user.getIdentifyNumber())
                     .gender(user.getGender())
                     .age(user.getAge())
                     .address(user.getAddress())
-                    .dateOfBirth(user.getDateOfBirth())
+                    .dateOfBirth(dobDate)
                     .userIsActivated(user.getUserIsActive())
                     .build();
-            AuthResponse authResponse = new AuthResponse(); // ĐÚNG: authResponse -> AuthResponse
+
+            AuthResponse authResponse = new AuthResponse();
             authResponse.setAccessToken(token.get("accessToken"));
             authResponse.setRefreshToken(token.get("refreshToken"));
             authResponse.setUser(responseData);
@@ -104,7 +119,7 @@ public class LoginLogOutController {
     }
 
     @PostMapping("ForgotPassword")
-    public ResponseEntity<String> ForgotPassword(@RequestBody ForgotPasswordRequest forgotPasswordRequest){ // ĐÚNG: forgotPasswordRequest -> ForgotPasswordRequest
+    public ResponseEntity<String> ForgotPassword(@RequestBody ForgotPasswordRequest forgotPasswordRequest){
         System.out.println("email bắt đc nè: " + forgotPasswordRequest.getEmail());
         boolean forgotPassword = userService.forgotPassword(forgotPasswordRequest.getEmail());
         if(!forgotPassword){
@@ -114,7 +129,7 @@ public class LoginLogOutController {
     }
 
     @PatchMapping("ResetPassword/{tokenResetPassword}")
-    public ResponseEntity<String> ResetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest, @PathVariable String tokenResetPassword){ // ĐÚNG: resetPasswordRequest -> ResetPasswordRequest
+    public ResponseEntity<String> ResetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest, @PathVariable String tokenResetPassword){
         Map<Integer, String> resetPasswordResult = userService.resetPassword(resetPasswordRequest, tokenResetPassword);
         Integer statusCode = resetPasswordResult.keySet().iterator().next();
         String message = resetPasswordResult.get(statusCode);

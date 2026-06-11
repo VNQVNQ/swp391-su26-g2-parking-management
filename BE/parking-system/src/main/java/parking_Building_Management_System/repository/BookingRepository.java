@@ -6,6 +6,7 @@ import parking_Building_Management_System.entity.Booking;
 import parking_Building_Management_System.entity.enums.BookingStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -16,6 +17,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findByVehicleId(UUID vehicleId);
 
-    List<Booking> findByBookingStartTimeBetween(LocalDateTime startTime, LocalDateTime endTime);
+    List<Booking> findByStartTimeBetween(LocalDateTime startTime, LocalDateTime endTime);
+
+    Optional<Booking> findByBookingCode(String bookingCode);
+
+    List<Booking> findByVehicleIdAndStatus(UUID vehicleId, BookingStatus status);
 }
+
+
 

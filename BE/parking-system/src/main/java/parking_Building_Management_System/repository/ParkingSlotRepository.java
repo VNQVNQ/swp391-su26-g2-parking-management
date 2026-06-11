@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import parking_Building_Management_System.entity.ParkingSlot;
-import parking_Building_Management_System.entity.enums.SlotStatus;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.List;
 import java.util.Optional;
@@ -19,22 +19,24 @@ public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, UUID> 
 
     List<ParkingSlot> findByZoneId(UUID zoneId);
 
-    List<ParkingSlot> findByStatus(SlotStatus status);
+    List<ParkingSlot> findByMaintenanceStatus(SlotMaintenanceStatus maintenanceStatus);
 
-    List<ParkingSlot> findByFloorIdAndStatus(UUID floorId, SlotStatus status);
+    List<ParkingSlot> findByFloorIdAndMaintenanceStatus(UUID floorId, SlotMaintenanceStatus maintenanceStatus);
 
-    List<ParkingSlot> findByZoneIdAndStatus(UUID zoneId, SlotStatus status);
+    List<ParkingSlot> findByZoneIdAndMaintenanceStatus(UUID zoneId, SlotMaintenanceStatus maintenanceStatus);
 
-    List<ParkingSlot> findByVehicleTypeAndStatus(VehicleType vehicleType, SlotStatus status);
+    List<ParkingSlot> findByVehicleTypeAndMaintenanceStatus(VehicleType vehicleType, SlotMaintenanceStatus maintenanceStatus);
 
-    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.floor.id = :floorId AND ps.vehicleType = :vehicleType AND ps.status = 'FREE'")
+    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.floor.id = :floorId AND ps.vehicleType = :vehicleType AND ps.currentSession IS NULL AND ps.maintenanceStatus = 'AVAILABLE'")
     List<ParkingSlot> findAvailableSlotsByFloorAndVehicleType(@Param("floorId") UUID floorId, @Param("vehicleType") VehicleType vehicleType);
 
-    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.zone.id = :zoneId AND ps.status = 'FREE'")
+    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.zone.id = :zoneId AND ps.currentSession IS NULL AND ps.maintenanceStatus = 'AVAILABLE'")
     List<ParkingSlot> findAvailableSlotsByZone(@Param("zoneId") UUID zoneId);
 
-    long countByZoneIdAndStatus(UUID zoneId, SlotStatus status);
+    long countByZoneIdAndMaintenanceStatus(UUID zoneId, SlotMaintenanceStatus maintenanceStatus);
 
-    long countByFloorIdAndStatus(UUID floorId, SlotStatus status);
+    long countByFloorIdAndMaintenanceStatus(UUID floorId, SlotMaintenanceStatus maintenanceStatus);
 }
+
+
 

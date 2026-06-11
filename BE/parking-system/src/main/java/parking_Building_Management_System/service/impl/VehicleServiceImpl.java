@@ -38,8 +38,6 @@ public class VehicleServiceImpl implements VehicleService {
         Vehicle vehicle = new Vehicle();
         vehicle.setLicensePlate(request.getLicensePlate());
         vehicle.setVehicleType(request.getVehicleType());
-        vehicle.setOwnerName(request.getOwnerName());
-        vehicle.setPhone(request.getPhone());
         vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
 
         vehicle = vehicleRepository.save(vehicle);
@@ -83,8 +81,6 @@ public class VehicleServiceImpl implements VehicleService {
 
         vehicle.setLicensePlate(request.getLicensePlate());
         vehicle.setVehicleType(request.getVehicleType());
-        vehicle.setOwnerName(request.getOwnerName());
-        vehicle.setPhone(request.getPhone());
         if (request.getHasMonthlyPass() != null) {
             vehicle.setHasMonthlyPass(request.getHasMonthlyPass());
         }
@@ -178,10 +174,9 @@ public class VehicleServiceImpl implements VehicleService {
     private VehicleResponse mapToResponse(Vehicle vehicle) {
         VehicleResponse response = new VehicleResponse();
         response.setId(vehicle.getId());
+        response.setUserId(vehicle.getUser() != null ? vehicle.getUser().getUserId() : null);
         response.setLicensePlate(vehicle.getLicensePlate());
         response.setVehicleType(vehicle.getVehicleType());
-        response.setOwnerName(vehicle.getOwnerName());
-        response.setPhone(vehicle.getPhone());
         response.setHasMonthlyPass(vehicle.getHasMonthlyPass());
         response.setMonthlyPassExpiry(vehicle.getMonthlyPassExpiry());
         response.setIsActive(vehicle.getIsActive());

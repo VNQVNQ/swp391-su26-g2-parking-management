@@ -12,13 +12,15 @@ import java.util.UUID;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
-    // Sử dụng @Query để map trực tiếp vào thuộc tính u.user_id kiểu Long trong Entity User
-    @Query("SELECT al FROM AuditLog al WHERE al.user.user_id = :userId")
+    @Query("SELECT al FROM AuditLog al WHERE al.user.userId = :userId")
     List<AuditLog> findByUserId(@Param("userId") Long userId);
 
-    List<AuditLog> findByEntityType(String entityType);
+    List<AuditLog> findByEntityName(String entityName);
 
-    // ĐÃ SỬA: Thêm chữ "endTime" bị thiếu vào sau LocalDateTime
     @Query("SELECT al FROM AuditLog al WHERE al.createdAt BETWEEN :startTime AND :endTime")
     List<AuditLog> findByTimestampBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT al FROM AuditLog al WHERE al.entityName = :entityName AND al.entityId = :entityId")
+    List<AuditLog> findByEntityNameAndEntityId(@Param("entityName") String entityName, @Param("entityId") String entityId);
 }
+

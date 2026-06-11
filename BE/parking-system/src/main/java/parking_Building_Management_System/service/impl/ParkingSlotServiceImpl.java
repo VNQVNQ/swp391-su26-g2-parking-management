@@ -10,7 +10,7 @@ import parking_Building_Management_System.dto.parkingSlot.response.ParkingSlotRe
 import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.ParkingSlot;
 import parking_Building_Management_System.entity.Zone;
-import parking_Building_Management_System.entity.enums.SlotStatus;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.repository.FloorRepository;
 import parking_Building_Management_System.repository.ParkingSlotRepository;
@@ -48,7 +48,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
         slot.setFloor(floor);
         slot.setZone(zone);
         slot.setVehicleType(request.getVehicleType());
-        slot.setStatus(SlotStatus.FREE);
+        slot.setMaintenanceStatus(SlotMaintenanceStatus.AVAILABLE);
 
         slot = parkingSlotRepository.save(slot);
         return mapToResponse(slot);
@@ -74,7 +74,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                     slot.setFloor(floor);
                     slot.setZone(zone);
                     slot.setVehicleType(request.getVehicleType());
-                    slot.setStatus(SlotStatus.FREE);
+                    slot.setMaintenanceStatus(SlotMaintenanceStatus.AVAILABLE);
                     return slot;
                 })
                 .collect(Collectors.toList());
@@ -122,8 +122,8 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     }
 
     @Override
-    public List<ParkingSlotResponse> getSlotsByStatus(SlotStatus status) {
-        return parkingSlotRepository.findByStatus(status)
+    public List<ParkingSlotResponse> getSlotsByMaintenanceStatus(SlotMaintenanceStatus maintenanceStatus) {
+        return parkingSlotRepository.findByMaintenanceStatus(maintenanceStatus)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -163,11 +163,11 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     }
 
     @Override
-    public ParkingSlotResponse updateSlotStatus(UUID id, SlotStatus status) {
+    public ParkingSlotResponse updateSlotMaintenanceStatus(UUID id, SlotMaintenanceStatus maintenanceStatus) {
         ParkingSlot slot = parkingSlotRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Parking slot not found"));
 
-        slot.setStatus(status);
+        slot.setMaintenanceStatus(maintenanceStatus);
         slot = parkingSlotRepository.save(slot);
         return mapToResponse(slot);
     }
@@ -182,12 +182,16 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
     @Override
     public long countAvailableSlotsByZone(UUID zoneId) {
-        return parkingSlotRepository.countByZoneIdAndStatus(zoneId, SlotStatus.FREE);
+        return parkingSlotRepository.countByZoneIdAndMaintenanceStatus(zoneId, SlotMaintenanceStatus.AVAILABLE);
     }
 
     @Override
     public long countOccupiedSlotsByZone(UUID zoneId) {
-        return parkingSlotRepository.countByZoneIdAndStatus(zoneId, SlotStatus.OCCUPIED);
+        // OCCUPIED = currentSession IS NOT NULL AND maintenanceStatus == AVAILABLE
+        return parkingSlotRepository.findByZoneIdAndMaintenanceStatus(zoneId, SlotMaintenanceStatus.AVAILABLE)
+                .stream()
+                .filter(slot -> slot.getCurrentSession() != null)
+                .count();
     }
 
     private ParkingSlotResponse mapToResponse(ParkingSlot slot) {
@@ -199,7 +203,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 slot.getZone().getId(),
                 slot.getZone().getName(),
                 slot.getVehicleType(),
-                slot.getStatus(),
+                slot.getMaintenanceStatus(),
                 slot.getCurrentSession() != null ? slot.getCurrentSession().getId() : null,
                 slot.getCreatedAt(),
                 slot.getUpdatedAt()

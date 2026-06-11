@@ -30,7 +30,7 @@ public class JWTService {
 
     public Map<String, String> generateTokens(User user){
         Map<String, Object> claims = Map.of(
-                "userId", user.getUser_id()
+                "userId", user.getUserId()
         );
 
         String access = createToken(claims, user.getEmail(), 24 * 60 * 60 * 1000);
@@ -41,7 +41,7 @@ public class JWTService {
 
     public Map<String, String> generateTokenLockAccount(User user){
         Map<String, Object> claims = Map.of(
-                "userId", user.getUser_id()
+                "userId", user.getUserId()
         );
 
         String tokenLockAcount = createToken(claims, user.getEmail(), 10 * 60 * 1000);
@@ -51,7 +51,7 @@ public class JWTService {
 
     public Map<String, String> generateTokenResetPassword(User user){
         Map<String, Object> claims = Map.of(
-                "userId", user.getUser_id()
+                "userId", user.getUserId()
         );
 
         String tokenResetPassword = createToken(claims, user.getEmail(), 10 * 60 * 1000);

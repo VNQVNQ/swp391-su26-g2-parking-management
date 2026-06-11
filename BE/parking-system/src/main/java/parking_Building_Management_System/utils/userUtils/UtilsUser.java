@@ -4,24 +4,31 @@ import parking_Building_Management_System.dto.user.response.UserResponse;
 import parking_Building_Management_System.entity.user.User;
 import org.springframework.stereotype.Component;
 
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 public class UtilsUser {
 
-    // ĐÚNG: Sửa kiểu dữ liệu Generic trong List thành UserResponse (Viết hoa chữ U)
     public List<UserResponse> getListUserResponses(List<User> users) {
         return users.stream()
                 .map(this::toUserResponse)
                 .collect(Collectors.toList());
     }
 
-    // ĐÚNG: Sửa kiểu dữ liệu trả về thành UserResponse (Viết hoa chữ U)
     public UserResponse toUserResponse(User user) {
-        // ĐÚNG: Gọi Builder từ Class viết hoa UserResponse
+        // ĐÃ SỬA: Convert LocalDateTime và LocalDate sang Date
+        Date lastActiveDate = user.getLastActive() != null
+                ? Date.from(user.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                : null;
+        Date dobDate = user.getDateOfBirth() != null
+                ? Date.from(user.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                : null;
+
         return UserResponse.builder()
-                .id(user.getUser_id())
+                .id(user.getUserId())
                 .email(user.getEmail())
                 .password(user.getPassword())
                 .fullName(user.getFullName())
@@ -30,10 +37,10 @@ public class UtilsUser {
                 .gender(user.getGender())
                 .userIsActivated(user.getUserIsActive())
                 .address(user.getAddress())
-                .dateOfBirth(user.getDateOfBirth())
-                .roleCode(user.getRole().getRoleCode())
-                .roleName(user.getRole().getRoleName())
-                .lastActive(user.getLastActive())
+                .dateOfBirth(dobDate) // ĐÃ SỬA
+                .roleCode(user.getRole() != null ? user.getRole().getRoleCode() : null)
+                .roleName(user.getRole() != null ? user.getRole().getRoleName() : null)
+                .lastActive(lastActiveDate) // ĐÃ SỬA
                 .build();
     }
 }

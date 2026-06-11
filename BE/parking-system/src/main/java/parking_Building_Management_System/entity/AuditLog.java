@@ -1,4 +1,4 @@
-package parking_Building_Management_System.entity; // Đã sửa lại package nằm trực tiếp trong entity
+package parking_Building_Management_System.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -15,12 +15,12 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "audit_logs", schema = "public", indexes = {
-        @Index(name = "idx_user_id", columnList = "user_id"),
-        @Index(name = "idx_entity_type", columnList = "entity_type"),
-        @Index(name = "idx_timestamp", columnList = "created_at")
+        @Index(name = "idx_audit_user", columnList = "user_id"),
+        @Index(name = "idx_audit_entity", columnList = "entity_name, entity_id"),
+        @Index(name = "idx_audit_time", columnList = "created_at")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AuditLog { // Chữ A và L viết hoa chuẩn quy tắc Java
+public class AuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "uuid")
@@ -30,19 +30,25 @@ public class AuditLog { // Chữ A và L viết hoa chuẩn quy tắc Java
     @JoinColumn(name = "user_id", nullable = false)
     User user;
 
-    @Column(name = "action", nullable = false, length = 50)
+    @Column(name = "action", nullable = false, length = 100)
     String action;
 
-    @Column(name = "entity_type", length = 50) // Bỏ nullable để linh hoạt hơn
-    String entityType;
+    @Column(name = "entity_name", length = 100)
+    String entityName;
 
-    @Column(name = "entity_id", columnDefinition = "uuid")
-    UUID entityId;
+    @Column(name = "entity_id", length = 100)
+    String entityId;
 
-    @Column(name = "details", columnDefinition = "jsonb")
-    String details;
+    @Column(name = "old_values", columnDefinition = "jsonb")
+    String oldValues;
 
-    @Column(name = "created_at", nullable = false) // Đổi tên thành created_at để khớp với Service của bạn
+    @Column(name = "new_values", columnDefinition = "jsonb")
+    String newValues;
+
+    @Column(name = "ip_address", length = 45)
+    String ipAddress;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 
     @PrePersist
@@ -50,3 +56,4 @@ public class AuditLog { // Chữ A và L viết hoa chuẩn quy tắc Java
         createdAt = LocalDateTime.now();
     }
 }
+

@@ -9,7 +9,6 @@ import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.ParkingSlot;
 import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.BookingStatus;
-import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -18,9 +17,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "bookings", schema = "public", indexes = {
-        @Index(name = "idx_slot_id", columnList = "slot_id"),
-        @Index(name = "idx_booking_start_time", columnList = "booking_start_time"),
-        @Index(name = "idx_bookings_status", columnList = "status") // <-- Đã đổi tên ở đây
+        @Index(name = "idx_bookings_vehicle_status", columnList = "vehicle_id, status"),
+        @Index(name = "idx_bookings_expiry", columnList = "booking_expiry_at")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Booking {
@@ -30,25 +28,24 @@ public class Booking {
     UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vehicle_id")
+    @JoinColumn(name = "vehicle_id", nullable = false)
     Vehicle vehicle;
-
-    @Column(name = "license_plate", length = 20)
-    String licensePlate;
-
-    @Column(name = "vehicle_type", nullable = false)
-    @Enumerated(EnumType.STRING)
-    VehicleType vehicleType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "slot_id", nullable = false)
     ParkingSlot slot;
 
-    @Column(name = "booking_start_time", nullable = false)
-    LocalDateTime bookingStartTime;
+    @Column(name = "booking_code", nullable = false, unique = true, length = 20)
+    String bookingCode;
 
-    @Column(name = "booking_end_time", nullable = false)
-    LocalDateTime bookingEndTime;
+    @Column(name = "start_time", nullable = false)
+    LocalDateTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    LocalDateTime endTime;
+
+    @Column(name = "booking_expiry_at", nullable = false)
+    LocalDateTime bookingExpiryAt;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
@@ -74,4 +71,6 @@ public class Booking {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

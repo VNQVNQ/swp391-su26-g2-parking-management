@@ -12,10 +12,12 @@ import java.util.UUID;
 public interface ParkingExceptionRepository extends JpaRepository<ParkingException, UUID> {
     List<ParkingException> findBySessionId(UUID sessionId);
 
-    List<ParkingException> findByType(ExceptionType type);
+    List<ParkingException> findByExceptionType(ExceptionType exceptionType);
 
     List<ParkingException> findByStatus(ExceptionStatus status);
 
-    List<ParkingException> findByTypeAndStatus(ExceptionType type, ExceptionStatus status);
+    List<ParkingException> findByExceptionTypeAndStatus(ExceptionType exceptionType, ExceptionStatus status);
 }
+
+
 

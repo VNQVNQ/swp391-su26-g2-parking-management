@@ -16,10 +16,9 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleResponse {
     UUID id;
+    Long userId;
     String licensePlate;
     VehicleType vehicleType;
-    String ownerName;
-    String phone;
     Boolean hasMonthlyPass;
     LocalDate monthlyPassExpiry;
     Boolean isActive;

@@ -9,7 +9,7 @@ import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.Zone;
-import parking_Building_Management_System.entity.enums.SlotStatus;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,9 +20,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @Table(name = "parking_slots", schema = "public", indexes = {
     @Index(name = "idx_slot_code", columnList = "slot_code", unique = true),
-    @Index(name = "idx_floor_id", columnList = "floor_id"),
-    @Index(name = "idx_zone_id", columnList = "zone_id"),
-    @Index(name = "idx_parking_slot_status", columnList = "status")
+    @Index(name = "idx_slots_zone_id", columnList = "zone_id"),
+    @Index(name = "idx_slots_zone_free", columnList = "zone_id, current_session_id"),
+    @Index(name = "idx_slots_maintenance", columnList = "maintenance_status")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingSlot {
@@ -46,9 +46,9 @@ public class ParkingSlot {
     @Enumerated(EnumType.STRING)
     VehicleType vehicleType;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "maintenance_status", nullable = false)
     @Enumerated(EnumType.STRING)
-    SlotStatus status;
+    SlotMaintenanceStatus maintenanceStatus;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_session_id", referencedColumnName = "id")
@@ -64,8 +64,8 @@ public class ParkingSlot {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) {
-            status = SlotStatus.FREE;
+        if (maintenanceStatus == null) {
+            maintenanceStatus = SlotMaintenanceStatus.AVAILABLE;
         }
     }
 

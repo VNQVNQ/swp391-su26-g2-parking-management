@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.user.User;
-import parking_Building_Management_System.entity.enums.PaymentMethod;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,10 +18,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "payments", schema = "public", indexes = {
-    @Index(name = "idx_payment_session_id", columnList = "session_id"),
-    @Index(name = "idx_payment_table_status", columnList = "status"),
-    @Index(name = "idx_paid_at", columnList = "paid_at"),
-    @Index(name = "idx_collected_by", columnList = "collected_by")
+    @Index(name = "idx_payments_session_id", columnList = "session_id"),
+    @Index(name = "idx_payments_created_at", columnList = "created_at"),
+    @Index(name = "idx_payments_collector", columnList = "collected_by")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Payment {
@@ -35,16 +33,21 @@ public class Payment {
     @JoinColumn(name = "session_id", nullable = false)
     ParkingSession session;
 
-    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    @Column(name = "amount", nullable = false, precision = 15, scale = 0)
     BigDecimal amount;
 
-    @Column(name = "method", nullable = false)
-    @Enumerated(EnumType.STRING)
-    PaymentMethod method;
+    @Column(name = "method", nullable = false, length = 50)
+    String method;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     PaymentStatus status;
+
+    @Column(name = "reference_code", length = 50)
+    String referenceCode;
+
+    @Column(name = "note", columnDefinition = "TEXT")
+    String note;
 
     @Column(name = "paid_at")
     LocalDateTime paidAt;
@@ -53,18 +56,12 @@ public class Payment {
     @JoinColumn(name = "collected_by", nullable = false)
     User collectedBy;
 
-    @Column(name = "reference_code", length = 50)
-    String referenceCode;
-
-    @Column(name = "note", columnDefinition = "TEXT")
-    String note;
-
-    @Column(name = "refunded_at")
-    LocalDateTime refundedAt;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "refunded_by")
     User refundedBy;
+
+    @Column(name = "refunded_at")
+    LocalDateTime refundedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
@@ -77,7 +74,7 @@ public class Payment {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) {
-            status = PaymentStatus.PENDING;
+            status = PaymentStatus.UNPAID;
         }
     }
 
@@ -86,4 +83,6 @@ public class Payment {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

@@ -49,7 +49,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepository.findByEmail(email);
+            User user = userRepository.findByEmail(email).orElse(null);
 
             if (user == null) {
                 filterChain.doFilter(request, response);
