@@ -27,5 +27,13 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession, 
 
     @Query("SELECT ps FROM ParkingSession ps WHERE ps.status = 'ACTIVE' ORDER BY ps.entryTime ASC")
     List<ParkingSession> findActiveSessions();
+
+    // BR-03: Xe còn nợ phí không được vào lại
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.vehicle.id = :vehicleId AND ps.paymentStatus = 'UNPAID'")
+    Optional<ParkingSession> findUnpaidSessionByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    // Get active session by vehicle ID (for checkout)
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.vehicle.id = :vehicleId AND ps.status = 'ACTIVE'")
+    Optional<ParkingSession> findActiveSessionByVehicleId(@Param("vehicleId") UUID vehicleId);
 }
 

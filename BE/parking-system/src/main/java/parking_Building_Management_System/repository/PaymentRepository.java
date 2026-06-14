@@ -27,7 +27,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query("SELECT p FROM Payment p WHERE p.status = 'PAID' AND p.paidAt BETWEEN :startTime AND :endTime")
     List<Payment> findCompletedPaymentsBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 
-    List<Payment> findByRefundedBy(Long userId);
+    @Query("SELECT p FROM Payment p WHERE p.refundedBy.userId = :userId")
+    List<Payment> findByRefundedBy(@Param("userId") Long userId);
 
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = 'PAID' AND p.paidAt BETWEEN :startTime AND :endTime")
     Long getTotalRevenueBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
