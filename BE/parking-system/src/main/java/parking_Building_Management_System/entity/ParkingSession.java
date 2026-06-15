@@ -21,11 +21,11 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "parking_sessions", schema = "public", indexes = {
-        @Index(name = "idx_parking_session_vehicle_id", columnList = "vehicle_id"),
-        @Index(name = "idx_parking_session_slot_id", columnList = "slot_id"),
-        @Index(name = "idx_parking_session_entry_time", columnList = "entry_time"),
-        @Index(name = "idx_parking_session_payment_status", columnList = "payment_status"),
-        @Index(name = "idx_parking_session_status", columnList = "status")
+        @Index(name = "idx_sessions_status", columnList = "status"),
+        @Index(name = "idx_sessions_entry_time", columnList = "entry_time"),
+        @Index(name = "idx_sessions_vehicle_id", columnList = "vehicle_id"),
+        @Index(name = "idx_sessions_slot_active", columnList = "slot_id, status"),
+        @Index(name = "idx_sessions_overstay", columnList = "overstay_flagged_at, entry_time")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingSession {
@@ -35,33 +35,16 @@ public class ParkingSession {
     UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id", nullable = false)
     Vehicle vehicle;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "slot_id", nullable = false)
     ParkingSlot slot;
-
-    @Column(name = "entry_time", nullable = false)
-    LocalDateTime entryTime;
-
-    @Column(name = "exit_time")
-    LocalDateTime exitTime;
-
-    @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    ParkingSessionStatus status;
-
-    @Column(name = "ticket_type", nullable = false)
-    @Enumerated(EnumType.STRING)
-    TicketType ticketType;
-
-    @Column(name = "fee", precision = 15, scale = 2)
-    BigDecimal fee;
-
-    @Column(name = "payment_status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    PaymentStatus paymentStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_entry_id", nullable = false)
@@ -71,14 +54,45 @@ public class ParkingSession {
     @JoinColumn(name = "staff_exit_id")
     User staffExit;
 
-    @Column(name = "booking_id")
-    UUID bookingId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "applied_rule_id")
+    PricingRule appliedRule;
+
+    @Column(name = "entry_time", nullable = false)
+    LocalDateTime entryTime;
+
+    @Column(name = "exit_time")
+    LocalDateTime exitTime;
+
+    @Column(name = "fee", precision = 15, scale = 0)
+    BigDecimal fee;
+
+    @Column(name = "discount_amount", nullable = false, precision = 15, scale = 0, columnDefinition = "numeric(15,0) default 0")
+    BigDecimal discountAmount;
+
+    @Column(name = "final_fee", precision = 15, scale = 0)
+    BigDecimal finalFee;
+
+    @Column(name = "payment_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    PaymentStatus paymentStatus;
+
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    ParkingSessionStatus status;
+
+    @Column(name = "ticket_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    TicketType ticketType;
 
     @Column(name = "face_verified_at_exit")
     Boolean faceVerifiedAtExit;
 
     @Column(name = "staff_override_used")
     Boolean staffOverrideUsed;
+
+    @Column(name = "overstay_flagged_at")
+    LocalDateTime overstayFlaggedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
@@ -96,6 +110,9 @@ public class ParkingSession {
         if (paymentStatus == null) {
             paymentStatus = PaymentStatus.UNPAID;
         }
+        if (discountAmount == null) {
+            discountAmount = BigDecimal.ZERO;
+        }
     }
 
     @PreUpdate
@@ -103,4 +120,6 @@ public class ParkingSession {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

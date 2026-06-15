@@ -15,6 +15,5 @@ public interface ZoneService {
     ZoneResponse getZoneByFloorAndVehicleType(UUID floorId, VehicleType vehicleType);
     ZoneResponse updateZone(UUID id, ZoneRequest request);
     void deleteZone(UUID id);
-    void updateAvailableSlots(UUID zoneId, int count);
 }
 

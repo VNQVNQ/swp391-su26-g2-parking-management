@@ -68,13 +68,5 @@ public class ZoneController {
         zoneService.deleteZone(id);
         return ResponseEntity.noContent().build();
     }
-
-    @PatchMapping("/{id}/available-slots")
-    public ResponseEntity<Void> updateAvailableSlots(
-            @PathVariable UUID id,
-            @RequestParam int count) {
-        zoneService.updateAvailableSlots(id, count);
-        return ResponseEntity.noContent().build();
-    }
 }
 

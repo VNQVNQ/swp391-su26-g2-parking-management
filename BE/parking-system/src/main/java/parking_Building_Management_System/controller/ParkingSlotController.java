@@ -8,7 +8,7 @@ import parking_Building_Management_System.dto.parkingSlot.request.BulkParkingSlo
 import parking_Building_Management_System.dto.parkingSlot.request.ParkingSlotRequest;
 import parking_Building_Management_System.dto.parkingSlot.response.AvailableSlotResponse;
 import parking_Building_Management_System.dto.parkingSlot.response.ParkingSlotResponse;
-import parking_Building_Management_System.entity.enums.SlotStatus;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.service.ParkingSlotService;
 
@@ -64,9 +64,9 @@ public class ParkingSlotController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<ParkingSlotResponse>> getSlotsByStatus(@PathVariable SlotStatus status) {
-        List<ParkingSlotResponse> responses = parkingSlotService.getSlotsByStatus(status);
+    @GetMapping("/maintenance-status/{maintenanceStatus}")
+    public ResponseEntity<List<ParkingSlotResponse>> getSlotsByMaintenanceStatus(@PathVariable SlotMaintenanceStatus maintenanceStatus) {
+        List<ParkingSlotResponse> responses = parkingSlotService.getSlotsByMaintenanceStatus(maintenanceStatus);
         return ResponseEntity.ok(responses);
     }
 
@@ -90,11 +90,11 @@ public class ParkingSlotController {
         return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<ParkingSlotResponse> updateSlotStatus(
+    @PatchMapping("/{id}/maintenance-status")
+    public ResponseEntity<ParkingSlotResponse> updateSlotMaintenanceStatus(
             @PathVariable UUID id,
-            @RequestParam SlotStatus status) {
-        ParkingSlotResponse response = parkingSlotService.updateSlotStatus(id, status);
+            @RequestParam SlotMaintenanceStatus maintenanceStatus) {
+        ParkingSlotResponse response = parkingSlotService.updateSlotMaintenanceStatus(id, maintenanceStatus);
         return ResponseEntity.ok(response);
     }
 

@@ -8,20 +8,26 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "users", schema = "public")
+@Table(name = "users", schema = "public", indexes = {
+        @Index(name = "idx_users_email_active", columnList = "email"),
+        @Index(name = "idx_users_phone_active", columnList = "phone_number"),
+        @Index(name = "idx_users_identify_active", columnList = "identify_number")
+})
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long user_id;
+    @Column(name = "user_id")
+    Long userId;
 
     @Column(name = "email", nullable = false, unique = true)
     String email;
@@ -38,37 +44,58 @@ public class User {
     @Column(name = "identify_number", unique = true)
     String identifyNumber;
 
-    @Column(name = "gender")
+    @Column(name = "gender", length = 10)
     String gender;
 
-    @Column(name = "user_is_active", nullable = false)
-    Boolean userIsActive = true;
-
+    // ĐÃ THÊM: Khai báo trường age để sửa lỗi thiếu hàm getAge() và setAge()
     @Column(name = "age")
-    int age;
+    Integer age;
+
+    @Column(name = "user_is_active", nullable = false)
+    Boolean userIsActive;
 
     @Column(name = "address")
     String address;
 
     @Column(name = "date_of_birth")
-    Date dateOfBirth;
+    LocalDate dateOfBirth;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     Role role;
 
     @Column(name = "last_active")
-    Date lastActive = new Date();
+    LocalDateTime lastActive;
 
-    @Column(name = "refreshToken")
+    @Column(name = "refresh_token")
     String refreshToken;
 
     @Column(name = "locked_token")
     String lockedToken;
 
     @Column(name = "locked_until")
-    Date lockedUntil;
+    LocalDateTime lockedUntil;
 
-    @Column(name = "tokenResetPassword")
+    @Column(name = "token_reset_password")
     String tokenResetPassword;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        if (userIsActive == null) {
+            userIsActive = true;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

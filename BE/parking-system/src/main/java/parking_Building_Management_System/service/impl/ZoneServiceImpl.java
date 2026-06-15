@@ -31,7 +31,7 @@ public class ZoneServiceImpl implements ZoneService {
         zone.setName(request.getName());
         zone.setVehicleType(request.getVehicleType());
         zone.setTotalSlots(request.getTotalSlots());
-        zone.setAvailableSlots(request.getTotalSlots());
+        zone.setIsActive(true);
 
         zone = zoneRepository.save(zone);
         return mapToResponse(zone);
@@ -98,14 +98,6 @@ public class ZoneServiceImpl implements ZoneService {
         zoneRepository.deleteById(id);
     }
 
-    @Override
-    public void updateAvailableSlots(UUID zoneId, int count) {
-        Zone zone = zoneRepository.findById(zoneId)
-                .orElseThrow(() -> new RuntimeException("Zone not found"));
-        zone.setAvailableSlots(zone.getAvailableSlots() + count);
-        zoneRepository.save(zone);
-    }
-
     private ZoneResponse mapToResponse(Zone zone) {
         return new ZoneResponse(
                 zone.getId(),
@@ -114,7 +106,7 @@ public class ZoneServiceImpl implements ZoneService {
                 zone.getName(),
                 zone.getVehicleType(),
                 zone.getTotalSlots(),
-                zone.getAvailableSlots(),
+                zone.getIsActive(),
                 zone.getCreatedAt(),
                 zone.getUpdatedAt()
         );

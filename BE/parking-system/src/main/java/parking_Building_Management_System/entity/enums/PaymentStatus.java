@@ -3,7 +3,8 @@ package parking_Building_Management_System.entity.enums;
 public enum PaymentStatus {
     UNPAID("Unpaid"),
     PAID("Paid"),
-    PENDING("Pending");
+    REFUNDED("Refunded"),
+    FAILED("Failed");
 
     private final String displayName;
 

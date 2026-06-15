@@ -21,8 +21,9 @@ public class FloorServiceImpl implements FloorService {
     public FloorResponse createFloor(FloorRequest request) {
         Floor floor = new Floor();
         floor.setName(request.getName());
-        floor.setLevel(request.getLevel());
-        floor.setTotalSlots(request.getTotalSlots());
+        floor.setLevelNumber(request.getLevelNumber());
+        floor.setDescription(request.getDescription());
+        floor.setIsActive(true);
 
         floor = floorRepository.save(floor);
         return mapToResponse(floor);
@@ -49,8 +50,8 @@ public class FloorServiceImpl implements FloorService {
                 .orElseThrow(() -> new RuntimeException("Floor not found"));
 
         floor.setName(request.getName());
-        floor.setLevel(request.getLevel());
-        floor.setTotalSlots(request.getTotalSlots());
+        floor.setLevelNumber(request.getLevelNumber());
+        floor.setDescription(request.getDescription());
 
         floor = floorRepository.save(floor);
         return mapToResponse(floor);
@@ -66,10 +67,8 @@ public class FloorServiceImpl implements FloorService {
 
     @Override
     public FloorResponse getFloorByLevel(Integer level) {
-        Floor floor = floorRepository.findByLevel(level);
-        if (floor == null) {
-            throw new RuntimeException("Floor not found with level: " + level);
-        }
+        Floor floor = floorRepository.findByLevelNumber(level)
+                .orElseThrow(() -> new RuntimeException("Floor not found with level: " + level));
         return mapToResponse(floor);
     }
 
@@ -77,8 +76,9 @@ public class FloorServiceImpl implements FloorService {
         return new FloorResponse(
                 floor.getId(),
                 floor.getName(),
-                floor.getLevel(),
-                floor.getTotalSlots(),
+                floor.getLevelNumber(),
+                floor.getDescription(),
+                floor.getIsActive(),
                 floor.getCreatedAt(),
                 floor.getUpdatedAt()
         );

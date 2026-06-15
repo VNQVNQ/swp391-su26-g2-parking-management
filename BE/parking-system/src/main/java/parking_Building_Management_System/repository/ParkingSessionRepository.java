@@ -25,7 +25,18 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession, 
     @Query("SELECT ps FROM ParkingSession ps WHERE ps.entryTime BETWEEN :startTime AND :endTime")
     List<ParkingSession> findSessionsBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 
-    @Query("SELECT ps FROM ParkingSession ps WHERE ps.status = 'ACTIVE' ORDER BY ps.entryTime ASC")
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.status = parking_Building_Management_System.entity.enums.ParkingSessionStatus.ACTIVE ORDER BY ps.entryTime ASC")
     List<ParkingSession> findActiveSessions();
-}
 
+    // BR-03: Xe còn nợ phí không được vào lại
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.vehicle.id = :vehicleId AND ps.paymentStatus = parking_Building_Management_System.entity.enums.PaymentStatus.UNPAID")
+    Optional<ParkingSession> findUnpaidSessionByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    // Get active session by vehicle ID (for checkout)
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.vehicle.id = :vehicleId AND ps.status = parking_Building_Management_System.entity.enums.ParkingSessionStatus.ACTIVE")
+    Optional<ParkingSession> findActiveSessionByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    // ĐÃ SỬA: Đổi s.totalFee thành s.finalFee (hoặc s.fee tùy logic của bạn) và đồng bộ đúng trường s.paymentStatus
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM ParkingSession s WHERE s.vehicle.id = ?1 AND s.finalFee IS NOT NULL AND s.paymentStatus = parking_Building_Management_System.entity.enums.PaymentStatus.UNPAID")
+    boolean existsByVehicleIdAndTotalFeeIsNotNullAndIsPaidFalse(UUID vehicleId);
+}

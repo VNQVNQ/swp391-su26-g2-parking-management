@@ -13,7 +13,9 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "floors", schema = "public")
+@Table(name = "floors", schema = "public", indexes = {
+    @Index(name = "idx_floors_level_number", columnList = "level_number", unique = true)
+})
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Floor {
     @Id
@@ -24,11 +26,14 @@ public class Floor {
     @Column(name = "name", nullable = false, length = 50)
     String name;
 
-    @Column(name = "level", nullable = false)
-    Integer level;
+    @Column(name = "level_number", nullable = false, unique = true)
+    Integer levelNumber;
 
-    @Column(name = "total_slots", nullable = false)
-    Integer totalSlots;
+    @Column(name = "description", length = 255)
+    String description;
+
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
+    Boolean isActive;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
@@ -40,6 +45,9 @@ public class Floor {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (isActive == null) {
+            isActive = true;
+        }
     }
 
     @PreUpdate
@@ -47,4 +55,6 @@ public class Floor {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
 

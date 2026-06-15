@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import parking_Building_Management_System.dto.user.request.UserRequest;
 
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +26,6 @@ public class UserController {
     private final UtilsUser utilsUser;
 
     @PostMapping("/register")
-    // ĐÃ SỬA: Xóa @RequestHeader("Authorization") để cho phép đăng ký tự do công khai
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@RequestBody UserRequest userRequest) {
 
         if(!userRequest.getPassword().equals(userRequest.getConfirmPassword())){
@@ -34,21 +35,28 @@ public class UserController {
 
         System.out.println("thông tin nhận được " + userRequest);
 
-        // ĐÃ SỬA: Không truyền biến token vào hàm này nữa
         User newUser = userService.createUser(userRequest);
 
+        // ĐÃ SỬA: Convert LocalDateTime và LocalDate sang Date
+        Date lastActiveDate = newUser.getLastActive() != null
+                ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                : null;
+        Date dobDate = newUser.getDateOfBirth() != null
+                ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                : null;
+
         UserResponse responseData = UserResponse.builder()
-                .id(newUser.getUser_id())
+                .id(newUser.getUserId())
                 .fullName(newUser.getFullName())
                 .email(newUser.getEmail())
                 .roleCode(newUser.getRole().getRoleCode())
-                .lastActive(newUser.getLastActive())
+                .lastActive(lastActiveDate) // ĐÃ SỬA
                 .phoneNumber(newUser.getPhoneNumber())
                 .identifyNumber(newUser.getIdentifyNumber())
                 .gender(newUser.getGender())
                 .age(newUser.getAge())
                 .address(newUser.getAddress())
-                .dateOfBirth(newUser.getDateOfBirth())
+                .dateOfBirth(dobDate) // ĐÃ SỬA
                 .userIsActivated(newUser.getUserIsActive())
                 .build();
 
@@ -86,17 +94,25 @@ public class UserController {
         String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
         User user = userService.updateUser(id, userRequest, token);
 
+        // ĐÃ SỬA: Convert LocalDateTime và LocalDate sang Date
+        Date lastActiveDate = user.getLastActive() != null
+                ? Date.from(user.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                : null;
+        Date dobDate = user.getDateOfBirth() != null
+                ? Date.from(user.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                : null;
+
         UserResponse responseData = UserResponse.builder()
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .roleCode(user.getRole().getRoleCode())
-                .lastActive(user.getLastActive())
+                .lastActive(lastActiveDate) // ĐÃ SỬA
                 .phoneNumber(user.getPhoneNumber())
                 .identifyNumber(user.getIdentifyNumber())
                 .gender(user.getGender())
                 .age(user.getAge())
                 .address(user.getAddress())
-                .dateOfBirth(user.getDateOfBirth())
+                .dateOfBirth(dobDate) // ĐÃ SỬA
                 .userIsActivated(user.getUserIsActive())
                 .build();
         ApiResponse<UserResponse> response = new ApiResponse<>(201, "Update user successfully", responseData);

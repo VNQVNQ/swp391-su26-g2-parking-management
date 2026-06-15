@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.enums.VehicleType;
+import parking_Building_Management_System.entity.user.User;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,7 +17,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "vehicles", schema = "public", indexes = {
-    @Index(name = "idx_license_plate", columnList = "license_plate", unique = true)
+    @Index(name = "idx_vehicles_plate_active", columnList = "license_plate"),
+    @Index(name = "idx_vehicles_user_id", columnList = "user_id")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Vehicle {
@@ -25,6 +27,10 @@ public class Vehicle {
     @Column(columnDefinition = "uuid")
     UUID id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    User user;
+
     @Column(name = "license_plate", nullable = false, unique = true, length = 20)
     String licensePlate;
 
@@ -32,20 +38,14 @@ public class Vehicle {
     @Enumerated(EnumType.STRING)
     VehicleType vehicleType;
 
-    @Column(name = "owner_name", length = 100)
-    String ownerName;
-
-    @Column(name = "phone", length = 20)
-    String phone;
-
     @Column(name = "has_monthly_pass", nullable = false, columnDefinition = "boolean default false")
     Boolean hasMonthlyPass;
 
     @Column(name = "monthly_pass_expiry")
     LocalDate monthlyPassExpiry;
 
-    @Column(name = "face_descriptor")
-    byte[] faceDescriptor;
+    // @Column(name = "face_descriptor")
+    // byte[] faceDescriptor;  // pgvector(128) - requires pgvector extension
 
     @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
     Boolean isActive;

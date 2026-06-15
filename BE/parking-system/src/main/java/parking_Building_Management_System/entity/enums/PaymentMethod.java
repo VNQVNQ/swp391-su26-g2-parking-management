@@ -2,8 +2,7 @@ package parking_Building_Management_System.entity.enums;
 
 public enum PaymentMethod {
     CASH("Cash"),
-    INTERNAL("Internal"),
-    MONTHLY_PASS("Monthly_Pass");
+    INTERNAL_TRANSFER("Internal Transfer");
 
     private final String displayName;
 
@@ -15,4 +14,6 @@ public enum PaymentMethod {
         return displayName;
     }
 }
+
+
 

@@ -36,8 +36,13 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.hasMonthlyPass = true AND v.monthlyPassExpiry > :today AND v.isActive = true")
     long countActiveVehiclesWithValidPass(@Param("today") LocalDate today);
 
-    @Query("SELECT v FROM Vehicle v WHERE v.ownerName LIKE CONCAT('%', :ownerName, '%')")
-    List<Vehicle> findByOwnerNameContaining(@Param("ownerName") String ownerName);
+    @Query("SELECT v FROM Vehicle v WHERE v.user.userId = :userId")
+    List<Vehicle> findByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.user.userId = :userId AND v.isActive = true")
+    List<Vehicle> findActiveVehiclesByUserId(@Param("userId") Long userId);
 }
+
+
 
 
