@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.entity.enums.TicketType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -54,7 +55,7 @@ public class ParkingRate {
     Long maximumDailyFee; // VND - phí tối đa/ngày
 
     @Column(name = "overstay_rate_multiplier", precision = 3, scale = 2)
-    Double overstayRateMultiplier; // VD: 2.00 = gấp 2 lần phí thường
+    BigDecimal overstayRateMultiplier; // VD: 2.00 = gấp 2 lần phí thường
 
     @Column(name = "peak_hour_start")
     LocalTime peakHourStart;
@@ -63,7 +64,7 @@ public class ParkingRate {
     LocalTime peakHourEnd;
 
     @Column(name = "peak_hour_multiplier", precision = 3, scale = 2)
-    Double peakHourMultiplier; // VD: 1.5 = gấp 1.5 lần phí thường
+    BigDecimal peakHourMultiplier; // VD: 1.5 = gấp 1.5 lần phí thường
 
     @Column(name = "effective_from", nullable = false)
     LocalDate effectiveFrom;
