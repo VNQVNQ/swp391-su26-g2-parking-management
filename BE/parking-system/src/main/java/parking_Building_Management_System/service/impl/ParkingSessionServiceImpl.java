@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
 import parking_Building_Management_System.dto.parkingSession.request.VehicleEntryRequest;
 import parking_Building_Management_System.dto.parkingSession.response.AvailableSlotsForEntryResponse;
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
+import parking_Building_Management_System.dto.parkingSession.response.FeeCalculationResponse;
 import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
 import parking_Building_Management_System.entity.AuditLog;
 import parking_Building_Management_System.entity.ParkingSession;
@@ -24,15 +26,13 @@ import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.service.ParkingSessionService;
 import parking_Building_Management_System.utils.mapper.ParkingSessionMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Implementation for ParkingSessionService
- * Xử lý Vehicle Entry Flow (Phase 3) - BR-23 ~ BR-32
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,9 +45,6 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final AuditLogRepository auditLogRepository;
     private final ParkingSessionMapper parkingSessionMapper;
 
-    /**
-     * BR-23: Validate xe - kiểm tra license plate
-     */
     @Override
     public EntryValidationResponse validateVehicleForEntry(String licensePlate) {
         log.info("Validating vehicle for entry: {}", licensePlate);
@@ -66,7 +63,6 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         Vehicle vehicle = vehicleOpt.get();
 
-        // BR-26: Check if vehicle is active
         if (!vehicle.getIsActive()) {
             log.warn("Vehicle is inactive: {}", licensePlate);
             return EntryValidationResponse.builder()
@@ -89,10 +85,6 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .build();
     }
 
-    /**
-     * BR-26: Tìm slot Free và Available
-     * Trả về danh sách slot có sẵn trong zone
-     */
     @Override
     public List<AvailableSlotsForEntryResponse> findAvailableSlots(UUID zoneId, String licensePlate) {
         log.info("Finding available slots in zone: {}", zoneId);
@@ -100,50 +92,37 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + zoneId));
 
-        // Get vehicle type from license plate
         var vehicle = vehicleRepository.findByLicensePlate(licensePlate)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found: " + licensePlate));
 
-        // BR-26: BR-15: vehicleType phải match
         if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
             log.warn("Vehicle type {} does not match zone vehicle type {}",
                     vehicle.getVehicleType(), zone.getVehicleType());
             return List.of();
         }
 
-        // Tìm tất cả available slots trong zone
         List<ParkingSlot> availableSlots = parkingSlotRepository
                 .findAvailableSlotsByZone(zoneId);
 
-        // Count stats
         long availableCount = availableSlots.size();
         long occupiedCount = zone.getTotalSlots() - availableCount;
 
         log.info("Found {} available slots in zone {}", availableCount, zoneId);
 
-        // Map to response
         return availableSlots.stream()
                 .map(slot -> parkingSessionMapper.toAvailableSlotResponse(
-                        slot, 
-                        availableCount, 
-                        occupiedCount, 
+                        slot,
+                        availableCount,
+                        occupiedCount,
                         (long) zone.getTotalSlots()))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * BR-27: Tạo ParkingSession + Update Slot (transactional)
-     * BR-28: entry_time do server generate
-     * BR-29: Chỉ Staff mới tạo được
-     * BR-30: vehicleType xe phải khớp slot
-     * BR-31: sessionID phải unique (UUID)
-     */
     @Override
     @Transactional
     public VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId) {
         log.info("Creating parking session for vehicle: {}", request.getLicensePlate());
 
-        // Step 1: Validate vehicle
         var validation = validateVehicleForEntry(request.getLicensePlate());
         if (!validation.isValid()) {
             throw new RuntimeException("Vehicle validation failed: " + validation.getMessage());
@@ -152,18 +131,15 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         Vehicle vehicle = vehicleRepository.findById(validation.getVehicleId())
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
 
-        // Step 2: Get zone and verify
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + request.getZoneId()));
 
-        // BR-15: BR-30: Check vehicle type matches zone
         if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
             log.error("Vehicle type {} does not match zone type {}",
                     vehicle.getVehicleType(), zone.getVehicleType());
             throw new RuntimeException("Vehicle type does not match zone. Zone is for: " + zone.getVehicleType());
         }
 
-        // Step 3: Find available slot (BR-26)
         List<ParkingSlot> availableSlots = parkingSlotRepository
                 .findAvailableSlotsByZone(request.getZoneId());
 
@@ -172,39 +148,30 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             throw new RuntimeException("No available slots in this zone");
         }
 
-        // Get first available slot
         ParkingSlot slot = availableSlots.get(0);
         log.info("Assigned slot: {}", slot.getSlotCode());
 
-        // Step 4: Create ParkingSession (BR-28: entry_time auto-generated)
         ParkingSession session = new ParkingSession();
         session.setVehicle(vehicle);
         session.setSlot(slot);
-        session.setStaffEntry(createStaffUser(staffId)); // Will fetch from User table
-        session.setEntryTime(LocalDateTime.now()); // BR-28: Server generates
-        session.setStatus(ParkingSessionStatus.ACTIVE); // Default status
-        session.setPaymentStatus(PaymentStatus.UNPAID); // BR-35: Default
-        session.setDiscountAmount(java.math.BigDecimal.ZERO);
+        session.setStaffEntry(createStaffUser(staffId));
+        session.setEntryTime(LocalDateTime.now());
+        session.setStatus(ParkingSessionStatus.ACTIVE);
+        session.setPaymentStatus(PaymentStatus.UNPAID);
+        session.setDiscountAmount(BigDecimal.ZERO);
 
-        // Save session
         session = parkingSessionRepository.save(session);
         log.info("Session created: {}", session.getId());
 
-        // Step 5: Update slot to Occupied (BR-27: same transaction)
         slot.setCurrentSession(session);
         parkingSlotRepository.save(slot);
         log.info("Slot {} marked as occupied", slot.getSlotCode());
 
-        // Step 6: Audit log (BR-53)
         createAuditLog(staffId, "SESSION_CREATE", "parking_sessions", session.getId().toString());
 
-        // Step 7: Return response
         return parkingSessionMapper.toVehicleEntryResponse(session, staffId, "Staff-" + staffId);
     }
 
-    /**
-     * Lấy session active của xe
-     */
     @Override
     public ParkingSession getActiveParkingSessionByVehicle(UUID vehicleId) {
         log.info("Getting active session for vehicle: {}", vehicleId);
@@ -212,9 +179,6 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .orElseThrow(() -> new RuntimeException("No active session found for vehicle: " + vehicleId));
     }
 
-    /**
-     * Lấy session theo ID
-     */
     @Override
     public ParkingSession getParkingSessionById(UUID sessionId) {
         log.info("Getting session by ID: {}", sessionId);
@@ -222,18 +186,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .orElseThrow(() -> new RuntimeException("Session not found: " + sessionId));
     }
 
-    /**
-     * Lấy tất cả session active
-     */
     @Override
     public List<ParkingSession> getAllActiveSessions() {
         log.info("Getting all active sessions");
         return parkingSessionRepository.findActiveSessions();
     }
 
-    /**
-     * BR-04: Tìm session quá 24 giờ (overstay)
-     */
     @Override
     public List<ParkingSession> findSessionsOverstay24Hours() {
         log.info("Finding sessions overestaying 24+ hours");
@@ -244,34 +202,118 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Update session when exit (for exit flow)
-     */
     @Override
+    @Transactional // Bắt buộc thêm để đảm bảo lưu đồng thời cả Session và Slot thành công
     public ParkingSession updateSessionOnExit(UUID sessionId, Long staffId) {
         log.info("Updating session on exit: {}", sessionId);
         ParkingSession session = getParkingSessionById(sessionId);
 
+        // 1. Cập nhật thông tin và trạng thái của phiên đỗ xe thành COMPLETED
         session.setStaffExit(createStaffUser(staffId));
         session.setExitTime(LocalDateTime.now());
+        session.setStatus(ParkingSessionStatus.COMPLETED); // Đổi trạng thái kết thúc phiên
+
+        // 2. Cập nhật và giải phóng Slot gửi xe
+        ParkingSlot slot = session.getSlot();
+        if (slot != null) {
+            // Gỡ liên kết session hiện tại ra khỏi slot
+            slot.setCurrentSession(null);
+
+            // LƯU Ý: Nếu trong Entity ParkingSlot của nhóm bạn có trường enum trạng thái
+            // (ví dụ: SlotStatus status hoặc tương tự), hãy bỏ comment dòng dưới và set lại:
+            // slot.setStatus(SlotStatus.AVAILABLE);
+
+            parkingSlotRepository.save(slot); // Lưu trạng thái mới của Slot vào database
+            log.info("Slot {} has been released and is now AVAILABLE", slot.getSlotCode());
+        }
+
+        // 3. Lưu phiên đỗ xe
+        return parkingSessionRepository.save(session);
+    }
+
+    @Override
+    public boolean hasOutstandingFee(UUID vehicleId) {
+        // Lưu ý: Nếu JpaRepository của bạn viết theo tên cũ, hãy cập nhật lại tên hàm trong repo
+        // thành existsByVehicleIdAndFinalFeeIsNotNullAndPaymentStatusNot(vehicleId, PaymentStatus.PAID) nếu cần.
+        return parkingSessionRepository.existsByVehicleIdAndTotalFeeIsNotNullAndIsPaidFalse(vehicleId);
+    }
+
+    @Override
+    @Transactional
+    public Long processPayment(PaymentRequest request, Long staffId) {
+        log.info("Processing payment for session: {}", request.getSessionId());
+
+        ParkingSession session = getParkingSessionById(request.getSessionId());
+
+        // SỬA TẠI ĐÂY: Gán trực tiếp vì getTotalFee() đã là BigDecimal
+        if (session.getFinalFee() == null) {
+            FeeCalculationResponse feeResponse = calculateParkingFee(request.getSessionId());
+            session.setFinalFee(feeResponse.getTotalFee());
+            session.setFee(feeResponse.getTotalFee());
+        }
+
+        // Cập nhật thông tin thanh toán dựa trên các trường có sẵn trong Entity
+        session.setPaymentStatus(PaymentStatus.PAID);
+        session.setExitTime(LocalDateTime.now());
+        session.setStaffExit(createStaffUser(staffId));
+
+        parkingSessionRepository.save(session);
+        log.info("Payment processed: {} - Amount: {}", request.getSessionId(), session.getFinalFee());
+
+        createAuditLog(staffId, "PAYMENT_PROCESS", "parking_sessions", session.getId().toString());
+
+        // Hàm này trả về kiểu Long cho Controller, lấy giá trị long từ BigDecimal
+        return session.getFinalFee() != null ? session.getFinalFee().longValue() : 0L;
+    }
+
+    @Override
+    @Transactional
+    public ParkingSession updatePaymentStatus(UUID sessionId, String paymentStatus) {
+        log.info("Updating payment status for session {}: {}", sessionId, paymentStatus);
+
+        ParkingSession session = getParkingSessionById(sessionId);
+        session.setPaymentStatus(PaymentStatus.valueOf(paymentStatus));
 
         return parkingSessionRepository.save(session);
     }
 
-    // ============ Helper Methods ============
+    @Override
+    @Transactional
+    public FeeCalculationResponse calculateParkingFee(UUID sessionId) {
+        log.info("Calculating parking fee for session: {}", sessionId);
 
-    /**
-     * Create Staff User entity (fetches from DB)
-     */
+        ParkingSession session = getParkingSessionById(sessionId);
+
+        LocalDateTime exitTime = session.getExitTime() != null ? session.getExitTime() : LocalDateTime.now();
+        long minutes = ChronoUnit.MINUTES.between(session.getEntryTime(), exitTime);
+        long hours = (minutes + 59) / 60; // Làm tròn lên theo giờ
+
+        Long hourlyRate = 50000L;
+        Long calculatedAmount = hours * hourlyRate;
+
+        // 1. Lưu tổng tiền vào đúng trường dữ liệu BigDecimal của Entity
+        BigDecimal totalFeeBigDecimal = BigDecimal.valueOf(calculatedAmount);
+        session.setFee(totalFeeBigDecimal);
+        session.setFinalFee(totalFeeBigDecimal.subtract(session.getDiscountAmount()));
+        parkingSessionRepository.save(session);
+
+        log.info("Calculated fee: {} for {} minutes ({} hours)", calculatedAmount, minutes, hours);
+
+        // 2. ĐÃ SỬA: Map đúng các thuộc tính có trong file FeeCalculationResponse DTO
+        return FeeCalculationResponse.builder()
+                .sessionId(sessionId)
+                .durationMinutes(minutes) // Thay vì .hours(hours) không tồn tại
+                .totalFee(session.getFinalFee()) // Truyền trực tiếp kiểu BigDecimal sang BigDecimal
+                .message("Fee calculated successfully for " + hours + " hour(s).")
+                .build();
+    }
+
     private parking_Building_Management_System.entity.user.User createStaffUser(Long staffId) {
         var staff = new parking_Building_Management_System.entity.user.User();
         staff.setUserId(staffId);
         return staff;
     }
 
-    /**
-     * BR-53: Create audit log
-     */
     private void createAuditLog(Long userId, String action, String entityName, String entityId) {
         try {
             AuditLog auditLog = new AuditLog();
@@ -286,8 +328,3 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         }
     }
 }
-
-
-
-
-

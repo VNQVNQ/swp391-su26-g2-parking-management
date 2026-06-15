@@ -7,6 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import parking_Building_Management_System.dto.parkingSession.request.VehicleExitRequest;
+import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
+import parking_Building_Management_System.dto.parkingSession.request.FeeCalculationRequest;
+import parking_Building_Management_System.dto.parkingSession.response.VehicleExitResponse;
+import parking_Building_Management_System.dto.parkingSession.response.FeeCalculationResponse;
+import parking_Building_Management_System.dto.parkingSession.response.PaymentResponse;
 import parking_Building_Management_System.dto.parkingSession.request.VehicleEntryRequest;
 import parking_Building_Management_System.dto.parkingSession.response.AvailableSlotsForEntryResponse;
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
@@ -17,6 +23,7 @@ import parking_Building_Management_System.utils.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -102,8 +109,8 @@ public class ParkingSessionController {
      *
      * POST /api/v1/parking-sessions/entry
      * {
-     *   "licensePlate": "51G-12345",
-     *   "zoneId": "xxx-xxx-xxx"
+     * "licensePlate": "51G-12345",
+     * "zoneId": "xxx-xxx-xxx"
      * }
      */
     @PostMapping("/entry")
@@ -211,6 +218,174 @@ public class ParkingSessionController {
         }
     }
 
+    /**
+     * Step 4: Vehicle exit (Check-out)
+     * BR-32: Update session status to COMPLETED, release slot
+     *
+     * POST /api/v1/parking-sessions/exit
+     * {
+     * "sessionId": "xxx-xxx-xxx"
+     * }
+     */
+    @PostMapping("/exit")
+    public ResponseEntity<ApiResponse<VehicleExitResponse>> updateSessionOnExit(
+            @Valid @RequestBody VehicleExitRequest request,
+            Authentication authentication) {
+
+        log.info("POST /api/v1/parking-sessions/exit - Session: {}", request.getSessionId());
+
+        try {
+            // Extract staff ID from authentication
+            Long staffId = extractStaffIdFromAuth(authentication);
+
+            var session = parkingSessionService.updateSessionOnExit(request.getSessionId(), staffId);
+
+            VehicleExitResponse response = VehicleExitResponse.builder()
+                    .sessionId(session.getId())
+                    .exitTime(session.getExitTime())
+                    .message("Vehicle check-out successful and slot released")
+                    .build();
+
+            ApiResponse<VehicleExitResponse> apiResponse = ApiResponseFactory.success(
+                    response,
+                    "Vehicle check-out successful"
+            );
+
+            return ResponseEntity.ok(apiResponse);
+        } catch (RuntimeException e) {
+            log.error("Error processing vehicle exit: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<VehicleExitResponse>) (Object) ApiResponseFactory.badRequest(e.getMessage()));
+        }
+    }
+
+    /**
+     * Calculate parking fee
+     * BR-24: Calculate fee based on duration
+     *
+     * POST /api/v1/parking-sessions/calculate-fee
+     * {
+     * "sessionId": "xxx-xxx-xxx"
+     * }
+     */
+    @PostMapping("/calculate-fee")
+    public ResponseEntity<ApiResponse<FeeCalculationResponse>> calculateParkingFee(
+            @Valid @RequestBody FeeCalculationRequest request) {
+
+        log.info("POST /api/v1/parking-sessions/calculate-fee - Session: {}", request.getSessionId());
+
+        try {
+            FeeCalculationResponse response = parkingSessionService.calculateParkingFee(request.getSessionId());
+
+            ApiResponse<FeeCalculationResponse> apiResponse = ApiResponseFactory.success(
+                    response,
+                    "Fee calculated successfully"
+            );
+
+            return ResponseEntity.ok(apiResponse);
+        } catch (RuntimeException e) {
+            log.error("Error calculating parking fee: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<FeeCalculationResponse>) (Object) ApiResponseFactory.badRequest(e.getMessage()));
+        }
+    }
+
+    /**
+     * Process payment for parking session
+     * BR-33: Update payment status after successful payment
+     *
+     * POST /api/v1/parking-sessions/payment
+     * {
+     * "sessionId": "xxx-xxx-xxx",
+     * "amount": 50000
+     * }
+     */
+    @PostMapping("/payment")
+    public ResponseEntity<ApiResponse<PaymentResponse>> processPayment(
+            @Valid @RequestBody PaymentRequest request,
+            Authentication authentication) {
+
+        log.info("POST /api/v1/parking-sessions/payment - Session: {}", request.getSessionId());
+
+        try {
+            Long staffId = extractStaffIdFromAuth(authentication);
+            Long totalFee = parkingSessionService.processPayment(request, staffId);
+
+            PaymentResponse response = PaymentResponse.builder()
+                    .sessionId(request.getSessionId())
+                    .amount(BigDecimal.valueOf(totalFee))
+                    .paymentStatus("PAID")
+                    .message("Payment processed successfully")
+                    .build();
+
+            ApiResponse<PaymentResponse> apiResponse = ApiResponseFactory.success(
+                    response,
+                    "Payment processed successfully"
+            );
+
+            return ResponseEntity.ok(apiResponse);
+        } catch (RuntimeException e) {
+            log.error("Error processing payment: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body((ApiResponse<PaymentResponse>) (Object) ApiResponseFactory.badRequest(e.getMessage()));
+        }
+    }
+
+    /**
+     * Update payment status for session
+     * PUT /api/v1/parking-sessions/{sessionId}/payment-status
+     * {
+     * "paymentStatus": "PAID"
+     * }
+     */
+    @PutMapping("/{sessionId}/payment-status")
+    public ResponseEntity<ApiResponse<?>> updatePaymentStatus(
+            @PathVariable UUID sessionId,
+            @RequestParam @NotBlank(message = "Payment status is required") String paymentStatus) {
+
+        log.info("PUT /api/v1/parking-sessions/{}/payment-status - Status: {}", sessionId, paymentStatus);
+
+        try {
+            var session = parkingSessionService.updatePaymentStatus(sessionId, paymentStatus);
+
+            ApiResponse<?> apiResponse = ApiResponseFactory.success(
+                    session,
+                    "Payment status updated successfully"
+            );
+
+            return ResponseEntity.ok(apiResponse);
+        } catch (RuntimeException e) {
+            log.error("Error updating payment status: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponseFactory.badRequest(e.getMessage()));
+        }
+    }
+
+    /**
+     * Find sessions with overstay > 24 hours
+     * GET /api/v1/parking-sessions/overstay/24h
+     */
+    @GetMapping("/overstay/24h")
+    public ResponseEntity<ApiResponse<List<?>>> findSessionsOverstay24Hours() {
+
+        log.info("GET /api/v1/parking-sessions/overstay/24h - Getting overstay sessions");
+
+        try {
+            var sessions = parkingSessionService.findSessionsOverstay24Hours();
+
+            ApiResponse<List<?>> apiResponse = ApiResponseFactory.success(
+                    sessions,
+                    "Found " + sessions.size() + " overstay sessions"
+            );
+
+            return ResponseEntity.ok(apiResponse);
+        } catch (Exception e) {
+            log.error("Error finding overstay sessions: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body((ApiResponse<List<?>>) (Object) ApiResponseFactory.internalServerError(e.getMessage()));
+        }
+    }
+
     // ============ Helper Methods ============
 
     /**
@@ -222,8 +397,6 @@ public class ParkingSessionController {
             throw new RuntimeException("User is not authenticated - Staff ID required");
         }
 
-        // Extract from JWT or principal
-        // This is a placeholder - adjust based on your security implementation
         try {
             return Long.parseLong(authentication.getName());
         } catch (Exception e) {
@@ -231,4 +404,3 @@ public class ParkingSessionController {
         }
     }
 }
-

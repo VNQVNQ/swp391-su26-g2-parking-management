@@ -5,6 +5,8 @@ import parking_Building_Management_System.dto.parkingSession.response.AvailableS
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
 import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
 import parking_Building_Management_System.entity.ParkingSession;
+import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
+import parking_Building_Management_System.dto.parkingSession.response.FeeCalculationResponse;
 import java.util.List;
 import java.util.UUID;
 
@@ -60,5 +62,28 @@ public interface ParkingSessionService {
      * Cập nhật session khi exit (dành cho exit flow)
      */
     ParkingSession updateSessionOnExit(UUID sessionId, Long staffId);
-}
 
+    /**
+     * Kiểm tra xe có nợ phí hay không
+     */
+    boolean hasOutstandingFee(UUID vehicleId);
+
+    /**
+     * BR-33: Xử lý thanh toán
+     * Cập nhật payment status, tạo payment record
+     */
+    Long processPayment(PaymentRequest request, Long staffId);
+
+    /**
+     * Cập nhật payment status của session
+     */
+    ParkingSession updatePaymentStatus(UUID sessionId, String paymentStatus);
+
+    /**
+     * BR-24: Tính phí khi xe exit
+     * Lấy rule giá từ DB dựa trên vehicle type, ticket type, ngày
+     * Áp dụng peak hour, overstay multiplier, daily max fee
+     */
+    FeeCalculationResponse calculateParkingFee(UUID sessionId);
+
+}
