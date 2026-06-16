@@ -1,5 +1,6 @@
 package parking_Building_Management_System.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "parking_slots", schema = "public", indexes = {
     @Index(name = "idx_slot_code", columnList = "slot_code", unique = true),
     @Index(name = "idx_slots_zone_id", columnList = "zone_id"),
@@ -49,7 +51,8 @@ public class ParkingSlot {
     @Column(name = "maintenance_status", nullable = false)
     @Enumerated(EnumType.STRING)
     SlotMaintenanceStatus maintenanceStatus;
-
+	
+    @JsonIgnoreProperties({"slot", "currentSession", "hibernateLazyInitializer", "handler"})
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_session_id", referencedColumnName = "id")
     ParkingSession currentSession;

@@ -1,5 +1,6 @@
 package parking_Building_Management_System.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -42,6 +43,7 @@ public class ParkingSession {
     @JoinColumn(name = "vehicle_id", nullable = false)
     Vehicle vehicle;
 
+    @JsonIgnoreProperties({"currentSession", "hibernateLazyInitializer", "handler"})
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "slot_id", nullable = false)
     ParkingSlot slot;
@@ -112,6 +114,9 @@ public class ParkingSession {
         }
         if (discountAmount == null) {
             discountAmount = BigDecimal.ZERO;
+        }
+        if (ticketType == null) {
+            ticketType = TicketType.HOURLY;
         }
     }
 

@@ -47,7 +47,7 @@ services:
       DB_PASSWORD: postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: docker_secret_key_12345
+      JWT_SECRET: parkingbms2026secretkey12345678901234567890abcd
     ports:
       - "8080:8080"
     depends_on:

@@ -113,42 +113,42 @@ INSERT INTO zones (floor_id, name, vehicle_type, total_slots, is_active)
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu A - Xe máy',
-    'MOTORBIKE',
+    'MOTORBIKE'::vehicle_type_enum,
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu B - Xe máy',
-    'MOTORBIKE',
+    'MOTORBIKE'::vehicle_type_enum,
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu C - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu D - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu E - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     40,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu F - Xe tải',
-    'TRUCK',
+    'TRUCK'::vehicle_type_enum,
     20,
     true;
 
@@ -163,8 +163,8 @@ SELECT
     'A1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu A - Xe máy'),
-    'MOTORBIKE',
-    CASE WHEN counter = 5 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
+    'MOTORBIKE'::vehicle_type_enum,
+    CASE WHEN counter = 5 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -177,8 +177,8 @@ SELECT
     'B1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu B - Xe máy'),
-    'MOTORBIKE',
-    CASE WHEN counter = 25 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
+    'MOTORBIKE'::vehicle_type_enum,
+    CASE WHEN counter = 25 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -191,8 +191,8 @@ SELECT
     'C1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = 1),
     (SELECT id FROM zones WHERE name = 'Khu C - Xe ô tô'),
-    'CAR',
-    'AVAILABLE',
+    'CAR'::vehicle_type_enum,
+    'AVAILABLE'::slot_maintenance_enum,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -205,8 +205,8 @@ SELECT
     'D1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = 1),
     (SELECT id FROM zones WHERE name = 'Khu D - Xe ô tô'),
-    'CAR',
-    'AVAILABLE',
+    'CAR'::vehicle_type_enum,
+    'AVAILABLE'::slot_maintenance_enum,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -219,8 +219,8 @@ SELECT
     'E2-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = 2),
     (SELECT id FROM zones WHERE name = 'Khu E - Xe ô tô'),
-    'CAR',
-    'AVAILABLE',
+    'CAR'::vehicle_type_enum,
+    'AVAILABLE'::slot_maintenance_enum,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -233,8 +233,8 @@ SELECT
     'F2-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = 2),
     (SELECT id FROM zones WHERE name = 'Khu F - Xe tải'),
-    'TRUCK',
-    'AVAILABLE',
+    'TRUCK'::vehicle_type_enum,
+    'AVAILABLE'::slot_maintenance_enum,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -247,19 +247,19 @@ FROM generate_series(1, 20) AS g(counter);
 INSERT INTO vehicles (id, user_id, license_plate, vehicle_type, has_monthly_pass, monthly_pass_expiry, is_active)
 VALUES
 -- Motors
-(gen_random_uuid(), NULL, '59A1-20001', 'MOTORBIKE', false, NULL, true),
-(gen_random_uuid(), NULL, '59A1-20002', 'MOTORBIKE', false, NULL, true),
-(gen_random_uuid(), NULL, '59A1-20003', 'MOTORBIKE', true, CURRENT_DATE + INTERVAL '30 days', true),
+(gen_random_uuid(), NULL, '59A1-20001', 'MOTORBIKE'::vehicle_type_enum, false, NULL, true),
+(gen_random_uuid(), NULL, '59A1-20002', 'MOTORBIKE'::vehicle_type_enum, false, NULL, true),
+(gen_random_uuid(), NULL, '59A1-20003', 'MOTORBIKE'::vehicle_type_enum, true, CURRENT_DATE + INTERVAL '30 days', true),
 
 -- Cars
-(gen_random_uuid(), NULL, '51A-12345', 'CAR', false, NULL, true),
-(gen_random_uuid(), NULL, '51A-12346', 'CAR', false, NULL, true),
-(gen_random_uuid(), NULL, '51A-12347', 'CAR', true, CURRENT_DATE + INTERVAL '15 days', true),
-(gen_random_uuid(), NULL, '51A-12348', 'CAR', false, NULL, true),
+(gen_random_uuid(), NULL, '51A-12345', 'CAR'::vehicle_type_enum, false, NULL, true),
+(gen_random_uuid(), NULL, '51A-12346', 'CAR'::vehicle_type_enum, false, NULL, true),
+(gen_random_uuid(), NULL, '51A-12347', 'CAR'::vehicle_type_enum, true, CURRENT_DATE + INTERVAL '15 days', true),
+(gen_random_uuid(), NULL, '51A-12348', 'CAR'::vehicle_type_enum, false, NULL, true),
 
 -- Trucks
-(gen_random_uuid(), NULL, '51A-99001', 'TRUCK', false, NULL, true),
-(gen_random_uuid(), NULL, '51A-99002', 'TRUCK', true, CURRENT_DATE + INTERVAL '45 days', true);
+(gen_random_uuid(), NULL, '51A-99001', 'TRUCK'::vehicle_type_enum, false, NULL, true),
+(gen_random_uuid(), NULL, '51A-99002', 'TRUCK'::vehicle_type_enum, true, CURRENT_DATE + INTERVAL '45 days', true);
 
 -- ============================================================
 -- 6. SEED PRICING RULES
@@ -271,19 +271,19 @@ VALUES
 -- Motorbike pricing
 INSERT INTO pricing_rules (zone_id, name, vehicle_type, ticket_type, rate_per_hour, minimum_fee, maximum_daily_fee, overstay_rate_multiplier, peak_hour_start, peak_hour_end, peak_hour_multiplier, effective_from, effective_to, is_active, created_by)
 VALUES
-(NULL, 'Giá xe máy - Vé theo giờ', 'MOTORBIKE', 'HOURLY', 5000, 5000, 50000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe máy - Vé theo ngày', 'MOTORBIKE', 'DAILY', 4000, 20000, 30000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE', 'MONTHLY', 0, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé theo giờ', 'MOTORBIKE'::vehicle_type_enum, 'HOURLY'::ticket_type_enum, 5000, 5000, 50000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé theo ngày', 'MOTORBIKE'::vehicle_type_enum, 'DAILY'::ticket_type_enum, 4000, 20000, 30000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE'::vehicle_type_enum, 'MONTHLY'::ticket_type_enum, NULL, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 
 -- Car pricing
-(NULL, 'Giá xe ô tô - Vé theo giờ', 'CAR', 'HOURLY', 10000, 15000, 150000, 2.5, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe ô tô - Vé theo ngày', 'CAR', 'DAILY', 8000, 50000, 100000, 2.5, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe ô tô - Vé tháng', 'CAR', 'MONTHLY', 0, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé theo giờ', 'CAR'::vehicle_type_enum, 'HOURLY'::ticket_type_enum, 10000, 15000, 150000, 2.5, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé theo ngày', 'CAR'::vehicle_type_enum, 'DAILY'::ticket_type_enum, 8000, 50000, 100000, 2.5, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé tháng', 'CAR'::vehicle_type_enum, 'MONTHLY'::ticket_type_enum, NULL, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 
 -- Truck pricing
-(NULL, 'Giá xe tải - Vé theo giờ', 'TRUCK', 'HOURLY', 20000, 30000, 250000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe tải - Vé theo ngày', 'TRUCK', 'DAILY', 15000, 80000, 200000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe tải - Vé tháng', 'TRUCK', 'MONTHLY', 0, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1));
+(NULL, 'Giá xe tải - Vé theo giờ', 'TRUCK'::vehicle_type_enum, 'HOURLY'::ticket_type_enum, 20000, 30000, 250000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe tải - Vé theo ngày', 'TRUCK'::vehicle_type_enum, 'DAILY'::ticket_type_enum, 15000, 80000, 200000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe tải - Vé tháng', 'TRUCK'::vehicle_type_enum, 'MONTHLY'::ticket_type_enum, NULL, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1));
 
 -- ============================================================
 -- 7. SEED MONTHLY PASSES
@@ -296,16 +296,16 @@ SELECT DISTINCT ON (v.id)
     CURRENT_DATE,
     CURRENT_DATE + INTERVAL '30 days',
     CASE
-        WHEN v.vehicle_type = 'MOTORBIKE' THEN 200000
-        WHEN v.vehicle_type = 'CAR' THEN 500000
-        WHEN v.vehicle_type = 'TRUCK' THEN 1000000
+        WHEN v.vehicle_type = 'MOTORBIKE'::vehicle_type_enum THEN 200000
+        WHEN v.vehicle_type = 'CAR'::vehicle_type_enum THEN 500000
+        WHEN v.vehicle_type = 'TRUCK'::vehicle_type_enum THEN 1000000
     END,
-    'PAID',
+    'PAID'::payment_status_enum,
     true
 FROM vehicles v
 CROSS JOIN parking_slots ps
 WHERE v.has_monthly_pass = true
-  AND ps.maintenance_status = 'AVAILABLE'
+  AND ps.maintenance_status = 'AVAILABLE'::slot_maintenance_enum
   AND ps.vehicle_type = v.vehicle_type;
 
 -- ============================================================
@@ -321,9 +321,9 @@ SELECT
     CURRENT_TIMESTAMP + INTERVAL '1 day',
     CURRENT_TIMESTAMP + INTERVAL '1 day 2 hours',
     CURRENT_TIMESTAMP + INTERVAL '1 day 30 minutes',
-    'PENDING'
+    'PENDING'::booking_status_enum
 FROM (SELECT id FROM vehicles ORDER BY RANDOM() LIMIT 5) v
-CROSS JOIN (SELECT id FROM parking_slots WHERE maintenance_status = 'AVAILABLE' ORDER BY RANDOM() LIMIT 5) ps
+CROSS JOIN (SELECT id FROM parking_slots WHERE maintenance_status = 'AVAILABLE'::slot_maintenance_enum ORDER BY RANDOM() LIMIT 5) ps
 LIMIT 5;
 
 -- ============================================================
@@ -337,25 +337,25 @@ SELECT DISTINCT ON (v.id, ps.id)
     ps.id,
     (SELECT user_id FROM users WHERE email = 'staff01@parking.com'),
     (SELECT user_id FROM users WHERE email = 'staff02@parking.com'),
-    (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY' LIMIT 1),
+    (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY'::ticket_type_enum LIMIT 1),
     (CURRENT_TIMESTAMP - INTERVAL '3 hours'),
     (CURRENT_TIMESTAMP - INTERVAL '2 hours'),
-    CASE WHEN v.vehicle_type = 'MOTORBIKE' THEN 10000
-         WHEN v.vehicle_type = 'CAR' THEN 20000
+    CASE WHEN v.vehicle_type = 'MOTORBIKE'::vehicle_type_enum THEN 10000
+         WHEN v.vehicle_type = 'CAR'::vehicle_type_enum THEN 20000
          ELSE 40000 END,
     0,
-    CASE WHEN v.vehicle_type = 'MOTORBIKE' THEN 10000
-         WHEN v.vehicle_type = 'CAR' THEN 20000
+    CASE WHEN v.vehicle_type = 'MOTORBIKE'::vehicle_type_enum THEN 10000
+         WHEN v.vehicle_type = 'CAR'::vehicle_type_enum THEN 20000
          ELSE 40000 END,
-    'PAID',
-    'COMPLETED',
-    'HOURLY',
+    'PAID'::payment_status_enum,
+    'COMPLETED'::session_status_enum,
+    'HOURLY'::ticket_type_enum,
     true,
     false
 FROM (
     SELECT id, vehicle_type FROM vehicles ORDER BY RANDOM() LIMIT 3
 ) v
-CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status = 'AVAILABLE' ORDER BY RANDOM() LIMIT 1) ps
+CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status = 'AVAILABLE'::slot_maintenance_enum ORDER BY RANDOM() LIMIT 1) ps
 WHERE ps.vehicle_type = v.vehicle_type;
 
 -- Active sessions (currently parked)
@@ -364,20 +364,20 @@ SELECT DISTINCT ON (v.id, ps.id)
     v.id,
     ps.id,
     (SELECT user_id FROM users WHERE email = 'staff03@parking.com'),
-    (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY' LIMIT 1),
+    (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY'::ticket_type_enum LIMIT 1),
     (CURRENT_TIMESTAMP - INTERVAL '45 minutes'),
     NULL,
     0,
     NULL,
-    'UNPAID',
-    'ACTIVE',
-    'HOURLY',
+    'UNPAID'::payment_status_enum,
+    'ACTIVE'::session_status_enum,
+    'HOURLY'::ticket_type_enum,
     false,
     false
 FROM (
     SELECT id, vehicle_type FROM vehicles ORDER BY RANDOM() LIMIT 2 OFFSET 3
 ) v
-CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status = 'AVAILABLE' ORDER BY RANDOM() LIMIT 1) ps
+CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status = 'AVAILABLE'::slot_maintenance_enum ORDER BY RANDOM() LIMIT 1) ps
 WHERE ps.vehicle_type = v.vehicle_type;
 
 -- ============================================================
@@ -389,12 +389,12 @@ SELECT
     ps.id,
     COALESCE(ps.final_fee, ps.fee, 0),
     CASE WHEN RANDOM() > 0.5 THEN 'CASH' ELSE 'INTERNAL_TRANSFER' END,
-    'PAID',
+    'PAID'::payment_status_enum,
     'REF-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 6)),
     CURRENT_TIMESTAMP,
     (SELECT user_id FROM users WHERE email = 'staff04@parking.com')
 FROM parking_sessions ps
-WHERE ps.status = 'COMPLETED' AND ps.payment_status = 'PAID'
+WHERE ps.status = 'COMPLETED'::session_status_enum AND ps.payment_status = 'PAID'::payment_status_enum
 AND NOT EXISTS (SELECT 1 FROM payments WHERE session_id = ps.id);
 
 -- ============================================================
@@ -404,12 +404,12 @@ AND NOT EXISTS (SELECT 1 FROM payments WHERE session_id = ps.id);
 INSERT INTO exceptions (session_id, exception_type, status, reason, created_by)
 SELECT
     ps.id,
-    'OVERSTAY',
-    'PENDING',
+    'OVERSTAY'::exception_type_enum,
+    'PENDING'::exception_status_enum,
     'Xe đỗ quá thời gian cho phép, vượt quá 24 giờ',
     (SELECT user_id FROM users WHERE email = 'staff01@parking.com')
 FROM parking_sessions ps
-WHERE ps.status = 'ACTIVE'
+WHERE ps.status = 'ACTIVE'::session_status_enum
 AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ps.entry_time)) / 3600) > 24
 AND NOT EXISTS (SELECT 1 FROM exceptions WHERE session_id = ps.id)
 LIMIT 2;
@@ -421,25 +421,25 @@ LIMIT 2;
 INSERT INTO notifications (recipient_id, type, reference_id, message, is_read)
 SELECT
     (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
-    'OVERSTAY_ALERT',
+    'OVERSTAY_ALERT'::notification_type_enum,
     ps.id,
     'Cảnh báo: Xe ' || v.license_plate || ' đang đỗ quá 24 giờ tại slot ' || slots.slot_code,
     false
 FROM parking_sessions ps
 JOIN vehicles v ON ps.vehicle_id = v.id
 JOIN parking_slots slots ON ps.slot_id = slots.id
-WHERE ps.status = 'ACTIVE'
+WHERE ps.status = 'ACTIVE'::session_status_enum
 AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ps.entry_time)) / 3600) > 24
 LIMIT 2;
 
 INSERT INTO notifications (recipient_id, type, message, is_read)
 SELECT
     (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
-    'EXCEPTION_PENDING',
+    'EXCEPTION_PENDING'::notification_type_enum,
     'Có ' || COUNT(*) || ' exception đang chờ duyệt',
     false
 FROM exceptions
-WHERE status = 'PENDING'
+WHERE status = 'PENDING'::exception_status_enum
 GROUP BY 1
 HAVING COUNT(*) > 0;
 
@@ -451,17 +451,17 @@ INSERT INTO reports (generated_by, report_type, period_from, period_to, total_ve
 VALUES
 (
     (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
-    'REVENUE',
+    'REVENUE'::report_type_enum,
     CURRENT_DATE - INTERVAL '7 days',
     CURRENT_DATE,
     45,
-    (SELECT SUM(COALESCE(final_fee, fee, 0)) FROM parking_sessions WHERE status = 'COMPLETED'),
+    (SELECT SUM(COALESCE(final_fee, fee, 0)) FROM parking_sessions WHERE status = 'COMPLETED'::session_status_enum),
     65.5,
     CURRENT_TIMESTAMP
 ),
 (
     (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
-    'UTILIZATION',
+    'UTILIZATION'::report_type_enum,
     CURRENT_DATE - INTERVAL '30 days',
     CURRENT_DATE,
     NULL,
@@ -496,15 +496,15 @@ SELECT
     'SESSION_EXIT',
     'parking_sessions',
     ps.id::text,
-    jsonb_build_object('status', 'ACTIVE'),
+    jsonb_build_object('status', 'ACTIVE'::session_status_enum),
     jsonb_build_object(
-        'status', 'COMPLETED',
+        'status', 'COMPLETED'::session_status_enum,
         'exit_time', ps.exit_time::text,
         'fee', ps.fee::text
     ),
     '192.168.1.101'
 FROM parking_sessions ps
-WHERE ps.status = 'COMPLETED' AND ps.exit_time IS NOT NULL
+WHERE ps.status = 'COMPLETED'::session_status_enum AND ps.exit_time IS NOT NULL
 LIMIT 5;
 
 -- ============================================================
