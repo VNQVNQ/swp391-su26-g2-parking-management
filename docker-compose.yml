@@ -1,6 +1,8 @@
 version: '3.8'
 
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: parking_postgres
@@ -8,46 +10,40 @@ services:
       POSTGRES_DB: parking_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - parking_network
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - parking_network
 
+  # ── Redis ───────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: parking_redis
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - parking_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - parking_network
 
-  app:
+  # ── Backend (Spring Boot) ───────────────────────────────────────────
+  backend:
     build:
       context: ./BE/parking-system
       dockerfile: Dockerfile
-    container_name: parking_app
+    container_name: parking_backend
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      DATABASE_URL: jdbc:postgresql://postgres:5432/parking_db
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: parkingbms2026secretkey12345678901234567890abcd
     ports:
       - "8080:8080"
     depends_on:
@@ -57,12 +53,25 @@ services:
         condition: service_healthy
     networks:
       - parking_network
+    restart: on-failure
+
+  # ── Frontend (React + Nginx) ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./FE/smart-parking-fe
+      dockerfile: Dockerfile
+    container_name: parking_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - parking_network
+    restart: on-failure
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
   parking_network:
     driver: bridge
-
