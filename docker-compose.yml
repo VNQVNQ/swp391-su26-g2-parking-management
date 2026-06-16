@@ -44,6 +44,12 @@ services:
     container_name: parking_backend
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: parkingbms2026secretkey12345678901234567890abcd
+      DB_PASSWORD: postgres
+      DB_USERNAME: postgres
+      DATABASE_URL: jdbc:postgresql://postgres:5432/parking_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8080:8080"
     depends_on:
