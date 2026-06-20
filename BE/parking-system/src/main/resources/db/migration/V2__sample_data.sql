@@ -10,6 +10,11 @@
 
 -- Admin user (password hashed: 123456 using bcrypt)
 -- Real hash: $2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm
+
+
+
+
+
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES (
     (SELECT role_id FROM roles WHERE role_code = 'ADMIN'),
@@ -113,42 +118,42 @@ INSERT INTO zones (floor_id, name, vehicle_type, total_slots, is_active)
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu A - Xe máy',
-    'MOTORBIKE',
+    'MOTORBIKE'::vehicle_type_enum,
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu B - Xe máy',
-    'MOTORBIKE',
+    'MOTORBIKE'::vehicle_type_enum,
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu C - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu D - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu E - Xe ô tô',
-    'CAR',
+    'CAR'::vehicle_type_enum,
     40,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu F - Xe tải',
-    'TRUCK',
+    'TRUCK'::vehicle_type_enum,
     20,
     true;
 
@@ -163,8 +168,8 @@ SELECT
     'A1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu A - Xe máy'),
-    'MOTORBIKE',
-    CASE WHEN counter = 5 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
+    'MOTORBIKE'::vehicle_type_enum,
+    CASE WHEN counter = 5 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -177,8 +182,8 @@ SELECT
     'B1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu B - Xe máy'),
-    'MOTORBIKE',
-    CASE WHEN counter = 25 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
+    'MOTORBIKE'::vehicle_type_enum,
+    CASE WHEN counter = 25 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -273,17 +278,17 @@ INSERT INTO pricing_rules (zone_id, name, vehicle_type, ticket_type, rate_per_ho
 VALUES
 (NULL, 'Giá xe máy - Vé theo giờ', 'MOTORBIKE', 'HOURLY', 5000, 5000, 50000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 (NULL, 'Giá xe máy - Vé theo ngày', 'MOTORBIKE', 'DAILY', 4000, 20000, 30000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE', 'MONTHLY', 0, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE', 'MONTHLY', 2000, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 
 -- Car pricing
 (NULL, 'Giá xe ô tô - Vé theo giờ', 'CAR', 'HOURLY', 10000, 15000, 150000, 2.5, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 (NULL, 'Giá xe ô tô - Vé theo ngày', 'CAR', 'DAILY', 8000, 50000, 100000, 2.5, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe ô tô - Vé tháng', 'CAR', 'MONTHLY', 0, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé tháng', 'CAR', 'MONTHLY', 5000, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 
 -- Truck pricing
 (NULL, 'Giá xe tải - Vé theo giờ', 'TRUCK', 'HOURLY', 20000, 30000, 250000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
 (NULL, 'Giá xe tải - Vé theo ngày', 'TRUCK', 'DAILY', 15000, 80000, 200000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe tải - Vé tháng', 'TRUCK', 'MONTHLY', 0, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1));
+(NULL, 'Giá xe tải - Vé tháng', 'TRUCK', 'MONTHLY', 10000, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1));
 
 -- ============================================================
 -- 7. SEED MONTHLY PASSES

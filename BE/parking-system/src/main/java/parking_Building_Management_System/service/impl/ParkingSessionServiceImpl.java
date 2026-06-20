@@ -203,7 +203,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     }
 
     @Override
-    @Transactional // Bắt buộc thêm để đảm bảo lưu đồng thời cả Session và Slot thành công
+    @Transactional
     public ParkingSession updateSessionOnExit(UUID sessionId, Long staffId) {
         log.info("Updating session on exit: {}", sessionId);
         ParkingSession session = getParkingSessionById(sessionId);
@@ -245,14 +245,14 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         ParkingSession session = getParkingSessionById(request.getSessionId());
 
-        // SỬA TẠI ĐÂY: Gán trực tiếp vì getTotalFee() đã là BigDecimal
+
         if (session.getFinalFee() == null) {
             FeeCalculationResponse feeResponse = calculateParkingFee(request.getSessionId());
             session.setFinalFee(feeResponse.getTotalFee());
             session.setFee(feeResponse.getTotalFee());
         }
 
-        // Cập nhật thông tin thanh toán dựa trên các trường có sẵn trong Entity
+
         session.setPaymentStatus(PaymentStatus.PAID);
         session.setExitTime(LocalDateTime.now());
         session.setStaffExit(createStaffUser(staffId));

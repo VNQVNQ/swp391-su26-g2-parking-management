@@ -1,5 +1,6 @@
 package parking_Building_Management_System.service.user;
 
+import parking_Building_Management_System.dto.user.request.AdminCreateUserRequest;
 import parking_Building_Management_System.dto.user.request.ResetPasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserChangePasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserRequest;
@@ -38,80 +39,153 @@ public class UserService {
     final EmailService emailService;
     final AuditLogService auditLogService;
 
+    // Role mặc định cho mọi user tự đăng ký trên web (không cho phép tự chọn role)
+    private static final String DEFAULT_SELF_REGISTER_ROLE = "DRIVER";
+    private static final String ADMIN_ROLE_CODE = "ADMIN";
+
     @Transactional
     public void updateLastActive(Long userId) {
-        // ĐÃ SỬA: new Date() thành LocalDateTime.now()
         userRepository.updateLastActive(userId, LocalDateTime.now());
     }
 
     public User getUserByToken(String token) {
         String email = jwtService.extractAllClaims(token).getSubject();
-        // ĐÃ SỬA: Thêm .orElseThrow() vì findByEmail trả về Optional
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
+    /**
+     * Luồng đăng ký công khai (web tự đăng ký).
+     * Role LUÔN bị ép cứng về DRIVER, user không có quyền tự chọn role ở đây.
+     */
     public User createUser(UserRequest userRequest) {
-        User newUser = new User();
-
-        Role roleUser = roleRepository.findRoleByRoleCode("DRIVER");
+        Role roleUser = roleRepository.findRoleByRoleCode(DEFAULT_SELF_REGISTER_ROLE);
         System.out.println("Role hệ thống tự gán mặc định nè: " + roleUser);
 
         if (roleUser == null) {
             throw new NoSuchElementException("Mã quyền 'DRIVER' không tồn tại trong hệ thống. Vui lòng kiểm tra lại SQL!");
         }
-
         if (!roleUser.isActive()) {
             throw new NoSuchElementException("Role code 'DRIVER' is not active");
         }
 
-        if (userRequest.getDateOfBirth() != null) {
+        User newUser = buildBaseUser(
+                userRequest.getEmail(),
+                userRequest.getPassword(),
+                userRequest.getFullName(),
+                userRequest.getPhoneNumber(),
+                userRequest.getIdentifyNumber(),
+                userRequest.getGender(),
+                userRequest.getAddress(),
+                userRequest.getDateOfBirth(),
+                roleUser
+        );
+
+        userRepository.save(newUser);
+
+        try {
+            auditLogService.createAuditLog(newUser, "USER_SELF_REGISTER", LocalDateTime.now());
+        } catch (Exception e) {
+            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
+        }
+
+        return newUser;
+    }
+
+    /**
+     * Luồng admin tạo tài khoản cho người dùng khác.
+     * Khác biệt duy nhất so với createUser(): admin được phép chỉ định roleCode
+     * (DRIVER / STAFF / ADMIN / ...) thay vì bị ép cứng về DRIVER.
+     *
+     * @param userRequest thông tin tài khoản cần tạo, kèm roleCode do admin chọn
+     * @param token       token của admin đang thực hiện thao tác (để xác thực quyền + ghi audit log)
+     */
+    public User createUserByAdmin(AdminCreateUserRequest userRequest, String token) {
+        User adminActor = getUserByToken(token);
+
+        if (adminActor.getRole() == null || !ADMIN_ROLE_CODE.equalsIgnoreCase(adminActor.getRole().getRoleCode())) {
+            throw new SecurityException("Chỉ tài khoản có role ADMIN mới được phép tạo user với role tùy chỉnh");
+        }
+
+        if (userRequest.getRoleCode() == null || userRequest.getRoleCode().isBlank()) {
+            throw new IllegalArgumentException("roleCode is required when admin creates a user");
+        }
+
+        Role role = roleRepository.findRoleByRoleCode(userRequest.getRoleCode());
+        if (role == null) {
+            throw new NoSuchElementException("Mã quyền '" + userRequest.getRoleCode() + "' không tồn tại trong hệ thống");
+        }
+        if (!role.isActive()) {
+            throw new NoSuchElementException("Role code '" + userRequest.getRoleCode() + "' is not active");
+        }
+
+        User newUser = buildBaseUser(
+                userRequest.getEmail(),
+                userRequest.getPassword(),
+                userRequest.getFullName(),
+                userRequest.getPhoneNumber(),
+                userRequest.getIdentifyNumber(),
+                userRequest.getGender(),
+                userRequest.getAddress(),
+                userRequest.getDateOfBirth(),
+                role
+        );
+
+        userRepository.save(newUser);
+
+        try {
+            String logDetails = String.format(
+                    "{\"createdEmail\":\"%s\",\"role\":\"%s\",\"createdByAdminId\":%d}",
+                    newUser.getEmail(),
+                    role.getRoleCode(),
+                    adminActor.getUserId()
+            );
+            auditLogService.createAuditLog(adminActor, "ADMIN_CREATE_USER:" + logDetails, LocalDateTime.now());
+        } catch (Exception e) {
+            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
+        }
+
+        return newUser;
+    }
+
+    /**
+     * Logic dùng chung giữa createUser() và createUserByAdmin():
+     * tính tuổi, convert Date -> LocalDate, hash password, set các field cơ bản.
+     * Điểm khác biệt giữa 2 luồng chỉ nằm ở việc role được truyền vào từ đâu.
+     */
+    private User buildBaseUser(String email, String rawPassword, String fullName, String phoneNumber,
+                               String identifyNumber, String gender, String address,
+                               Date dateOfBirth, Role role) {
+        User newUser = new User();
+
+        if (dateOfBirth != null) {
             Calendar birth = Calendar.getInstance();
-            birth.setTime(userRequest.getDateOfBirth());
+            birth.setTime(dateOfBirth);
             Calendar today = Calendar.getInstance();
 
             int calculatedAge = today.get(Calendar.YEAR) - birth.get(Calendar.YEAR);
-
             if (today.get(Calendar.DAY_OF_YEAR) < birth.get(Calendar.DAY_OF_YEAR)) {
                 calculatedAge--;
             }
             newUser.setAge(calculatedAge);
-
-            // ĐÃ SỬA: Ép kiểu Date (từ Request) sang LocalDate (cho Entity)
-            LocalDate dob = userRequest.getDateOfBirth().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            newUser.setDateOfBirth(dob);
+            newUser.setDateOfBirth(dateOfBirth.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
         } else {
             newUser.setAge(0);
         }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
-        newUser.setAddress(userRequest.getAddress());
-        newUser.setGender(userRequest.getGender());
-        newUser.setEmail(userRequest.getEmail());
-        newUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
-        newUser.setFullName(userRequest.getFullName());
-        newUser.setPhoneNumber(userRequest.getPhoneNumber());
-        newUser.setIdentifyNumber(userRequest.getIdentifyNumber());
+        newUser.setAddress(address);
+        newUser.setGender(gender);
+        newUser.setEmail(email);
+        newUser.setPassword(passwordEncoder.encode(rawPassword));
+        newUser.setFullName(fullName);
+        newUser.setPhoneNumber(phoneNumber);
+        newUser.setIdentifyNumber(identifyNumber);
 
-        newUser.setRole(roleUser);
+        newUser.setRole(role);
         newUser.setUserIsActive(true);
-        // ĐÃ SỬA: Đổi new Date() thành LocalDateTime.now()
         newUser.setLastActive(LocalDateTime.now());
-
-        userRepository.save(newUser);
-
-        try {
-            String logDetails = String.format(
-                    "{\"email\":\"%s\",\"fullName\":\"%s\",\"action\":\"Self Registration\"}",
-                    newUser.getEmail(),
-                    newUser.getFullName()
-            );
-
-            auditLogService.createAuditLog(newUser, "USER_SELF_REGISTER", LocalDateTime.now());
-        } catch (Exception e) {
-            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
-        }
 
         return newUser;
     }
@@ -171,12 +245,10 @@ public class UserService {
     }
 
     public User findUserByEmail(String email) {
-        // ĐÃ SỬA: Xử lý Optional
         return userRepository.findByEmail(email).orElse(null);
     }
 
     public boolean saveRefreshToken(String refreshToken, String email) {
-        // ĐÃ SỬA: Xử lý Optional
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             return false;
@@ -187,7 +259,6 @@ public class UserService {
     }
 
     public void saveTokenLockAccount(String token, String email) {
-        // ĐÃ SỬA: Xử lý Optional và cộng thời gian bằng LocalDateTime
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
         user.setLockedToken(token);
@@ -200,7 +271,6 @@ public class UserService {
     }
 
     public boolean logoutUser(String refreshToken) {
-        // ĐÃ SỬA: Xử lý Optional
         User user = userRepository.findByRefreshToken(refreshToken).orElse(null);
         if (user == null) {
             return false;
@@ -211,7 +281,6 @@ public class UserService {
     }
 
     public boolean forgotPassword(String email) {
-        // ĐÃ SỬA: Xử lý Optional
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             return false;
@@ -232,7 +301,6 @@ public class UserService {
             return Map.of(401, "You are not accessing the correct path");
         }
 
-        // ĐÃ SỬA: Xử lý Optional
         User user = userRepository.findByEmail(emailUser).orElse(null);
 
         if (user == null) {
