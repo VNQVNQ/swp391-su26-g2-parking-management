@@ -79,12 +79,14 @@ public class ParkingSessionController {
     @GetMapping("/available-slots")
     public ResponseEntity<ApiResponse<List<AvailableSlotsForEntryResponse>>> findAvailableSlots(
             @RequestParam @NotNull(message = "Zone ID is required") UUID zoneId,
-            @RequestParam @NotBlank(message = "License plate is required") String licensePlate) {
+            @RequestParam @NotBlank(message = "License plate is required") String licensePlate,
+            @RequestParam(required = false) String bookingCode) {
 
-        log.info("GET /api/v1/parking-sessions/available-slots - Zone: {}, Vehicle: {}", zoneId, licensePlate);
+        log.info("GET /api/v1/parking-sessions/available-slots - Zone: {}, Vehicle: {}, Booking: {}", 
+                zoneId, licensePlate, bookingCode);
 
         try {
-            List<AvailableSlotsForEntryResponse> slots = parkingSessionService.findAvailableSlots(zoneId, licensePlate);
+            List<AvailableSlotsForEntryResponse> slots = parkingSessionService.findAvailableSlots(zoneId, licensePlate, bookingCode);
 
             ApiResponse<List<AvailableSlotsForEntryResponse>> apiResponse = ApiResponseFactory.success(
                     slots,
@@ -116,15 +118,16 @@ public class ParkingSessionController {
     @PostMapping("/entry")
     public ResponseEntity<ApiResponse<VehicleEntryResponse>> createParkingSession(
             @Valid @RequestBody VehicleEntryRequest request,
+            @RequestParam(required = false) String bookingCode,
             Authentication authentication) {
 
-        log.info("POST /api/v1/parking-sessions/entry - Vehicle: {}", request.getLicensePlate());
+        log.info("POST /api/v1/parking-sessions/entry - Vehicle: {}, Booking: {}", request.getLicensePlate(), bookingCode);
 
         try {
             // BR-29: Extract staff ID from authentication
             Long staffId = extractStaffIdFromAuth(authentication);
 
-            VehicleEntryResponse response = parkingSessionService.createParkingSession(request, staffId);
+            VehicleEntryResponse response = parkingSessionService.createParkingSession(request, staffId, bookingCode);
 
             ApiResponse<VehicleEntryResponse> apiResponse = ApiResponseFactory.created(
                     response,

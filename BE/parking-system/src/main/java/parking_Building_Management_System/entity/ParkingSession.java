@@ -12,6 +12,9 @@ import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.ParkingSessionStatus;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
 import parking_Building_Management_System.entity.enums.TicketType;
+import parking_Building_Management_System.entity.Booking;
+import parking_Building_Management_System.entity.MonthlyPass;
+import parking_Building_Management_System.entity.PricingRule;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,7 +28,10 @@ import java.util.UUID;
         @Index(name = "idx_sessions_entry_time", columnList = "entry_time"),
         @Index(name = "idx_sessions_vehicle_id", columnList = "vehicle_id"),
         @Index(name = "idx_sessions_slot_active", columnList = "slot_id, status"),
-        @Index(name = "idx_sessions_overstay", columnList = "overstay_flagged_at, entry_time")
+        @Index(name = "idx_sessions_overstay", columnList = "overstay_flagged_at, entry_time"),
+        @Index(name = "idx_session_pricing_rule", columnList = "applied_rule_id"),
+        @Index(name = "idx_session_booking", columnList = "booking_id"),
+        @Index(name = "idx_session_monthly_pass", columnList = "monthly_pass_id")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingSession {
@@ -57,6 +63,13 @@ public class ParkingSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applied_rule_id")
     PricingRule appliedRule;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "monthly_pass_id")
+    MonthlyPass monthlyPass;
+
+    @Column(name = "applied_monthly_pass_fee", precision = 15, scale = 0)
+    BigDecimal appliedMonthlyPassFee;
 
     @Column(name = "entry_time", nullable = false)
     LocalDateTime entryTime;

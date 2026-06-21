@@ -149,7 +149,7 @@ class ParkingSessionServiceIntegrationTest {
     void testFindAvailableSlots() {
         // Act
         List<AvailableSlotsForEntryResponse> slots = parkingSessionService
-                .findAvailableSlots(zoneId, licensePlate);
+                .findAvailableSlots(zoneId, licensePlate, null);
 
         // Assert
         assertEquals(10, slots.size(), "Should have 10 available slots");
@@ -169,7 +169,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // Act: Try to find slots for MOTORBIKE in CAR zone
         List<AvailableSlotsForEntryResponse> slots = parkingSessionService
-                .findAvailableSlots(zoneId, "77M-00001");
+                .findAvailableSlots(zoneId, "77M-00001", null);
 
         // Assert
         assertTrue(slots.isEmpty(), "Should return empty list for mismatched vehicle type");
@@ -187,7 +187,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // Act
         VehicleEntryResponse response = parkingSessionService
-                .createParkingSession(request, 1001L);
+                .createParkingSession(request, 1001L, null);
 
         // Assert
         assertNotNull(response.getSessionId(), "BR-31: Session ID should be generated");
@@ -226,7 +226,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
-            parkingSessionService.createParkingSession(request, 1001L);
+            parkingSessionService.createParkingSession(request, 1001L, null);
         }, "Should reject if no available slots");
     }
 
@@ -246,7 +246,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
-            parkingSessionService.createParkingSession(request, 1001L);
+            parkingSessionService.createParkingSession(request, 1001L, null);
         }, "Should reject mismatched vehicle type");
     }
 
@@ -260,7 +260,7 @@ class ParkingSessionServiceIntegrationTest {
         request.setLicensePlate(licensePlate);
         request.setZoneId(zoneId);
         VehicleEntryResponse createdResponse = parkingSessionService
-                .createParkingSession(request, 1001L);
+                .createParkingSession(request, 1001L, null);
 
         // Act
         Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate).orElseThrow();
@@ -283,7 +283,7 @@ class ParkingSessionServiceIntegrationTest {
         VehicleEntryRequest request = new VehicleEntryRequest();
         request.setLicensePlate(licensePlate);
         request.setZoneId(zoneId);
-        parkingSessionService.createParkingSession(request, 1001L);
+        parkingSessionService.createParkingSession(request, 1001L, null);
 
         // Assert: Available should decrease
         long afterCreate = parkingSlotRepository.findAvailableSlotsByZone(zoneId).size();
@@ -303,7 +303,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
-            parkingSessionService.createParkingSession(request, 1001L);
+            parkingSessionService.createParkingSession(request, 1001L, null);
         });
     }
 
@@ -317,7 +317,7 @@ class ParkingSessionServiceIntegrationTest {
 
         // First session should succeed
         VehicleEntryResponse response1 = parkingSessionService
-                .createParkingSession(request, 1001L);
+                .createParkingSession(request, 1001L, null);
         assertNotNull(response1.getSessionId());
 
         // Second session for same vehicle should still work (different session)
@@ -333,7 +333,7 @@ class ParkingSessionServiceIntegrationTest {
         request2.setZoneId(zoneId);
 
         VehicleEntryResponse response2 = parkingSessionService
-                .createParkingSession(request2, 1002L);
+                .createParkingSession(request2, 1002L, null);
         assertNotNull(response2.getSessionId());
         assertNotEquals(response1.getSessionId(), response2.getSessionId());
     }
