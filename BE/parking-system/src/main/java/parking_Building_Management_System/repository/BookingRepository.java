@@ -1,6 +1,8 @@
 package parking_Building_Management_System.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import parking_Building_Management_System.entity.Booking;
 import parking_Building_Management_System.entity.enums.BookingStatus;
@@ -22,6 +24,25 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     Optional<Booking> findByBookingCode(String bookingCode);
 
     List<Booking> findByVehicleIdAndStatus(UUID vehicleId, BookingStatus status);
+
+    List<Booking> findByStatusAndBookingExpiryAtBefore(BookingStatus status, LocalDateTime expiryTime);
+
+    @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.startTime > :startTime")
+    List<Booking> findByStatusAndStartTimeAfter(@Param("status") BookingStatus status, @Param("startTime") LocalDateTime startTime);
+
+    @Query("SELECT b FROM Booking b WHERE b.slot.id = :slotId AND b.status IN :statuses AND b.startTime < :endTime AND b.endTime > :startTime")
+    List<Booking> findBySlotIdAndStatusInAndStartTimeBeforeAndEndTimeAfter(
+            @Param("slotId") UUID slotId,
+            @Param("statuses") List<BookingStatus> statuses,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("startTime") LocalDateTime startTime
+    );
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.status IN :statuses AND b.startTime > :startTime")
+    long countByStatusInAndStartTimeAfter(@Param("statuses") List<BookingStatus> statuses, @Param("startTime") LocalDateTime startTime);
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.status = :status AND b.bookingExpiryAt < :expiryTime")
+    long countByStatusAndBookingExpiryAtBefore(@Param("status") BookingStatus status, @Param("expiryTime") LocalDateTime expiryTime);
 }
 
 
