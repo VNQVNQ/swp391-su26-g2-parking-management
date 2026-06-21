@@ -15,6 +15,7 @@ import java.util.UUID;
  * BR-23: license_plate bắt buộc và không null
  * BR-24: license_plate đúng định dạng Việt Nam
  * BR-26: Chỉ assign slot Free và Available
+ * Phase 4: Support booking code for reserved entries
  */
 @Data
 @AllArgsConstructor
@@ -37,5 +38,15 @@ public class VehicleEntryRequest {
      */
     @NotNull(message = "Zone ID is required")
     UUID zoneId;
+
+    /**
+     * Phase 4: Optional booking code for pre-booked reservations
+     */
+    String bookingCode;
+
+    /**
+     * Phase 4: Optional flag to skip pricing rule lookup (for testing)
+     */
+    Boolean skipPricingLookup;
 }
 
