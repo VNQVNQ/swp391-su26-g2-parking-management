@@ -1,0 +1,953 @@
+{
+  "info": {
+    "name": "Parking System API - Workflows 4 & 5",
+    "description": "Complete API testing for Pricing Rules, Monthly Passes, and Booking Management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Pricing Rules",
+      "description": "Pricing Rule Management Endpoints",
+      "item": [
+        {
+          "name": "Create Pricing Rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleType\": \"CAR\",\n  \"ticketType\": \"HOURLY\",\n  \"hourlyRate\": 50000.0,\n  \"dailyRate\": 300000.0,\n  \"peakHourMultiplier\": 1.5,\n  \"overstayMultiplier\": 2.0,\n  \"effectiveDate\": \"2026-06-21\",\n  \"expiryDate\": \"2026-07-21\",\n  \"zoneId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Pricing Rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pricing Rule by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules/{{pricingRuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules",
+                "{{pricingRuleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Pricing Rule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hourlyRate\": 55000.0,\n  \"dailyRate\": 320000.0,\n  \"peakHourMultiplier\": 1.6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules/{{pricingRuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules",
+                "{{pricingRuleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Pricing Rule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules/{{pricingRuleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules",
+                "{{pricingRuleId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pricing Rules by Vehicle Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules/vehicle-type/CAR",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules",
+                "vehicle-type",
+                "CAR"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Pricing Rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pricing-rules/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pricing-rules",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Monthly Passes",
+      "description": "Monthly Pass Management Endpoints",
+      "item": [
+        {
+          "name": "Create Monthly Pass",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleLicensePlate\": \"ABC-123\",\n  \"passType\": \"STANDARD\",\n  \"startDate\": \"2026-06-21\",\n  \"endDate\": \"2026-07-21\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Monthly Passes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monthly Pass by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes/{{monthlyPassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes",
+                "{{monthlyPassId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Monthly Pass for Vehicle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes/vehicle/ABC-123/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes",
+                "vehicle",
+                "ABC-123",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Renew Monthly Pass",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleLicensePlate\": \"ABC-123\",\n  \"durationInMonths\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes/{{monthlyPassId}}/renew",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes",
+                "{{monthlyPassId}}",
+                "renew"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Monthly Pass",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes/{{monthlyPassId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes",
+                "{{monthlyPassId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Monthly Pass",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licensePlate\": \"ABC-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/monthly-passes/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "monthly-passes",
+                "validate"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "description": "Booking Management Endpoints",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleLicensePlate\": \"ABC-123\",\n  \"parkingSlotId\": \"{{slotId}}\",\n  \"scheduledStartTime\": \"2026-06-21T14:00:00\",\n  \"durationInMinutes\": 60\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Booking by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Booking by Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/code/{{bookingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "code",
+                "{{bookingCode}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}",
+                "confirm"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check Slot Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parkingSlotId\": \"{{slotId}}\",\n  \"startTime\": \"2026-06-21T14:00:00\",\n  \"endTime\": \"2026-06-21T15:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/check-availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "check-availability"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bookings by License Plate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/vehicle/ABC-123",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "vehicle",
+                "ABC-123"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Parking Sessions",
+      "description": "Enhanced Parking Session with Pricing, Pass & Booking Integration",
+      "item": [
+        {
+          "name": "Find Available Slots (with Booking Priority)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/parking-sessions/available-slots?zoneId={{zoneId}}&bookingCode={{bookingCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "parking-sessions",
+                "available-slots"
+              ],
+              "query": [
+                {
+                  "key": "zoneId",
+                  "value": "{{zoneId}}"
+                },
+                {
+                  "key": "bookingCode",
+                  "value": "{{bookingCode}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Parking Session (with Booking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"slotId\": \"{{slotId}}\",\n  \"bookingCode\": \"BK-ABC123D4\",\n  \"entryTime\": \"2026-06-21T14:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/parking-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "parking-sessions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Parking Fee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/parking-sessions/{{sessionId}}/fee",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "parking-sessions",
+                "{{sessionId}}",
+                "fee"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Parking Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/parking-sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "parking-sessions",
+                "{{sessionId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Exit Parking Session",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exitTime\": \"2026-06-21T15:30:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/parking-sessions/{{sessionId}}/exit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "parking-sessions",
+                "{{sessionId}}",
+                "exit"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Integration Test Scenarios",
+      "description": "End-to-End Test Scenarios",
+      "item": [
+        {
+          "name": "Scenario 1: Regular Vehicle (No Pass, No Booking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenario\": \"Regular vehicle entry\",\n  \"vehicle\": \"ABC-123\",\n  \"hasMonthlyPass\": false,\n  \"hasBooking\": false,\n  \"expectedBehavior\": \"Vehicle charged based on pricing rule\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/test/scenario/regular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "test",
+                "scenario",
+                "regular"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Scenario 2: Monthly Pass Holder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenario\": \"Monthly pass holder entry\",\n  \"vehicle\": \"XYZ-789\",\n  \"hasMonthlyPass\": true,\n  \"hasBooking\": false,\n  \"expectedBehavior\": \"Vehicle NOT charged (monthly pass covers fee)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/test/scenario/monthly-pass",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "test",
+                "scenario",
+                "monthly-pass"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Scenario 3: Pre-Booked Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenario\": \"Pre-booked vehicle entry\",\n  \"vehicle\": \"DEF-456\",\n  \"hasMonthlyPass\": false,\n  \"hasBooking\": true,\n  \"bookingCode\": \"BK-ABC123D4\",\n  \"expectedBehavior\": \"Booking confirmed, slot reserved, charged by pricing rule\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/test/scenario/booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "test",
+                "scenario",
+                "booking"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Scenario 4: Monthly Pass + Booking (Pass Priority)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenario\": \"Vehicle with both monthly pass and booking\",\n  \"vehicle\": \"GHI-789\",\n  \"hasMonthlyPass\": true,\n  \"hasBooking\": true,\n  \"bookingCode\": \"BK-XYZ789Z9\",\n  \"expectedBehavior\": \"Monthly pass takes priority, NO CHARGE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/test/scenario/pass-and-booking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "test",
+                "scenario",
+                "pass-and-booking"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": "your-jwt-token-here"
+    },
+    {
+      "key": "pricingRuleId",
+      "value": ""
+    },
+    {
+      "key": "monthlyPassId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "bookingCode",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "slotId",
+      "value": ""
+    },
+    {
+      "key": "zoneId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    }
+  ]
+}
