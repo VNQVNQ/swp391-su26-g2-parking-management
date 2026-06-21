@@ -24,13 +24,27 @@ import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.service.ParkingSessionService;
+import parking_Building_Management_System.service.PricingRuleService;
+import parking_Building_Management_System.service.MonthlyPassService;
+import parking_Building_Management_System.service.BookingService;
 import parking_Building_Management_System.utils.mapper.ParkingSessionMapper;
+import parking_Building_Management_System.entity.Booking;
+import parking_Building_Management_System.entity.MonthlyPass;
+import parking_Building_Management_System.entity.PricingRule;
+import parking_Building_Management_System.dto.pricingRule.response.PricingRuleDetailResponse;
+import parking_Building_Management_System.dto.monthlyPass.response.MonthlyPassDetailResponse;
+import parking_Building_Management_System.dto.booking.response.BookingDetailResponse;
+import parking_Building_Management_System.entity.enums.TicketType;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,6 +58,9 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final ZoneRepository zoneRepository;
     private final AuditLogRepository auditLogRepository;
     private final ParkingSessionMapper parkingSessionMapper;
+    private final PricingRuleService pricingRuleService;
+    private final MonthlyPassService monthlyPassService;
+    private final BookingService bookingService;
 
     @Override
     public EntryValidationResponse validateVehicleForEntry(String licensePlate) {
@@ -75,7 +92,10 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .build();
         }
 
-        log.info("Vehicle validation successful: {}", licensePlate);
+        // Phase 4: Check if vehicle has active monthly pass
+        boolean hasActiveMonthlyPass = monthlyPassService.validateMonthlyPassValidityByLicensePlate(licensePlate);
+        
+        log.info("Vehicle validation successful: {}, hasActiveMonthlyPass: {}", licensePlate, hasActiveMonthlyPass);
         return EntryValidationResponse.builder()
                 .valid(true)
                 .foundVehicle(true)
@@ -86,8 +106,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     }
 
     @Override
-    public List<AvailableSlotsForEntryResponse> findAvailableSlots(UUID zoneId, String licensePlate) {
-        log.info("Finding available slots in zone: {}", zoneId);
+    public List<AvailableSlotsForEntryResponse> findAvailableSlots(UUID zoneId, String licensePlate, String bookingCode) {
+        log.info("Finding available slots in zone: {}, bookingCode: {}", zoneId, bookingCode);
 
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + zoneId));
@@ -101,6 +121,24 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             return List.of();
         }
 
+        // Phase 4: If booking code provided, validate and prioritize booking slot
+        ParkingSlot bookedSlot = null;
+        if (bookingCode != null && !bookingCode.isEmpty()) {
+            try {
+                BookingDetailResponse booking = bookingService.getBookingByCode(bookingCode);
+                if (booking != null && Boolean.FALSE.equals(booking.getIsExpired())) {
+                    bookedSlot = parkingSlotRepository.findById(booking.getSlotId())
+                            .orElse(null);
+                    log.info("Booking code {} matched, prioritizing slot: {}", bookingCode, 
+                            bookedSlot != null ? bookedSlot.getSlotCode() : "N/A");
+                } else {
+                    log.warn("Booking code {} is expired or invalid", bookingCode);
+                }
+            } catch (Exception e) {
+                log.warn("Booking lookup failed for code {}: {}", bookingCode, e.getMessage());
+            }
+        }
+
         List<ParkingSlot> availableSlots = parkingSlotRepository
                 .findAvailableSlotsByZone(zoneId);
 
@@ -109,19 +147,41 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         log.info("Found {} available slots in zone {}", availableCount, zoneId);
 
-        return availableSlots.stream()
-                .map(slot -> parkingSessionMapper.toAvailableSlotResponse(
-                        slot,
-                        availableCount,
-                        occupiedCount,
-                        (long) zone.getTotalSlots()))
-                .collect(Collectors.toList());
+        // Phase 4: If we have a booked slot, put it first
+        List<AvailableSlotsForEntryResponse> result;
+        final ParkingSlot finalBookedSlot = bookedSlot;
+        if (finalBookedSlot != null && availableSlots.contains(finalBookedSlot)) {
+            result = new java.util.ArrayList<>();
+            result.add(parkingSessionMapper.toAvailableSlotResponse(
+                    finalBookedSlot,
+                    availableCount,
+                    occupiedCount,
+                    (long) zone.getTotalSlots()));
+            
+            availableSlots.stream()
+                    .filter(slot -> !slot.getId().equals(finalBookedSlot.getId()))
+                    .forEach(slot -> result.add(parkingSessionMapper.toAvailableSlotResponse(
+                            slot,
+                            availableCount,
+                            occupiedCount,
+                            (long) zone.getTotalSlots())));
+        } else {
+            result = availableSlots.stream()
+                    .map(slot -> parkingSessionMapper.toAvailableSlotResponse(
+                            slot,
+                            availableCount,
+                            occupiedCount,
+                            (long) zone.getTotalSlots()))
+                    .collect(Collectors.toList());
+        }
+
+        return result;
     }
 
     @Override
     @Transactional
-    public VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId) {
-        log.info("Creating parking session for vehicle: {}", request.getLicensePlate());
+    public VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId, String bookingCode) {
+        log.info("Creating parking session for vehicle: {}, bookingCode: {}", request.getLicensePlate(), bookingCode);
 
         var validation = validateVehicleForEntry(request.getLicensePlate());
         if (!validation.isValid()) {
@@ -148,6 +208,31 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             throw new RuntimeException("No available slots in this zone");
         }
 
+        // Phase 4: Handle booking if provided
+        Booking linkedBooking = null;
+        if (bookingCode != null && !bookingCode.isEmpty()) {
+            try {
+                BookingDetailResponse bookingDetail = bookingService.getBookingByCode(bookingCode);
+                linkedBooking = new Booking();
+                linkedBooking.setId(bookingDetail.getId());
+                
+                // Confirm the booking (convert staffId Long to UUID for now, or pass as is if the signature accepts Long)
+                // Note: Creating a temporary UUID from the long staff ID
+                UUID staffUUID = new UUID(0, staffId);
+                bookingService.confirmBooking(bookingDetail.getId(), staffUUID);
+                
+                // Use booking slot if available
+                ParkingSlot bookedSlot = parkingSlotRepository.findById(bookingDetail.getSlotId()).orElse(null);
+                if (bookedSlot != null && availableSlots.contains(bookedSlot)) {
+                    availableSlots = List.of(bookedSlot);
+                    log.info("Using booked slot: {}", bookedSlot.getSlotCode());
+                }
+            } catch (Exception e) {
+                log.error("Booking confirmation failed: {}", e.getMessage());
+                // Continue without booking - it's not mandatory
+            }
+        }
+
         ParkingSlot slot = availableSlots.get(0);
         log.info("Assigned slot: {}", slot.getSlotCode());
 
@@ -159,6 +244,43 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         session.setStatus(ParkingSessionStatus.ACTIVE);
         session.setPaymentStatus(PaymentStatus.UNPAID);
         session.setDiscountAmount(BigDecimal.ZERO);
+        session.setTicketType(TicketType.HOURLY);
+
+        // Phase 4: Link to booking if found
+        if (linkedBooking != null) {
+            session.setBooking(linkedBooking);
+        }
+
+        // Phase 4: Check for active monthly pass
+        Optional<MonthlyPassDetailResponse> monthlyPassOpt = monthlyPassService.findActiveMonthlyPassByLicensePlate(request.getLicensePlate());
+        if (monthlyPassOpt.isPresent()) {
+            MonthlyPassDetailResponse passDetail = monthlyPassOpt.get();
+            MonthlyPass monthlyPass = new MonthlyPass();
+            monthlyPass.setId(passDetail.getId());
+            session.setMonthlyPass(monthlyPass);
+            session.setAppliedMonthlyPassFee(BigDecimal.ZERO);
+            session.setTicketType(TicketType.MONTHLY);
+            log.info("Linked monthly pass to session: {}", passDetail.getId());
+        }
+
+        // Phase 4: Look up pricing rule
+        try {
+            List<PricingRuleDetailResponse> rules = pricingRuleService.findApplicablePricingRule(
+                    vehicle.getVehicleType(), 
+                    session.getTicketType(), 
+                    zone.getId(), 
+                    LocalDate.now()
+            );
+            if (!rules.isEmpty()) {
+                PricingRuleDetailResponse rule = rules.get(0);
+                PricingRule pricingRule = new PricingRule();
+                pricingRule.setId(rule.getId());
+                session.setAppliedRule(pricingRule);
+                log.info("Applied pricing rule: {} for session", rule.getName());
+            }
+        } catch (Exception e) {
+            log.warn("Pricing rule lookup failed: {}", e.getMessage());
+        }
 
         session = parkingSessionRepository.save(session);
         log.info("Session created: {}", session.getId());
@@ -285,26 +407,125 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         ParkingSession session = getParkingSessionById(sessionId);
 
         LocalDateTime exitTime = session.getExitTime() != null ? session.getExitTime() : LocalDateTime.now();
-        long minutes = ChronoUnit.MINUTES.between(session.getEntryTime(), exitTime);
-        long hours = (minutes + 59) / 60; // Làm tròn lên theo giờ
+        long durationMinutes = ChronoUnit.MINUTES.between(session.getEntryTime(), exitTime);
+        long durationHours = calculateDurationInHours(session.getEntryTime(), exitTime);
 
-        Long hourlyRate = 50000L;
-        Long calculatedAmount = hours * hourlyRate;
+        // Phase 4: If monthly pass is active, return 0 or apply overstay logic
+        if (session.getMonthlyPass() != null) {
+            try {
+                Optional<MonthlyPassDetailResponse> passOpt = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId());
+                if (passOpt.isPresent() && durationHours <= 24) {
+                    // Monthly pass holder with normal stay
+                    session.setFee(BigDecimal.ZERO);
+                    session.setFinalFee(BigDecimal.ZERO);
+                    session.setAppliedMonthlyPassFee(BigDecimal.ZERO);
+                    parkingSessionRepository.save(session);
+                    
+                    log.info("Monthly pass holder: No fee charged for {} minutes", durationMinutes);
+                    return FeeCalculationResponse.builder()
+                            .sessionId(sessionId)
+                            .durationMinutes(durationMinutes)
+                            .totalFee(BigDecimal.ZERO)
+                            .message("No charge - Monthly pass active")
+                            .build();
+                } else if (durationHours > 24) {
+                    // Overstay for monthly pass holder
+                    long overstayHours = durationHours - 24;
+                    PricingRuleDetailResponse rule = getApplicablePricingRule(session);
+                    BigDecimal overstayMultiplier = rule != null ? rule.getOverstayRateMultiplier() : BigDecimal.valueOf(2.0);
+                    BigDecimal ratePerHour = rule != null ? rule.getRatePerHour() : BigDecimal.valueOf(50000);
+                    
+                    BigDecimal overstayFee = ratePerHour
+                            .multiply(BigDecimal.valueOf(overstayHours))
+                            .multiply(overstayMultiplier);
+                    
+                    session.setFee(overstayFee);
+                    session.setFinalFee(overstayFee);
+                    parkingSessionRepository.save(session);
+                    
+                    log.info("Monthly pass holder overstay: {} hours, fee: {}", overstayHours, overstayFee);
+                    return FeeCalculationResponse.builder()
+                            .sessionId(sessionId)
+                            .durationMinutes(durationMinutes)
+                            .totalFee(overstayFee)
+                            .message("Overstay fee applied for monthly pass holder")
+                            .build();
+                }
+            } catch (Exception e) {
+                log.warn("Monthly pass check failed: {}", e.getMessage());
+            }
+        }
 
-        // 1. Lưu tổng tiền vào đúng trường dữ liệu BigDecimal của Entity
-        BigDecimal totalFeeBigDecimal = BigDecimal.valueOf(calculatedAmount);
-        session.setFee(totalFeeBigDecimal);
-        session.setFinalFee(totalFeeBigDecimal.subtract(session.getDiscountAmount()));
+        // Phase 4: Get pricing rule (from session or look up)
+        PricingRuleDetailResponse rule = getApplicablePricingRule(session);
+        
+        if (rule == null) {
+            // Fallback: use default pricing
+            log.warn("No pricing rule found, using default rate");
+            BigDecimal defaultRate = BigDecimal.valueOf(50000);
+            BigDecimal baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours)));
+            
+            session.setFee(baseFee);
+            session.setFinalFee(baseFee.subtract(session.getDiscountAmount()));
+            parkingSessionRepository.save(session);
+            
+            return FeeCalculationResponse.builder()
+                    .sessionId(sessionId)
+                    .durationMinutes(durationMinutes)
+                    .totalFee(session.getFinalFee())
+                    .message("Fee calculated with default rate")
+                    .build();
+        }
+
+        // Calculate base fee
+        BigDecimal baseHours = BigDecimal.valueOf(Math.max(1, durationHours));
+        BigDecimal baseFee = baseHours.multiply(rule.getRatePerHour());
+        
+        // Apply minimum fee
+        if (baseFee.compareTo(rule.getMinimumFee()) < 0) {
+            baseFee = rule.getMinimumFee();
+            log.info("Minimum fee applied: {}", baseFee);
+        }
+
+        // Apply peak hour multiplier
+        if (isPeakHour(session.getEntryTime(), exitTime, rule.getPeakHourStart(), rule.getPeakHourEnd())) {
+            baseFee = baseFee.multiply(rule.getPeakHourMultiplier());
+            log.info("Peak hour multiplier applied: {}", baseFee);
+        }
+
+        // Apply daily maximum fee
+        if (rule.getMaximumDailyFee() != null && baseFee.compareTo(rule.getMaximumDailyFee()) > 0) {
+            baseFee = rule.getMaximumDailyFee();
+            log.info("Daily maximum fee applied: {}", baseFee);
+        }
+
+        // Apply overstay multiplier if > 24h
+        if (durationHours > 24) {
+            long overstayHours = durationHours - 24;
+            BigDecimal overstayFee = rule.getRatePerHour()
+                    .multiply(BigDecimal.valueOf(overstayHours))
+                    .multiply(rule.getOverstayRateMultiplier());
+            baseFee = baseFee.add(overstayFee);
+            log.info("Overstay multiplier applied: {} hours, fee: {}", overstayHours, overstayFee);
+        }
+
+        BigDecimal finalFee = baseFee.subtract(session.getDiscountAmount());
+        if (finalFee.compareTo(BigDecimal.ZERO) < 0) {
+            finalFee = BigDecimal.ZERO;
+        }
+
+        session.setFee(baseFee);
+        session.setFinalFee(finalFee);
         parkingSessionRepository.save(session);
 
-        log.info("Calculated fee: {} for {} minutes ({} hours)", calculatedAmount, minutes, hours);
+        log.info("Fee calculation complete: base={}, final={} for {} minutes ({} hours)", 
+                baseFee, finalFee, durationMinutes, durationHours);
 
-        // 2. ĐÃ SỬA: Map đúng các thuộc tính có trong file FeeCalculationResponse DTO
         return FeeCalculationResponse.builder()
                 .sessionId(sessionId)
-                .durationMinutes(minutes) // Thay vì .hours(hours) không tồn tại
-                .totalFee(session.getFinalFee()) // Truyền trực tiếp kiểu BigDecimal sang BigDecimal
-                .message("Fee calculated successfully for " + hours + " hour(s).")
+                .durationMinutes(durationMinutes)
+                .totalFee(finalFee)
+                .message("Fee calculated successfully for " + durationHours + " hour(s).")
                 .build();
     }
 
@@ -326,5 +547,61 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         } catch (Exception e) {
             log.error("Failed to create audit log: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Phase 4: Get applicable pricing rule from session or look up
+     */
+    private PricingRuleDetailResponse getApplicablePricingRule(ParkingSession session) {
+        if (session.getAppliedRule() != null) {
+            // Rule already linked, but we need to fetch details
+            // In production, could cache this
+            try {
+                UUID ruleId = session.getAppliedRule().getId();
+                // Note: Would need to enhance service to return detail response by ID
+                // For now, we'll do fresh lookup
+            } catch (Exception e) {
+                log.warn("Failed to load pricing rule details");
+            }
+        }
+
+        try {
+            List<PricingRuleDetailResponse> rules = pricingRuleService.findApplicablePricingRule(
+                    session.getVehicle().getVehicleType(),
+                    session.getTicketType(),
+                    session.getSlot().getZone().getId(),
+                    LocalDate.now()
+            );
+            return rules.isEmpty() ? null : rules.get(0);
+        } catch (Exception e) {
+            log.warn("Pricing rule lookup failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Phase 4: Check if time range overlaps with peak hours
+     */
+    private boolean isPeakHour(LocalDateTime entryTime, LocalDateTime exitTime, LocalTime peakStart, LocalTime peakEnd) {
+        if (peakStart == null || peakEnd == null) {
+            return false;
+        }
+
+        LocalTime entry = entryTime.toLocalTime();
+        LocalTime exit = exitTime.toLocalTime();
+
+        // Check if any portion of [entry, exit] overlaps with [peakStart, peakEnd]
+        // Overlap exists if NOT (exit <= peakStart OR entry >= peakEnd)
+        return !(exit.isBefore(peakStart) || exit.equals(peakStart) || 
+                 entry.isAfter(peakEnd) || entry.equals(peakEnd));
+    }
+
+    /**
+     * Phase 4: Calculate duration in hours with ceiling
+     */
+    private long calculateDurationInHours(LocalDateTime entryTime, LocalDateTime exitTime) {
+        long durationSeconds = ChronoUnit.SECONDS.between(entryTime, exitTime);
+        // Ceiling division: ceil(seconds / 3600)
+        return (durationSeconds + 3599) / 3600;
     }
 }
