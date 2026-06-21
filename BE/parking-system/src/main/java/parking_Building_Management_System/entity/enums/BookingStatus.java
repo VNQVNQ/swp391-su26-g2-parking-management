@@ -4,6 +4,7 @@ public enum BookingStatus {
     PENDING("Pending"),
     CONFIRMED("Confirmed"),
     CANCELLED("Cancelled"),
+    EXPIRED("Expired"),
     COMPLETED("Completed");
 
     private final String displayName;
