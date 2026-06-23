@@ -83,7 +83,7 @@ public class LoginLogOutController {
                     .phoneNumber(user.getPhoneNumber())
                     .identifyNumber(user.getIdentifyNumber())
                     .gender(user.getGender())
-                    .age(user.getAge())
+                    .age(user.getAge() != null ? user.getAge() : 0)
                     .address(user.getAddress())
                     .dateOfBirth(dobDate)
                     .userIsActivated(user.getUserIsActive())

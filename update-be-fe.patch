@@ -1,0 +1,944 @@
+diff --git a/BE/parking-system/src/main/java/parking_Building_Management_System/controller/UserController.java b/BE/parking-system/src/main/java/parking_Building_Management_System/controller/UserController.java
+index 627beb4..ce14e96 100644
+--- a/BE/parking-system/src/main/java/parking_Building_Management_System/controller/UserController.java
++++ b/BE/parking-system/src/main/java/parking_Building_Management_System/controller/UserController.java
+@@ -36,32 +36,75 @@ public class UserController {
+ 
+         System.out.println("thông tin nhận được " + userRequest);
+ 
+-        User newUser = userService.createUser(userRequest);
++        try {
++            User newUser = userService.createUser(userRequest);
++
++            Date lastActiveDate = newUser.getLastActive() != null
++                    ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
++                    : null;
++            Date dobDate = newUser.getDateOfBirth() != null
++                    ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
++                    : null;
++
++            UserResponse responseData = UserResponse.builder()
++                    .id(newUser.getUserId())
++                    .fullName(newUser.getFullName())
++                    .email(newUser.getEmail())
++                    .roleCode(newUser.getRole().getRoleCode())
++                    .lastActive(lastActiveDate)
++                    .phoneNumber(newUser.getPhoneNumber())
++                    .identifyNumber(newUser.getIdentifyNumber())
++                    .gender(newUser.getGender())
++                    .age(newUser.getAge())
++                    .address(newUser.getAddress())
++                    .dateOfBirth(dobDate)
++                    .userIsActivated(newUser.getUserIsActive())
++                    .build();
++
++            ApiResponse<UserResponse> response = new ApiResponse<>(201, "User created successfully", responseData);
++            return ResponseEntity.status(201).body(response);
++
++        } catch (IllegalArgumentException e) {
++            // Trùng email / phone / CCCD
++            ApiResponse<UserResponse> response = new ApiResponse<>(409, e.getMessage(), null);
++            return ResponseEntity.status(409).body(response);
++        } catch (java.util.NoSuchElementException e) {
++            // Role không tồn tại
++            ApiResponse<UserResponse> response = new ApiResponse<>(400, e.getMessage(), null);
++            return ResponseEntity.status(400).body(response);
++        }
++    }
+ 
+-        Date lastActiveDate = newUser.getLastActive() != null
+-                ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+-                : null;
+-        Date dobDate = newUser.getDateOfBirth() != null
+-                ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+-                : null;
++    /**
++     * Admin thay đổi role cho user đã tồn tại.
++     * Body: { "roleCode": "MANAGER" }
++     */
++    @PatchMapping("/users/{id}/role")
++    public ResponseEntity<ApiResponse<UserResponse>> updateUserRole(
++            @PathVariable Long id,
++            @RequestBody java.util.Map<String, String> body,
++            @RequestHeader("Authorization") String authorizationHeader) {
+ 
+-        UserResponse responseData = UserResponse.builder()
+-                .id(newUser.getUserId())
+-                .fullName(newUser.getFullName())
+-                .email(newUser.getEmail())
+-                .roleCode(newUser.getRole().getRoleCode())
+-                .lastActive(lastActiveDate)
+-                .phoneNumber(newUser.getPhoneNumber())
+-                .identifyNumber(newUser.getIdentifyNumber())
+-                .gender(newUser.getGender())
+-                .age(newUser.getAge())
+-                .address(newUser.getAddress())
+-                .dateOfBirth(dobDate)
+-                .userIsActivated(newUser.getUserIsActive())
+-                .build();
++        String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
++        String roleCode = body.get("roleCode");
+ 
+-        ApiResponse<UserResponse> response = new ApiResponse<>(201, "User created successfully", responseData);
+-        return ResponseEntity.status(201).body(response);
++        if (roleCode == null || roleCode.isBlank()) {
++            ApiResponse<UserResponse> response = new ApiResponse<>(400, "roleCode is required", null);
++            return ResponseEntity.status(400).body(response);
++        }
++
++        try {
++            User updatedUser = userService.updateUserRole(id, roleCode.toUpperCase(), token);
++            UserResponse responseData = utilsUser.toUserResponse(updatedUser);
++            ApiResponse<UserResponse> response = new ApiResponse<>(200, "User role updated successfully", responseData);
++            return ResponseEntity.ok(response);
++        } catch (SecurityException e) {
++            ApiResponse<UserResponse> response = new ApiResponse<>(403, e.getMessage(), null);
++            return ResponseEntity.status(403).body(response);
++        } catch (java.util.NoSuchElementException e) {
++            ApiResponse<UserResponse> response = new ApiResponse<>(404, e.getMessage(), null);
++            return ResponseEntity.status(404).body(response);
++        }
+     }
+ 
+     /**
+diff --git a/BE/parking-system/src/main/java/parking_Building_Management_System/dto/role/response/roleResponse/RoleResponse.java b/BE/parking-system/src/main/java/parking_Building_Management_System/dto/role/response/roleResponse/RoleResponse.java
+deleted file mode 100644
+index 11247be..0000000
+--- a/BE/parking-system/src/main/java/parking_Building_Management_System/dto/role/response/roleResponse/RoleResponse.java
++++ /dev/null
+@@ -1,21 +0,0 @@
+-package parking_Building_Management_System.dto.role.response.Role;
+-
+-import lombok.AccessLevel;
+-import lombok.AllArgsConstructor;
+-import lombok.Data;
+-import lombok.NoArgsConstructor;
+-import lombok.experimental.FieldDefaults;
+-
+-import java.util.Set;
+-
+-@AllArgsConstructor
+-@Data
+-@NoArgsConstructor
+-@FieldDefaults(level = AccessLevel.PRIVATE)
+-public class RoleResponse {
+-    String roleName;
+-    String roleCode;
+-    String roleDescription;
+-    Boolean is_Active;
+-    Set<String> privileges;
+-}
+diff --git a/BE/parking-system/src/main/java/parking_Building_Management_System/service/auth/JWTService.java b/BE/parking-system/src/main/java/parking_Building_Management_System/service/auth/JWTService.java
+index 8f68ef7..b941477 100644
+--- a/BE/parking-system/src/main/java/parking_Building_Management_System/service/auth/JWTService.java
++++ b/BE/parking-system/src/main/java/parking_Building_Management_System/service/auth/JWTService.java
+@@ -3,7 +3,6 @@ package parking_Building_Management_System.service.auth;
+ import parking_Building_Management_System.entity.user.User;
+ import io.jsonwebtoken.Claims;
+ import io.jsonwebtoken.Jwts;
+-import io.jsonwebtoken.SignatureAlgorithm;
+ import io.jsonwebtoken.io.Decoders;
+ import io.jsonwebtoken.security.Keys;
+ import org.springframework.beans.factory.annotation.Value;
+@@ -20,11 +19,11 @@ public class JWTService {
+ 
+     public String createToken(Map<String, Object> claims, String subject, long accessTime){
+         return Jwts.builder()
+-                .setClaims(claims) // dữ liệu cần lưu
+-                .setSubject(subject) // tên tài khoản
+-                .setIssuedAt(new Date()) //thời gian tạo
+-                .setExpiration(new Date(System.currentTimeMillis() + accessTime)) //thời gian kết thúc
+-                .signWith(SignatureAlgorithm.HS256, secretKey)
++                .claims(claims)
++                .subject(subject)
++                .issuedAt(new Date())
++                .expiration(new Date(System.currentTimeMillis() + accessTime))
++                .signWith(getSignKey())
+                 .compact();
+     }
+ 
+@@ -66,10 +65,10 @@ public class JWTService {
+ 
+     public Claims extractAllClaims(String token){
+         return Jwts.parser()
+-                .setSigningKey(getSignKey())
++                .verifyWith(getSignKey())
+                 .build()
+-                .parseClaimsJws(token)
+-                .getBody();
++                .parseSignedClaims(token)
++                .getPayload();
+     }
+ 
+     public boolean isTokenExpired(String token) {
+diff --git a/BE/parking-system/src/main/java/parking_Building_Management_System/service/user/UserService.java b/BE/parking-system/src/main/java/parking_Building_Management_System/service/user/UserService.java
+index 219dc98..0e3a1cc 100644
+--- a/BE/parking-system/src/main/java/parking_Building_Management_System/service/user/UserService.java
++++ b/BE/parking-system/src/main/java/parking_Building_Management_System/service/user/UserService.java
+@@ -59,6 +59,9 @@ public class UserService {
+      * Role LUÔN bị ép cứng về DRIVER, user không có quyền tự chọn role ở đây.
+      */
+     public User createUser(UserRequest userRequest) {
++        // Kiểm tra trùng lặp trước khi lưu
++        validateUniqueFields(userRequest.getEmail(), userRequest.getPhoneNumber(), userRequest.getIdentifyNumber());
++
+         Role roleUser = roleRepository.findRoleByRoleCode(DEFAULT_SELF_REGISTER_ROLE);
+         System.out.println("Role hệ thống tự gán mặc định nè: " + roleUser);
+ 
+@@ -92,6 +95,56 @@ public class UserService {
+         return newUser;
+     }
+ 
++    /**
++     * Admin thay đổi role cho user đã tồn tại.
++     * Chỉ tài khoản ADMIN mới được phép thực hiện.
++     *
++     * @param userId   ID của user cần đổi role
++     * @param roleCode mã role mới (DRIVER / STAFF / MANAGER / ADMIN)
++     * @param token    JWT token của admin đang thực hiện
++     */
++    @Transactional
++    public User updateUserRole(Long userId, String roleCode, String token) {
++        User adminActor = getUserByToken(token);
++
++        if (adminActor.getRole() == null || !ADMIN_ROLE_CODE.equalsIgnoreCase(adminActor.getRole().getRoleCode())) {
++            throw new SecurityException("Chỉ tài khoản có role ADMIN mới được phép thay đổi role của user khác");
++        }
++
++        User targetUser = userRepository.findById(userId)
++                .orElseThrow(() -> new NoSuchElementException("User với ID " + userId + " không tồn tại"));
++
++        if (targetUser.getRole() != null && ADMIN_ROLE_CODE.equalsIgnoreCase(targetUser.getRole().getRoleCode())) {
++            throw new SecurityException("Không thể thay đổi role của người dùng đang là ADMIN");
++        }
++
++        Role newRole = roleRepository.findRoleByRoleCode(roleCode);
++        if (newRole == null) {
++            throw new NoSuchElementException("Mã quyền '" + roleCode + "' không tồn tại trong hệ thống");
++        }
++        if (!newRole.isActive()) {
++            throw new NoSuchElementException("Role code '" + roleCode + "' is not active");
++        }
++
++        targetUser.setRole(newRole);
++        userRepository.save(targetUser);
++
++        try {
++            String logDetails = String.format(
++                    "{\"targetUserId\":%d,\"oldRole\":\"%s\",\"newRole\":\"%s\",\"changedByAdminId\":%d}",
++                    targetUser.getUserId(),
++                    targetUser.getRole().getRoleCode(),
++                    roleCode,
++                    adminActor.getUserId()
++            );
++            auditLogService.createAuditLog(adminActor, "ADMIN_UPDATE_USER_ROLE:" + logDetails, LocalDateTime.now());
++        } catch (Exception e) {
++            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
++        }
++
++        return targetUser;
++    }
++
+     /**
+      * Luồng admin tạo tài khoản cho người dùng khác.
+      * Khác biệt duy nhất so với createUser(): admin được phép chỉ định roleCode
+@@ -111,6 +164,9 @@ public class UserService {
+             throw new IllegalArgumentException("roleCode is required when admin creates a user");
+         }
+ 
++        // Kiểm tra trùng lặp trước khi lưu
++        validateUniqueFields(userRequest.getEmail(), userRequest.getPhoneNumber(), userRequest.getIdentifyNumber());
++
+         Role role = roleRepository.findRoleByRoleCode(userRequest.getRoleCode());
+         if (role == null) {
+             throw new NoSuchElementException("Mã quyền '" + userRequest.getRoleCode() + "' không tồn tại trong hệ thống");
+@@ -148,6 +204,22 @@ public class UserService {
+         return newUser;
+     }
+ 
++    /**
++     * Kiểm tra các trường unique (email, phone, identifyNumber) trước khi lưu user.
++     * Ném IllegalArgumentException với thông báo rõ ràng nếu bị trùng.
++     */
++    private void validateUniqueFields(String email, String phoneNumber, String identifyNumber) {
++        if (email != null && userRepository.findByEmail(email).isPresent()) {
++            throw new IllegalArgumentException("Email '" + email + "' đã được sử dụng. Vui lòng dùng email khác.");
++        }
++        if (phoneNumber != null && userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
++            throw new IllegalArgumentException("Số điện thoại '" + phoneNumber + "' đã được sử dụng. Vui lòng dùng số khác.");
++        }
++        if (identifyNumber != null && userRepository.findByIdentifyNumber(identifyNumber).isPresent()) {
++            throw new IllegalArgumentException("Số CMND/CCCD '" + identifyNumber + "' đã được sử dụng.");
++        }
++    }
++
+     /**
+      * Logic dùng chung giữa createUser() và createUserByAdmin():
+      * tính tuổi, convert Date -> LocalDate, hash password, set các field cơ bản.
+diff --git a/FE/smart-parking-fe/src/App.tsx b/FE/smart-parking-fe/src/App.tsx
+index e3f8489..0f55944 100644
+--- a/FE/smart-parking-fe/src/App.tsx
++++ b/FE/smart-parking-fe/src/App.tsx
+@@ -43,14 +43,16 @@ import Booking from './pages/driver/Booking';
+ // BE role → App role
+ const mapRole = (roleCode: string): string => {
+   const r = roleCode?.toUpperCase();
+-  if (r === 'MANAGER' || r === 'SYSTEM_ADMIN') return 'ADMIN';
++  if (r === 'SYSTEM_ADMIN' || r === 'ADMIN') return 'ADMIN';
++  if (r === 'MANAGER') return 'MANAGER';
+   if (r === 'STAFF') return 'STAFF';
+   if (r === 'DRIVER') return 'DRIVER';
+   return 'STAFF';
+ };
+ 
+ const ROLE_DEFAULT: Record<string, string> = {
+-  ADMIN: '/dashboard',
++  ADMIN: '/admin/dashboard',
++  MANAGER: '/manager/dashboard',
+   STAFF: '/entry',
+   DRIVER: '/driver/dashboard',
+ };
+@@ -111,48 +113,56 @@ function AppShell() {
+           <Routes>
+             <Route path="/" element={<Navigate to={defaultPage} replace />} />
+ 
+-            {/* Admin + Manager */}
+-            <Route path="/dashboard" element={
++            {/* ═══ ADMIN (System Admin) ═══ */}
++            <Route path="/admin/dashboard" element={
+               <RoleRoute allowedRoles={['ADMIN']}>
+                 <HungDashboard />
+               </RoleRoute>
+             } />
+-
+-            {/* Admin only */}
+-            <Route path="/pricing" element={
++            <Route path="/admin/pricing" element={
+               <RoleRoute allowedRoles={['ADMIN']}>
+                 <Pricing />
+               </RoleRoute>
+             } />
+-            <Route path="/reports" element={
++            <Route path="/admin/reports" element={
+               <RoleRoute allowedRoles={['ADMIN']}>
+                 <Reports />
+               </RoleRoute>
+             } />
+-            <Route path="/settings" element={
++            <Route path="/admin/settings" element={
+               <RoleRoute allowedRoles={['ADMIN']}>
+                 <Settings />
+               </RoleRoute>
+             } />
+ 
+-            {/* Manager only */}
+-            <Route path="/slots" element={
+-              <RoleRoute allowedRoles={['ADMIN']}>
++            {/* ═══ MANAGER ═══ */}
++            <Route path="/manager/dashboard" element={
++              <RoleRoute allowedRoles={['MANAGER']}>
++                <HungDashboard />
++              </RoleRoute>
++            } />
++            <Route path="/manager/slots" element={
++              <RoleRoute allowedRoles={['MANAGER']}>
+                 <SlotManagement />
+               </RoleRoute>
+             } />
+-            <Route path="/passes" element={
+-              <RoleRoute allowedRoles={['ADMIN']}>
++            <Route path="/manager/passes" element={
++              <RoleRoute allowedRoles={['MANAGER']}>
+                 <PassesBookings />
+               </RoleRoute>
+             } />
+-            <Route path="/exceptions" element={
+-              <RoleRoute allowedRoles={['ADMIN']}>
++            <Route path="/manager/exceptions" element={
++              <RoleRoute allowedRoles={['MANAGER']}>
+                 <Exceptions />
+               </RoleRoute>
+             } />
++            <Route path="/manager/reports" element={
++              <RoleRoute allowedRoles={['MANAGER']}>
++                <Reports />
++              </RoleRoute>
++            } />
+ 
+-            {/* Staff */}
++            {/* ═══ STAFF ═══ */}
+             <Route path="/entry" element={
+               <RoleRoute allowedRoles={['STAFF']}>
+                 <VehicleEntry />
+@@ -169,10 +179,19 @@ function AppShell() {
+               </RoleRoute>
+             } />
+ 
+-            {/* Driver */}
++            {/* ═══ DRIVER ═══ */}
+             <Route path="/driver/register-vehicle" element={<RoleRoute allowedRoles={['DRIVER']}><RegisterVehicle /></RoleRoute>} />
+             <Route path="/driver/my-vehicles" element={<RoleRoute allowedRoles={['DRIVER']}><MyVehicles /></RoleRoute>} />
+ 
++            {/* Legacy redirects */}
++            <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
++            <Route path="/pricing" element={<Navigate to="/admin/pricing" replace />} />
++            <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
++            <Route path="/settings" element={<Navigate to="/admin/settings" replace />} />
++            <Route path="/slots" element={<Navigate to="/manager/slots" replace />} />
++            <Route path="/passes" element={<Navigate to="/manager/passes" replace />} />
++            <Route path="/exceptions" element={<Navigate to="/manager/exceptions" replace />} />
++
+             <Route path="*" element={<Navigate to={defaultPage} replace />} />
+           </Routes>
+         </main>
+diff --git a/FE/smart-parking-fe/src/api/auth.api.ts b/FE/smart-parking-fe/src/api/auth.api.ts
+index a61afe1..145c2c0 100644
+--- a/FE/smart-parking-fe/src/api/auth.api.ts
++++ b/FE/smart-parking-fe/src/api/auth.api.ts
+@@ -66,9 +66,9 @@ export const registerApi = async (payload: RegisterPayload): Promise<void> => {
+       return;
+     }
+ 
+-    // Lỗi từ BE (email trùng, validation...) → ném ra để Register.tsx hiển thị
+-    if (err instanceof Error) throw err;
+-    throw new Error("Đăng ký thất bại");
++    // Lỗi từ BE (email trùng, validation...) → ném ra để AuthContext hiển thị
++    // Giữ nguyên Axios error để AuthContext extract được response.data.message
++    throw err;
+   }
+ };
+ 
+diff --git a/FE/smart-parking-fe/src/components/Sidebar.tsx b/FE/smart-parking-fe/src/components/Sidebar.tsx
+index a84b9b3..42d572f 100644
+--- a/FE/smart-parking-fe/src/components/Sidebar.tsx
++++ b/FE/smart-parking-fe/src/components/Sidebar.tsx
+@@ -9,30 +9,34 @@ import {
+ 
+ // ── Role-based navigation items ──────────────────────────────────────────────
+ const navItems = [
+-  // ADMIN
+-  { to: '/dashboard',  label: 'Dashboard',         icon: LayoutDashboard, roles: ['ADMIN'] },
+-  { to: '/slots',      label: 'Slot Management',   icon: CircleDot,       roles: ['ADMIN'] },
+-  { to: '/pricing',    label: 'Pricing',           icon: DollarSign,      roles: ['ADMIN'] },
+-  { to: '/passes',     label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['ADMIN'] },
+-  { to: '/exceptions', label: 'Exceptions',        icon: AlertTriangle,   roles: ['ADMIN'] },
+-  { to: '/reports',    label: 'Reports',           icon: BarChart3,       roles: ['ADMIN'] },
+-  { to: '/settings',   label: 'Settings',          icon: SettingsIcon,    roles: ['ADMIN'] },
++  // ADMIN (System Administrator)
++  { to: '/admin/dashboard', label: 'Dashboard',  icon: LayoutDashboard, roles: ['ADMIN'] },
++  { to: '/admin/pricing',   label: 'Pricing',    icon: DollarSign,      roles: ['ADMIN'] },
++  { to: '/admin/reports',   label: 'Reports',    icon: BarChart3,       roles: ['ADMIN'] },
++  { to: '/admin/settings',  label: 'Settings',   icon: SettingsIcon,    roles: ['ADMIN'] },
++  // MANAGER (Parking Lot Manager)
++  { to: '/manager/dashboard',   label: 'Dashboard',         icon: LayoutDashboard, roles: ['MANAGER'] },
++  { to: '/manager/slots',       label: 'Slot Management',   icon: CircleDot,       roles: ['MANAGER'] },
++  { to: '/manager/passes',      label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['MANAGER'] },
++  { to: '/manager/exceptions',  label: 'Exceptions',        icon: AlertTriangle,   roles: ['MANAGER'] },
++  { to: '/manager/reports',     label: 'Reports',           icon: BarChart3,       roles: ['MANAGER'] },
+   // STAFF
+   { to: '/entry',       label: 'Vehicle Entry',     icon: LogIn,           roles: ['STAFF'] },
+   { to: '/exit',        label: 'Vehicle Exit',      icon: LogOut,          roles: ['STAFF'] },
+   { to: '/staff/slots', label: 'Slot View',         icon: MapPin,          roles: ['STAFF'] },
+   // DRIVER
+-{ to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
+-{ to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
+-{ to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
+-{ to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
+-{ to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
++  { to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
++  { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
++  { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
++  { to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
++  { to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
+ ];
+ 
+ const ROLE_LABELS: Record<string, string> = {
+-  ADMIN:  'Admin / Manager',
+-  STAFF:  'Staff',
+-  DRIVER: 'Driver',
++  ADMIN:   'System Admin',
++  MANAGER: 'Manager',
++  STAFF:   'Staff',
++  DRIVER:  'Driver',
+ };
+ 
+ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }: any) {
+diff --git a/FE/smart-parking-fe/src/contexts/AuthContext.jsx b/FE/smart-parking-fe/src/contexts/AuthContext.jsx
+index c2cad81..1c3c0b6 100644
+--- a/FE/smart-parking-fe/src/contexts/AuthContext.jsx
++++ b/FE/smart-parking-fe/src/contexts/AuthContext.jsx
+@@ -17,17 +17,28 @@ export function AuthProvider({ children }) {
+       const storedUser = localStorage.getItem('user');
+ 
+       if (token && storedUser) {
+-        try {
+-          // Validate the token with the server
+-          const { user: freshUser } = await authService.getCurrentUser();
+-          setUser(freshUser);
+-          // Update stored user with fresh data
+-          localStorage.setItem('user', JSON.stringify(freshUser));
+-        } catch {
+-          // Token invalid / expired – clean up
+-          localStorage.removeItem('accessToken');
+-          localStorage.removeItem('refreshToken');
+-          localStorage.removeItem('user');
++        // Demo mode: skip server validation for demo tokens
++        if (token === 'demo-token') {
++          try {
++            setUser(JSON.parse(storedUser));
++          } catch {
++            localStorage.removeItem('accessToken');
++            localStorage.removeItem('refreshToken');
++            localStorage.removeItem('user');
++          }
++        } else {
++          try {
++            // Validate the token with the server
++            const { user: freshUser } = await authService.getCurrentUser();
++            setUser(freshUser);
++            // Update stored user with fresh data
++            localStorage.setItem('user', JSON.stringify(freshUser));
++          } catch {
++            // Token invalid / expired – clean up
++            localStorage.removeItem('accessToken');
++            localStorage.removeItem('refreshToken');
++            localStorage.removeItem('user');
++          }
+         }
+       }
+       setLoading(false);
+@@ -63,8 +74,12 @@ export function AuthProvider({ children }) {
+       // Do NOT auto-login: backend register endpoint doesn't return tokens
+       return { success: true, message: result.message };
+     } catch (err) {
++      // Extract message from BE's ApiResponse format: { statusCode, message, data }
+       const message =
+-        err.response?.data?.message || err.message || 'Registration failed';
++        err.response?.data?.message ||
++        err.response?.data?.error ||
++        err.message ||
++        'Registration failed';
+       setError(message);
+       return { success: false, error: message };
+     }
+diff --git a/FE/smart-parking-fe/src/hung_index.css b/FE/smart-parking-fe/src/hung_index.css
+index 29feb44..df4698c 100644
+--- a/FE/smart-parking-fe/src/hung_index.css
++++ b/FE/smart-parking-fe/src/hung_index.css
+@@ -2414,3 +2414,15 @@ body {
+   grid-template-columns: 1fr !important;
+ }
+ 
++@keyframes spin {
++  from {
++    transform: rotate(0deg);
++  }
++  to {
++    transform: rotate(360deg);
++  }
++}
++
++.spin-animation {
++  animation: spin 1s linear infinite;
++}
+diff --git a/FE/smart-parking-fe/src/pages/Login.jsx b/FE/smart-parking-fe/src/pages/Login.jsx
+index 9a46de9..4e1f3ab 100644
+--- a/FE/smart-parking-fe/src/pages/Login.jsx
++++ b/FE/smart-parking-fe/src/pages/Login.jsx
+@@ -37,12 +37,13 @@ export default function Login() {
+       // Role-aware redirect after login
+       const stored = JSON.parse(localStorage.getItem('user') || '{}');
+       const role = stored.role || 'STAFF';
+-      const defaults = { ADMIN: '/dashboard', MANAGER: '/dashboard', STAFF: '/entry' };
++      const defaults = { ADMIN: '/admin/dashboard', MANAGER: '/manager/dashboard', STAFF: '/entry' };
+       navigate(defaults[role] || '/entry');
+     }
+     // If login failed, authError will be set by the context
+   };
+ 
++
+   return (
+     <div className="auth-page">
+       {/* Animated background particles */}
+@@ -222,9 +223,6 @@ export default function Login() {
+               </button>
+             </form>
+ 
+-            <div className="auth-divider">
+-              <span>or</span>
+-            </div>
+ 
+             <div className="auth-alt-actions">
+               <p>
+diff --git a/FE/smart-parking-fe/src/pages/admin/Settings.jsx b/FE/smart-parking-fe/src/pages/admin/Settings.jsx
+index 534732c..6257fa5 100644
+--- a/FE/smart-parking-fe/src/pages/admin/Settings.jsx
++++ b/FE/smart-parking-fe/src/pages/admin/Settings.jsx
+@@ -1,18 +1,21 @@
+-import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save } from 'lucide-react';
+-import { useState, useEffect } from 'react';
++import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save, Edit2, Check, X, RefreshCw, UserPlus } from 'lucide-react';
++import { useState, useEffect, useCallback } from 'react';
+ import { useParkingStore } from '../../store/parkingStore';
++import api from '../../services/api';
+ 
+-const usersData = [
+-  { id: 1, username: 'admin', fullName: 'Admin User', email: 'admin@parking.vn', role: 'Admin', active: true },
+-  { id: 2, username: 'manager1', fullName: 'Nguyen Van M', email: 'manager@parking.vn', role: 'Manager', active: true },
+-  { id: 3, username: 'staff1', fullName: 'Tran Thi S', email: 'staff1@parking.vn', role: 'Staff', active: true },
+-  { id: 4, username: 'staff2', fullName: 'Le Van S', email: 'staff2@parking.vn', role: 'Staff', active: true },
+-  { id: 5, username: 'driver1', fullName: 'Pham D', email: 'driver@email.vn', role: 'Driver', active: false },
+-];
++// ── Role config ──────────────────────────────────────────────────────────────
++const ROLE_OPTIONS = ['ADMIN', 'MANAGER', 'STAFF', 'DRIVER'];
+ 
+ const roleBadge = (r) => {
+-  const m = { Admin: 'badge-danger', Manager: 'badge-warning', Staff: 'badge-info', Driver: 'badge-neutral' };
+-  return m[r] || 'badge-neutral';
++  const upper = (r || '').toUpperCase();
++  const m = { ADMIN: 'badge-danger', MANAGER: 'badge-warning', STAFF: 'badge-info', DRIVER: 'badge-neutral' };
++  return m[upper] || 'badge-neutral';
++};
++
++const roleLabel = (r) => {
++  const upper = (r || '').toUpperCase();
++  const m = { ADMIN: 'Admin', MANAGER: 'Manager', STAFF: 'Staff', DRIVER: 'Driver' };
++  return m[upper] || r;
+ };
+ 
+ export default function Settings() {
+@@ -24,6 +27,18 @@ export default function Settings() {
+   const [lotInfo, setLotInfo] = useState(store.settings.lotInfo);
+   const [isSaving, setIsSaving] = useState(false);
+ 
++  // ── User Management state ─────────────────────────────────────────────────
++  const [users, setUsers] = useState([]);
++  const [usersLoading, setUsersLoading] = useState(false);
++  const [usersError, setUsersError] = useState(null);
++  const [editingUserId, setEditingUserId] = useState(null);
++  const [editingRole, setEditingRole] = useState('');
++  const [roleUpdating, setRoleUpdating] = useState(false);
++  const [roleUpdateMsg, setRoleUpdateMsg] = useState(null); // { type: 'success'|'error', text }
++
++  // Check if we're in demo mode
++  const isDemoMode = localStorage.getItem('accessToken') === 'demo-token';
++
+   // Sync with store on mount in case it changed elsewhere
+   useEffect(() => {
+     setNotifications(store.settings.notifications);
+@@ -31,6 +46,90 @@ export default function Settings() {
+     setLotInfo(store.settings.lotInfo);
+   }, [store.settings]);
+ 
++  // ── Fetch users from backend ──────────────────────────────────────────────
++  const fetchUsers = useCallback(async () => {
++    if (isDemoMode) {
++      // Demo mode: use mock data
++      setUsers([
++        { id: 1, fullName: 'Admin User', email: 'admin@parking.vn', roleCode: 'ADMIN', userIsActivated: true, phoneNumber: '0901000001' },
++        { id: 2, fullName: 'Nguyen Van Manager', email: 'manager@parking.vn', roleCode: 'MANAGER', userIsActivated: true, phoneNumber: '0901000002' },
++        { id: 3, fullName: 'Tran Thi Staff', email: 'staff1@parking.vn', roleCode: 'STAFF', userIsActivated: true, phoneNumber: '0901000003' },
++        { id: 4, fullName: 'Le Van Staff', email: 'staff2@parking.vn', roleCode: 'STAFF', userIsActivated: true, phoneNumber: '0901000004' },
++        { id: 5, fullName: 'Pham Driver', email: 'driver@email.vn', roleCode: 'DRIVER', userIsActivated: false, phoneNumber: '0901000005' },
++      ]);
++      return;
++    }
++
++    setUsersLoading(true);
++    setUsersError(null);
++    try {
++      const res = await api.get('/auth/users/get');
++      const data = res.data?.data || res.data || [];
++      setUsers(Array.isArray(data) ? data : []);
++    } catch (err) {
++      console.error('Failed to fetch users:', err);
++      setUsersError(err.response?.data?.message || err.message || 'Failed to fetch users');
++    } finally {
++      setUsersLoading(false);
++    }
++  }, [isDemoMode]);
++
++  useEffect(() => {
++    fetchUsers();
++  }, [fetchUsers]);
++
++  // ── Update user role ──────────────────────────────────────────────────────
++  const handleRoleUpdate = async (userId) => {
++    if (!editingRole) return;
++
++    setRoleUpdating(true);
++    setRoleUpdateMsg(null);
++
++    if (isDemoMode) {
++      // Demo mode: update locally
++      setTimeout(() => {
++        setUsers(prev => prev.map(u => u.id === userId ? { ...u, roleCode: editingRole } : u));
++        setEditingUserId(null);
++        setEditingRole('');
++        setRoleUpdating(false);
++        setRoleUpdateMsg({ type: 'success', text: `Role updated to ${roleLabel(editingRole)} (demo mode)` });
++        setTimeout(() => setRoleUpdateMsg(null), 3000);
++      }, 500);
++      return;
++    }
++
++    try {
++      const res = await api.patch(`/auth/users/${userId}/role`, { roleCode: editingRole });
++      const updatedUser = res.data?.data;
++      if (updatedUser) {
++        setUsers(prev => prev.map(u => u.id === userId ? { ...u, roleCode: updatedUser.roleCode || editingRole } : u));
++      } else {
++        setUsers(prev => prev.map(u => u.id === userId ? { ...u, roleCode: editingRole } : u));
++      }
++      setEditingUserId(null);
++      setEditingRole('');
++      setRoleUpdateMsg({ type: 'success', text: `Role updated to ${roleLabel(editingRole)} successfully` });
++      setTimeout(() => setRoleUpdateMsg(null), 3000);
++    } catch (err) {
++      const msg = err.response?.data?.message || err.message || 'Failed to update role';
++      setRoleUpdateMsg({ type: 'error', text: msg });
++      setTimeout(() => setRoleUpdateMsg(null), 5000);
++    } finally {
++      setRoleUpdating(false);
++    }
++  };
++
++  const startEditing = (user) => {
++    setEditingUserId(user.id);
++    setEditingRole(user.roleCode);
++    setRoleUpdateMsg(null);
++  };
++
++  const cancelEditing = () => {
++    setEditingUserId(null);
++    setEditingRole('');
++  };
++
+   const handleToggleNotif = (k) => {
+     const newVal = { ...notifications, [k]: !notifications[k] };
+     setNotifications(newVal);
+@@ -141,30 +240,211 @@ export default function Settings() {
+         ))}
+       </div>
+ 
+-      {/* User Management */}
+-      <div className="settings-card">
+-        <div className="settings-card-title"><Users size={20} /> User Management</div>
++      {/* ═══════════════════════ User Management ═══════════════════════ */}
++      <div className="settings-card" id="user-management-section">
++        <div className="settings-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
++            <Users size={20} /> User Management
++            {isDemoMode && <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Demo Mode</span>}
++          </span>
++          <button
++            className="btn-sm btn-sm-secondary"
++            onClick={fetchUsers}
++            disabled={usersLoading}
++            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
++            title="Refresh user list"
++          >
++            <RefreshCw size={14} className={usersLoading ? 'spin-animation' : ''} />
++            Refresh
++          </button>
++        </div>
++
++        {/* Role update feedback message */}
++        {roleUpdateMsg && (
++          <div style={{
++            padding: '10px 14px',
++            borderRadius: '8px',
++            marginBottom: '12px',
++            fontSize: '0.85rem',
++            fontWeight: 500,
++            display: 'flex',
++            alignItems: 'center',
++            gap: '8px',
++            background: roleUpdateMsg.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
++            border: `1px solid ${roleUpdateMsg.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
++            color: roleUpdateMsg.type === 'success' ? '#10b981' : '#ef4444',
++          }}>
++            {roleUpdateMsg.type === 'success' ? <Check size={16} /> : <X size={16} />}
++            {roleUpdateMsg.text}
++          </div>
++        )}
++
++        {/* Error message */}
++        {usersError && (
++          <div style={{
++            padding: '12px 16px',
++            borderRadius: '8px',
++            marginBottom: '12px',
++            background: 'rgba(239, 68, 68, 0.1)',
++            border: '1px solid rgba(239, 68, 68, 0.3)',
++            color: '#ef4444',
++            fontSize: '0.85rem',
++          }}>
++            ⚠️ {usersError}
++          </div>
++        )}
++
++        {/* Users table */}
+         <div style={{ overflowX: 'auto' }}>
+-          <table className="data-table">
++          <table className="data-table" id="users-table">
+             <thead>
+               <tr>
+-                <th>Username</th>
++                <th>ID</th>
+                 <th>Full Name</th>
+                 <th>Email</th>
++                <th>Phone</th>
+                 <th>Role</th>
+                 <th>Status</th>
++                <th style={{ textAlign: 'center' }}>Actions</th>
+               </tr>
+             </thead>
+             <tbody>
+-              {usersData.map(u => (
+-                <tr key={u.id}>
+-                  <td>{u.username}</td>
+-                  <td>{u.fullName}</td>
+-                  <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
+-                  <td><span className={`badge ${roleBadge(u.role)}`}>{u.role}</span></td>
+-                  <td><span className={`badge ${u.active ? 'badge-success' : 'badge-neutral'}`}>{u.active ? 'Active' : 'Inactive'}</span></td>
++              {usersLoading ? (
++                <tr>
++                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
++                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
++                      <RefreshCw size={18} className="spin-animation" />
++                      Loading users...
++                    </div>
++                  </td>
++                </tr>
++              ) : users.length === 0 ? (
++                <tr>
++                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
++                    No users found
++                  </td>
+                 </tr>
+-              ))}
++              ) : (
++                users.map(u => (
++                  <tr key={u.id}>
++                    <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>#{u.id}</td>
++                    <td style={{ fontWeight: 500 }}>{u.fullName}</td>
++                    <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
++                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{u.phoneNumber || '—'}</td>
++                    <td>
++                      {editingUserId === u.id ? (
++                        <select
++                          value={editingRole}
++                          onChange={(e) => setEditingRole(e.target.value)}
++                          disabled={roleUpdating}
++                          style={{
++                            padding: '6px 10px',
++                            background: 'var(--bg-input, #1a1f2e)',
++                            border: '1.5px solid var(--accent-primary, #10b981)',
++                            borderRadius: '6px',
++                            color: 'var(--text-primary)',
++                            fontSize: '0.85rem',
++                            fontWeight: 600,
++                            cursor: 'pointer',
++                            outline: 'none',
++                            minWidth: '110px',
++                          }}
++                        >
++                          {ROLE_OPTIONS.map(role => (
++                            <option key={role} value={role}>{roleLabel(role)}</option>
++                          ))}
++                        </select>
++                      ) : (
++                        <span className={`badge ${roleBadge(u.roleCode)}`}>{roleLabel(u.roleCode)}</span>
++                      )}
++                    </td>
++                    <td>
++                      <span className={`badge ${u.userIsActivated ? 'badge-success' : 'badge-neutral'}`}>
++                        {u.userIsActivated ? 'Active' : 'Inactive'}
++                      </span>
++                    </td>
++                    <td style={{ textAlign: 'center' }}>
++                      {u.roleCode === 'ADMIN' ? (
++                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
++                          <Shield size={12} /> Protected
++                        </span>
++                      ) : editingUserId === u.id ? (
++                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
++                          <button
++                            onClick={() => handleRoleUpdate(u.id)}
++                            disabled={roleUpdating || editingRole === u.roleCode}
++                            title="Save role"
++                            style={{
++                              padding: '5px 12px',
++                              background: roleUpdating ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.2)',
++                              border: '1px solid rgba(16, 185, 129, 0.4)',
++                              borderRadius: '6px',
++                              color: '#10b981',
++                              cursor: roleUpdating || editingRole === u.roleCode ? 'not-allowed' : 'pointer',
++                              display: 'flex',
++                              alignItems: 'center',
++                              gap: '4px',
++                              fontSize: '0.8rem',
++                              fontWeight: 600,
++                              opacity: editingRole === u.roleCode ? 0.5 : 1,
++                              transition: 'all 0.2s',
++                            }}
++                          >
++                            {roleUpdating ? <RefreshCw size={13} className="spin-animation" /> : <Check size={13} />}
++                            Save
++                          </button>
++                          <button
++                            onClick={cancelEditing}
++                            disabled={roleUpdating}
++                            title="Cancel"
++                            style={{
++                              padding: '5px 12px',
++                              background: 'rgba(239, 68, 68, 0.1)',
++                              border: '1px solid rgba(239, 68, 68, 0.3)',
++                              borderRadius: '6px',
++                              color: '#ef4444',
++                              cursor: roleUpdating ? 'not-allowed' : 'pointer',
++                              display: 'flex',
++                              alignItems: 'center',
++                              gap: '4px',
++                              fontSize: '0.8rem',
++                              fontWeight: 600,
++                              transition: 'all 0.2s',
++                            }}
++                          >
++                            <X size={13} />
++                            Cancel
++                          </button>
++                        </div>
++                      ) : (
++                        <button
++                          onClick={() => startEditing(u)}
++                          title="Change role"
++                          style={{
++                            padding: '5px 12px',
++                            background: 'rgba(59, 130, 246, 0.1)',
++                            border: '1px solid rgba(59, 130, 246, 0.3)',
++                            borderRadius: '6px',
++                            color: '#3b82f6',
++                            cursor: 'pointer',
++                            display: 'inline-flex',
++                            alignItems: 'center',
++                            gap: '4px',
++                            fontSize: '0.8rem',
++                            fontWeight: 600,
++                            transition: 'all 0.2s',
++                          }}
++                          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; }}
++                          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'; }}
++                        >
++                          <Edit2 size={13} />
++                          Change Role
++                        </button>
++                      )}
++                    </td>
++                  </tr>
++                ))
++              )}
+             </tbody>
+           </table>
+         </div>
