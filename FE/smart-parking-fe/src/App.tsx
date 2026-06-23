@@ -39,20 +39,20 @@ import MyVehicles from './pages/driver/MyVehicles';
 import DriverSlotView from './pages/driver/SlotView';
 // @ts-ignore
 import Booking from './pages/driver/Booking';
-// @ts-ignore
-import BookingHistory from './pages/driver/BookingHistory';
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // BE role → App role
 const mapRole = (roleCode: string): string => {
   const r = roleCode?.toUpperCase();
-  if (r === 'MANAGER' || r === 'SYSTEM_ADMIN') return 'ADMIN';
+  if (r === 'SYSTEM_ADMIN' || r === 'ADMIN') return 'ADMIN';
+  if (r === 'MANAGER') return 'MANAGER';
   if (r === 'STAFF') return 'STAFF';
   if (r === 'DRIVER') return 'DRIVER';
   return 'STAFF';
 };
 
 const ROLE_DEFAULT: Record<string, string> = {
-  ADMIN: '/dashboard',
+  ADMIN: '/admin/dashboard',
+  MANAGER: '/manager/dashboard',
   STAFF: '/entry',
   DRIVER: '/driver/dashboard',
 };
@@ -113,48 +113,56 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<Navigate to={defaultPage} replace />} />
 
-            {/* Admin + Manager */}
-            <Route path="/dashboard" element={
+            {/* ═══ ADMIN (System Admin) ═══ */}
+            <Route path="/admin/dashboard" element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <HungDashboard />
               </RoleRoute>
             } />
-
-            {/* Admin only */}
-            <Route path="/pricing" element={
+            <Route path="/admin/pricing" element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <Pricing />
               </RoleRoute>
             } />
-            <Route path="/reports" element={
+            <Route path="/admin/reports" element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <Reports />
               </RoleRoute>
             } />
-            <Route path="/settings" element={
+            <Route path="/admin/settings" element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <Settings />
               </RoleRoute>
             } />
 
-            {/* Manager only */}
-            <Route path="/slots" element={
-              <RoleRoute allowedRoles={['ADMIN']}>
+            {/* ═══ MANAGER ═══ */}
+            <Route path="/manager/dashboard" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
+                <HungDashboard />
+              </RoleRoute>
+            } />
+            <Route path="/manager/slots" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
                 <SlotManagement />
               </RoleRoute>
             } />
-            <Route path="/passes" element={
-              <RoleRoute allowedRoles={['ADMIN']}>
+            <Route path="/manager/passes" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
                 <PassesBookings />
               </RoleRoute>
             } />
-            <Route path="/exceptions" element={
-              <RoleRoute allowedRoles={['ADMIN']}>
+            <Route path="/manager/exceptions" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
                 <Exceptions />
               </RoleRoute>
             } />
+            <Route path="/manager/reports" element={
+              <RoleRoute allowedRoles={['MANAGER']}>
+                <Reports />
+              </RoleRoute>
+            } />
 
-            {/* Staff */}
+            {/* ═══ STAFF ═══ */}
             <Route path="/entry" element={
               <RoleRoute allowedRoles={['STAFF']}>
                 <VehicleEntry />
@@ -171,13 +179,18 @@ function AppShell() {
               </RoleRoute>
             } />
 
-            {/* Driver */}
-            <Route path="/driver/dashboard" element={<RoleRoute allowedRoles={['DRIVER']}><DriverDashboard /></RoleRoute>} />
+            {/* ═══ DRIVER ═══ */}
             <Route path="/driver/register-vehicle" element={<RoleRoute allowedRoles={['DRIVER']}><RegisterVehicle /></RoleRoute>} />
             <Route path="/driver/my-vehicles" element={<RoleRoute allowedRoles={['DRIVER']}><MyVehicles /></RoleRoute>} />
-            <Route path="/driver/slots" element={<RoleRoute allowedRoles={['DRIVER']}><DriverSlotView /></RoleRoute>} />
-            <Route path="/driver/booking" element={<RoleRoute allowedRoles={['DRIVER']}><Booking /></RoleRoute>} />
-            <Route path="/driver/booking-history" element={<RoleRoute allowedRoles={['DRIVER']}><BookingHistory /></RoleRoute>} />
+
+            {/* Legacy redirects */}
+            <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/pricing" element={<Navigate to="/admin/pricing" replace />} />
+            <Route path="/reports" element={<Navigate to="/admin/reports" replace />} />
+            <Route path="/settings" element={<Navigate to="/admin/settings" replace />} />
+            <Route path="/slots" element={<Navigate to="/manager/slots" replace />} />
+            <Route path="/passes" element={<Navigate to="/manager/passes" replace />} />
+            <Route path="/exceptions" element={<Navigate to="/manager/exceptions" replace />} />
 
             <Route path="*" element={<Navigate to={defaultPage} replace />} />
           </Routes>

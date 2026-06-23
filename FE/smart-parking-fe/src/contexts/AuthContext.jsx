@@ -17,17 +17,28 @@ export function AuthProvider({ children }) {
       const storedUser = localStorage.getItem('user');
 
       if (token && storedUser) {
-        try {
-          // Validate the token with the server
-          const { user: freshUser } = await authService.getCurrentUser();
-          setUser(freshUser);
-          // Update stored user with fresh data
-          localStorage.setItem('user', JSON.stringify(freshUser));
-        } catch {
-          // Token invalid / expired – clean up
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('user');
+        // Demo mode: skip server validation for demo tokens
+        if (token === 'demo-token') {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+          }
+        } else {
+          try {
+            // Validate the token with the server
+            const { user: freshUser } = await authService.getCurrentUser();
+            setUser(freshUser);
+            // Update stored user with fresh data
+            localStorage.setItem('user', JSON.stringify(freshUser));
+          } catch {
+            // Token invalid / expired – clean up
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+          }
         }
       }
       setLoading(false);
@@ -63,8 +74,12 @@ export function AuthProvider({ children }) {
       // Do NOT auto-login: backend register endpoint doesn't return tokens
       return { success: true, message: result.message };
     } catch (err) {
+      // Extract message from BE's ApiResponse format: { statusCode, message, data }
       const message =
-        err.response?.data?.message || err.message || 'Registration failed';
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Registration failed';
       setError(message);
       return { success: false, error: message };
     }
