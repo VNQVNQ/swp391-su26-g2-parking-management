@@ -62,4 +62,12 @@ public class ParkingUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() { return user.getUserIsActive(); }
+
+    public Long getUserId() {
+        return user.getUserId();
+    }
+
+    public User getUser() {
+        return user;
+    }
 }

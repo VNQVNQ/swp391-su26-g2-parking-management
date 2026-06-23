@@ -14,6 +14,7 @@ import java.util.UUID;
  * DTO for validation response before creating parking session
  * BR-03: Xe còn nợ phí không được vào lại
  * BR-30: vehicleType xe phải khớp vehicleType slot
+ * Phase 4: Include monthly pass validation status
  */
 @Data
 @AllArgsConstructor
@@ -31,6 +32,10 @@ public class EntryValidationResponse {
     UUID vehicleId;
     String licensePlate;
     boolean foundVehicle;
+
+    // Phase 4: Monthly pass info
+    boolean hasActiveMonthlyPass;
+    UUID monthlyPassId;
 
     // Nếu có vấn đề
     String errorCode;

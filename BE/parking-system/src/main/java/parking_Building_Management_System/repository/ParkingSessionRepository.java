@@ -39,4 +39,16 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession, 
     // ĐÃ SỬA: Đổi s.totalFee thành s.finalFee (hoặc s.fee tùy logic của bạn) và đồng bộ đúng trường s.paymentStatus
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM ParkingSession s WHERE s.vehicle.id = ?1 AND s.finalFee IS NOT NULL AND s.paymentStatus = parking_Building_Management_System.entity.enums.PaymentStatus.UNPAID")
     boolean existsByVehicleIdAndTotalFeeIsNotNullAndIsPaidFalse(UUID vehicleId);
+
+    // Phase 4: New query methods for monthly passes and bookings
+    List<ParkingSession> findByMonthlyPassId(UUID monthlyPassId);
+
+    List<ParkingSession> findByBookingId(UUID bookingId);
+
+    @Query("SELECT COUNT(ps) FROM ParkingSession ps WHERE ps.monthlyPass.id = :monthlyPassId AND ps.paymentStatus = :paymentStatus AND ps.createdAt > :createdAt")
+    long countByMonthlyPassIdAndPaymentStatusAndCreatedAtAfter(
+        @Param("monthlyPassId") UUID monthlyPassId,
+        @Param("paymentStatus") PaymentStatus paymentStatus,
+        @Param("createdAt") LocalDateTime createdAt
+    );
 }

@@ -382,7 +382,9 @@ CREATE INDEX idx_audit_time    ON audit_logs(created_at);
 INSERT INTO roles (role_code, role_name, role_description) VALUES
     ('ADMIN',   'System Admin',     'Quản lý tài khoản và phân quyền hệ thống'),
     ('MANAGER', 'Parking Manager',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
-    ('STAFF',   'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ');
+    ('STAFF',   'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
+    ('DRIVER', 'Driver', 'Vehicle owner');
+
 
 INSERT INTO privileges (privilege_code, privilege_name) VALUES
     ('USER_MANAGE',       'Quản lý tài khoản'),

@@ -9,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.enums.ParkingSessionStatus;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
  * BR-27: Slot → Occupied ngay khi tạo session
  * BR-28: entry_time do server generate
  * BR-31: sessionID phải unique (UUID)
+ * Phase 4: Include monthly pass and pricing rule information
  */
 @Data
 @AllArgsConstructor
@@ -62,6 +64,25 @@ public class VehicleEntryResponse {
      */
     Long staffId;
     String staffName;
+    
+    /**
+     * Phase 4: Monthly pass information
+     */
+    boolean hasActiveMonthlyPass;
+    UUID monthlyPassId;
+    BigDecimal appliedMonthlyPassFee;
+
+    /**
+     * Phase 4: Pricing rule information
+     */
+    String appliedPricingRuleName;
+    UUID appliedPricingRuleId;
+
+    /**
+     * Phase 4: Booking information
+     */
+    String bookingCode;
+    UUID bookingId;
     
     /**
      * Metadata

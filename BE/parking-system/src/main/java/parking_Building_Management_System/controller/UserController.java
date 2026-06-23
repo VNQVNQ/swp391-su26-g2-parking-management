@@ -1,5 +1,6 @@
 package parking_Building_Management_System.controller;
 
+import parking_Building_Management_System.dto.user.request.AdminCreateUserRequest;
 import parking_Building_Management_System.dto.user.request.UserChangePasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserRequestForUpdate;
 import parking_Building_Management_System.dto.user.response.UserResponse;
@@ -37,7 +38,6 @@ public class UserController {
 
         User newUser = userService.createUser(userRequest);
 
-        // ĐÃ SỬA: Convert LocalDateTime và LocalDate sang Date
         Date lastActiveDate = newUser.getLastActive() != null
                 ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
                 : null;
@@ -50,17 +50,64 @@ public class UserController {
                 .fullName(newUser.getFullName())
                 .email(newUser.getEmail())
                 .roleCode(newUser.getRole().getRoleCode())
-                .lastActive(lastActiveDate) // ĐÃ SỬA
+                .lastActive(lastActiveDate)
                 .phoneNumber(newUser.getPhoneNumber())
                 .identifyNumber(newUser.getIdentifyNumber())
                 .gender(newUser.getGender())
                 .age(newUser.getAge())
                 .address(newUser.getAddress())
-                .dateOfBirth(dobDate) // ĐÃ SỬA
+                .dateOfBirth(dobDate)
                 .userIsActivated(newUser.getUserIsActive())
                 .build();
 
         ApiResponse<UserResponse> response = new ApiResponse<>(201, "User created successfully", responseData);
+        return ResponseEntity.status(201).body(response);
+    }
+
+    /**
+     * Endpoint dành riêng cho ADMIN: tạo tài khoản cho người dùng khác và được
+     * quyền chỉ định role (DRIVER / STAFF / ADMIN ...) ngay khi tạo.
+     * Khác với /register (tự đăng ký, role luôn bị ép cứng = DRIVER), endpoint
+     * này bắt buộc phải có Authorization header của một tài khoản ADMIN, và
+     * body phải có thêm field roleCode.
+     */
+    @PostMapping("/admin/register")
+    public ResponseEntity<ApiResponse<UserResponse>> createUserByAdmin(
+            @RequestBody AdminCreateUserRequest userRequest,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        if (!userRequest.getPassword().equals(userRequest.getConfirmPassword())) {
+            ApiResponse<UserResponse> response = new ApiResponse<>(401, "Password and Confirm Password not match", new UserResponse());
+            return ResponseEntity.status(401).body(response);
+        }
+
+        String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
+
+        User newUser = userService.createUserByAdmin(userRequest, token);
+
+        Date lastActiveDate = newUser.getLastActive() != null
+                ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                : null;
+        Date dobDate = newUser.getDateOfBirth() != null
+                ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                : null;
+
+        UserResponse responseData = UserResponse.builder()
+                .id(newUser.getUserId())
+                .fullName(newUser.getFullName())
+                .email(newUser.getEmail())
+                .roleCode(newUser.getRole().getRoleCode())
+                .lastActive(lastActiveDate)
+                .phoneNumber(newUser.getPhoneNumber())
+                .identifyNumber(newUser.getIdentifyNumber())
+                .gender(newUser.getGender())
+                .age(newUser.getAge())
+                .address(newUser.getAddress())
+                .dateOfBirth(dobDate)
+                .userIsActivated(newUser.getUserIsActive())
+                .build();
+
+        ApiResponse<UserResponse> response = new ApiResponse<>(201, "Admin created user successfully", responseData);
         return ResponseEntity.status(201).body(response);
     }
 
@@ -94,7 +141,6 @@ public class UserController {
         String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
         User user = userService.updateUser(id, userRequest, token);
 
-        // ĐÃ SỬA: Convert LocalDateTime và LocalDate sang Date
         Date lastActiveDate = user.getLastActive() != null
                 ? Date.from(user.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
                 : null;
@@ -106,13 +152,13 @@ public class UserController {
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .roleCode(user.getRole().getRoleCode())
-                .lastActive(lastActiveDate) // ĐÃ SỬA
+                .lastActive(lastActiveDate)
                 .phoneNumber(user.getPhoneNumber())
                 .identifyNumber(user.getIdentifyNumber())
                 .gender(user.getGender())
                 .age(user.getAge())
                 .address(user.getAddress())
-                .dateOfBirth(dobDate) // ĐÃ SỬA
+                .dateOfBirth(dobDate)
                 .userIsActivated(user.getUserIsActive())
                 .build();
         ApiResponse<UserResponse> response = new ApiResponse<>(201, "Update user successfully", responseData);
