@@ -15,9 +15,14 @@
 
 
 
+-- ============================================================
+-- 1. SEED USERS (Đã sửa đổi role_code và thêm tài khoản Driver)
+-- ============================================================
+
+-- Admin user
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES (
-    (SELECT role_id FROM roles WHERE role_code = 'ADMIN'),
+    (SELECT role_id FROM roles WHERE role_code = 'ADMIN' LIMIT 1),
     'Phạm Văn Admin',
     'admin@parking.com',
     '0901000001',
@@ -29,10 +34,10 @@ VALUES (
     true
 );
 
--- Manager user
+-- Manager user (Sửa từ 'MANAGER' thành 'PARKING_MANAGER')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES (
-    (SELECT role_id FROM roles WHERE role_code = 'MANAGER'),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_MANAGER' LIMIT 1),
     'Trần Thị Manager',
     'manager@parking.com',
     '0901000002',
@@ -44,11 +49,11 @@ VALUES (
     true
 );
 
--- Staff users (3 tầng, 1 nhân viên mỗi tầng + 1 nhân viên phụ trách tính phí)
+-- Staff users (Sửa từ 'STAFF' thành 'PARKING_STAFF')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES
 (
-    (SELECT role_id FROM roles WHERE role_code = 'STAFF'),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Nguyễn Văn Staff01',
     'staff01@parking.com',
     '0901000003',
@@ -60,7 +65,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'STAFF'),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Lê Thị Staff02',
     'staff02@parking.com',
     '0901000004',
@@ -72,7 +77,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'STAFF'),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Hoàng Văn Staff03',
     'staff03@parking.com',
     '0901000005',
@@ -84,7 +89,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'STAFF'),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Đỗ Thị Staff04',
     'staff04@parking.com',
     '0901000006',
@@ -92,6 +97,70 @@ VALUES
     '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
     '105 Đường Pqr, TP.HCM',
     '1997-11-12',
+    'FEMALE',
+    true
+);
+
+-- Driver users (Thêm mới 5 khách hàng gửi xe)
+INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
+VALUES
+(
+    (SELECT role_id FROM roles WHERE role_code = 'DRIVER' LIMIT 1),
+    'Nguyễn Khách Tài Xế 01',
+    'driver01@gmail.com',
+    '0912000001',
+    '001300000001',
+    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '200 Lý Thường Kiệt, Q.10, TP.HCM',
+    '1993-04-12',
+    'MALE',
+    true
+),
+(
+    (SELECT role_id FROM roles WHERE role_code = 'DRIVER' LIMIT 1),
+    'Trần Thị Tài Xế 02',
+    'driver02@gmail.com',
+    '0912000002',
+    '001300000002',
+    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '15 Điện Biên Phủ, Q.Bình Thạnh, TP.HCM',
+    '1995-08-22',
+    'FEMALE',
+    true
+),
+(
+    (SELECT role_id FROM roles WHERE role_code = 'DRIVER' LIMIT 1),
+    'Lê Huy Tài Xế 03',
+    'driver03@gmail.com',
+    '0912000003',
+    '001300000003',
+    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '456 Nguyễn Huệ, Q.1, TP.HCM',
+    '1988-12-05',
+    'MALE',
+    true
+),
+(
+    (SELECT role_id FROM roles WHERE role_code = 'DRIVER' LIMIT 1),
+    'Phạm Minh Tài Xế 04',
+    'driver04@gmail.com',
+    '0912000004',
+    '001300000004',
+    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '78 Lê Văn Sỹ, Q.3, TP.HCM',
+    '1991-02-17',
+    'MALE',
+    true
+),
+(
+    (SELECT role_id FROM roles WHERE role_code = 'DRIVER' LIMIT 1),
+    'Võ Hoàng Tài Xế 05',
+    'driver05@gmail.com',
+    '0912000005',
+    '001300000005',
+    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '12 Tôn Đức Thắng, Q.1, TP.HCM',
+    '1994-06-28',
     'FEMALE',
     true
 );

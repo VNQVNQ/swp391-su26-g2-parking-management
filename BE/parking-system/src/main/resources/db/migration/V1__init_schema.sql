@@ -380,10 +380,10 @@ CREATE INDEX idx_audit_time    ON audit_logs(created_at);
 -- ============================================================
 
 INSERT INTO roles (role_code, role_name, role_description) VALUES
-    ('ADMIN',   'System Admin',     'Quản lý tài khoản và phân quyền hệ thống'),
-    ('MANAGER', 'Parking Manager',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
-    ('STAFF',   'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
-    ('DRIVER', 'Driver', 'Vehicle owner');
+    ('ADMIN',             'System Admin',     'Quản lý tài khoản và phân quyền hệ thống'),
+    ('PARKING_MANAGER',   'Parking Manager',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
+    ('PARKING_STAFF',     'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
+    ('DRIVER',            'Driver',           'Vehicle owner');
 
 
 INSERT INTO privileges (privilege_code, privilege_name) VALUES
@@ -403,14 +403,16 @@ INSERT INTO privileges (privilege_code, privilege_name) VALUES
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r CROSS JOIN privileges p WHERE r.role_code = 'ADMIN';
 
--- Manager
+-- Parking Manager (mapping of previous MANAGER)
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('EXCEPTION_APPROVE','SLOT_MANAGE','PRICING_MANAGE','REPORT_VIEW','DASHBOARD_VIEW','BOOKING_MANAGE')
-WHERE r.role_code = 'MANAGER';
+WHERE r.role_code = 'PARKING_MANAGER';
 
--- Staff
+-- Parking Staff (mapping of previous STAFF)
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('SESSION_CREATE','SESSION_EXIT','EXCEPTION_CREATE','DASHBOARD_VIEW')
-WHERE r.role_code = 'STAFF';
+WHERE r.role_code = 'PARKING_STAFF';
+
+-- Driver: no backend privileges by default (acts as end-user)

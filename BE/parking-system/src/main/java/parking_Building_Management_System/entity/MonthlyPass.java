@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import parking_Building_Management_System.entity.ParkingSlot;
 import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
@@ -19,8 +21,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "monthly_passes", schema = "public", indexes = {
-    @Index(name = "idx_monthly_pass_vehicle_active", columnList = "vehicle_id, is_active"),
-    @Index(name = "idx_monthly_pass_expiry", columnList = "end_date")
+        @Index(name = "idx_monthly_pass_vehicle_active", columnList = "vehicle_id, is_active"),
+        @Index(name = "idx_monthly_pass_expiry", columnList = "end_date")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class MonthlyPass {
@@ -48,6 +50,7 @@ public class MonthlyPass {
 
     @Column(name = "payment_status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM) // Fix lỗi toán tử so sánh (payment_status_enum = character varying) trên Postgres
     PaymentStatus paymentStatus;
 
     @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
@@ -76,6 +79,3 @@ public class MonthlyPass {
         updatedAt = LocalDateTime.now();
     }
 }
-
-
-
