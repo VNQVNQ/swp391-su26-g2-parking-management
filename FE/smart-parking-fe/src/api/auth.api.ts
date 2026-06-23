@@ -66,9 +66,9 @@ export const registerApi = async (payload: RegisterPayload): Promise<void> => {
       return;
     }
 
-    // Lỗi từ BE (email trùng, validation...) → ném ra để Register.tsx hiển thị
-    if (err instanceof Error) throw err;
-    throw new Error("Đăng ký thất bại");
+    // Lỗi từ BE (email trùng, validation...) → ném ra để AuthContext hiển thị
+    // Giữ nguyên Axios error để AuthContext extract được response.data.message
+    throw err;
   }
 };
 

@@ -59,6 +59,9 @@ public class UserService {
      * Role LUÔN bị ép cứng về DRIVER, user không có quyền tự chọn role ở đây.
      */
     public User createUser(UserRequest userRequest) {
+        // Kiểm tra trùng lặp trước khi lưu
+        validateUniqueFields(userRequest.getEmail(), userRequest.getPhoneNumber(), userRequest.getIdentifyNumber());
+
         Role roleUser = roleRepository.findRoleByRoleCode(DEFAULT_SELF_REGISTER_ROLE);
         System.out.println("Role hệ thống tự gán mặc định nè: " + roleUser);
 
@@ -93,6 +96,56 @@ public class UserService {
     }
 
     /**
+     * Admin thay đổi role cho user đã tồn tại.
+     * Chỉ tài khoản ADMIN mới được phép thực hiện.
+     *
+     * @param userId   ID của user cần đổi role
+     * @param roleCode mã role mới (DRIVER / STAFF / MANAGER / ADMIN)
+     * @param token    JWT token của admin đang thực hiện
+     */
+    @Transactional
+    public User updateUserRole(Long userId, String roleCode, String token) {
+        User adminActor = getUserByToken(token);
+
+        if (adminActor.getRole() == null || !ADMIN_ROLE_CODE.equalsIgnoreCase(adminActor.getRole().getRoleCode())) {
+            throw new SecurityException("Chỉ tài khoản có role ADMIN mới được phép thay đổi role của user khác");
+        }
+
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User với ID " + userId + " không tồn tại"));
+
+        if (targetUser.getRole() != null && ADMIN_ROLE_CODE.equalsIgnoreCase(targetUser.getRole().getRoleCode())) {
+            throw new SecurityException("Không thể thay đổi role của người dùng đang là ADMIN");
+        }
+
+        Role newRole = roleRepository.findRoleByRoleCode(roleCode);
+        if (newRole == null) {
+            throw new NoSuchElementException("Mã quyền '" + roleCode + "' không tồn tại trong hệ thống");
+        }
+        if (!newRole.isActive()) {
+            throw new NoSuchElementException("Role code '" + roleCode + "' is not active");
+        }
+
+        targetUser.setRole(newRole);
+        userRepository.save(targetUser);
+
+        try {
+            String logDetails = String.format(
+                    "{\"targetUserId\":%d,\"oldRole\":\"%s\",\"newRole\":\"%s\",\"changedByAdminId\":%d}",
+                    targetUser.getUserId(),
+                    targetUser.getRole().getRoleCode(),
+                    roleCode,
+                    adminActor.getUserId()
+            );
+            auditLogService.createAuditLog(adminActor, "ADMIN_UPDATE_USER_ROLE:" + logDetails, LocalDateTime.now());
+        } catch (Exception e) {
+            System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
+        }
+
+        return targetUser;
+    }
+
+    /**
      * Luồng admin tạo tài khoản cho người dùng khác.
      * Khác biệt duy nhất so với createUser(): admin được phép chỉ định roleCode
      * (DRIVER / STAFF / ADMIN / ...) thay vì bị ép cứng về DRIVER.
@@ -110,6 +163,9 @@ public class UserService {
         if (userRequest.getRoleCode() == null || userRequest.getRoleCode().isBlank()) {
             throw new IllegalArgumentException("roleCode is required when admin creates a user");
         }
+
+        // Kiểm tra trùng lặp trước khi lưu
+        validateUniqueFields(userRequest.getEmail(), userRequest.getPhoneNumber(), userRequest.getIdentifyNumber());
 
         Role role = roleRepository.findRoleByRoleCode(userRequest.getRoleCode());
         if (role == null) {
@@ -146,6 +202,22 @@ public class UserService {
         }
 
         return newUser;
+    }
+
+    /**
+     * Kiểm tra các trường unique (email, phone, identifyNumber) trước khi lưu user.
+     * Ném IllegalArgumentException với thông báo rõ ràng nếu bị trùng.
+     */
+    private void validateUniqueFields(String email, String phoneNumber, String identifyNumber) {
+        if (email != null && userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Email '" + email + "' đã được sử dụng. Vui lòng dùng email khác.");
+        }
+        if (phoneNumber != null && userRepository.findByPhoneNumber(phoneNumber).isPresent()) {
+            throw new IllegalArgumentException("Số điện thoại '" + phoneNumber + "' đã được sử dụng. Vui lòng dùng số khác.");
+        }
+        if (identifyNumber != null && userRepository.findByIdentifyNumber(identifyNumber).isPresent()) {
+            throw new IllegalArgumentException("Số CMND/CCCD '" + identifyNumber + "' đã được sử dụng.");
+        }
     }
 
     /**
