@@ -1,3 +1,4 @@
+import axios from "axios";
 import axiosInstance from "./axiosInstance";
 import type { LoginPayload, LoginResponse, RegisterPayload } from "../types/auth.types";
 
@@ -66,7 +67,13 @@ export const registerApi = async (payload: RegisterPayload): Promise<void> => {
       return;
     }
 
-    // Lỗi từ BE (email trùng, validation...) → ném ra để Register.tsx hiển thị
+    // Lỗi từ BE (email trùng, validation, 500...) → trích xuất message rõ ràng
+    if (axios.isAxiosError(err)) {
+      const beMessage = err.response?.data?.message || err.response?.data?.error;
+      if (beMessage) throw new Error(beMessage);
+      throw new Error(`Đăng ký thất bại (mã lỗi: ${err.response?.status})`);
+    }
+
     if (err instanceof Error) throw err;
     throw new Error("Đăng ký thất bại");
   }
