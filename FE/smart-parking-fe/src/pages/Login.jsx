@@ -37,11 +37,12 @@ export default function Login() {
       // Role-aware redirect after login
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       const role = stored.role || 'STAFF';
-      const defaults = { ADMIN: '/dashboard', MANAGER: '/dashboard', STAFF: '/entry' };
+      const defaults = { ADMIN: '/admin/dashboard', MANAGER: '/manager/dashboard', STAFF: '/entry' };
       navigate(defaults[role] || '/entry');
     }
     // If login failed, authError will be set by the context
   };
+
 
   return (
     <div className="auth-page">
@@ -222,9 +223,6 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="auth-divider">
-              <span>or</span>
-            </div>
 
             <div className="auth-alt-actions">
               <p>

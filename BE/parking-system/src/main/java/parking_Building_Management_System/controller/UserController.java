@@ -36,32 +36,75 @@ public class UserController {
 
         System.out.println("thông tin nhận được " + userRequest);
 
-        User newUser = userService.createUser(userRequest);
+        try {
+            User newUser = userService.createUser(userRequest);
 
-        Date lastActiveDate = newUser.getLastActive() != null
-                ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
-                : null;
-        Date dobDate = newUser.getDateOfBirth() != null
-                ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
-                : null;
+            Date lastActiveDate = newUser.getLastActive() != null
+                    ? Date.from(newUser.getLastActive().atZone(ZoneId.systemDefault()).toInstant())
+                    : null;
+            Date dobDate = newUser.getDateOfBirth() != null
+                    ? Date.from(newUser.getDateOfBirth().atStartOfDay(ZoneId.systemDefault()).toInstant())
+                    : null;
 
-        UserResponse responseData = UserResponse.builder()
-                .id(newUser.getUserId())
-                .fullName(newUser.getFullName())
-                .email(newUser.getEmail())
-                .roleCode(newUser.getRole().getRoleCode())
-                .lastActive(lastActiveDate)
-                .phoneNumber(newUser.getPhoneNumber())
-                .identifyNumber(newUser.getIdentifyNumber())
-                .gender(newUser.getGender())
-                .age(newUser.getAge())
-                .address(newUser.getAddress())
-                .dateOfBirth(dobDate)
-                .userIsActivated(newUser.getUserIsActive())
-                .build();
+            UserResponse responseData = UserResponse.builder()
+                    .id(newUser.getUserId())
+                    .fullName(newUser.getFullName())
+                    .email(newUser.getEmail())
+                    .roleCode(newUser.getRole().getRoleCode())
+                    .lastActive(lastActiveDate)
+                    .phoneNumber(newUser.getPhoneNumber())
+                    .identifyNumber(newUser.getIdentifyNumber())
+                    .gender(newUser.getGender())
+                    .age(newUser.getAge())
+                    .address(newUser.getAddress())
+                    .dateOfBirth(dobDate)
+                    .userIsActivated(newUser.getUserIsActive())
+                    .build();
 
-        ApiResponse<UserResponse> response = new ApiResponse<>(201, "User created successfully", responseData);
-        return ResponseEntity.status(201).body(response);
+            ApiResponse<UserResponse> response = new ApiResponse<>(201, "User created successfully", responseData);
+            return ResponseEntity.status(201).body(response);
+
+        } catch (IllegalArgumentException e) {
+            // Trùng email / phone / CCCD
+            ApiResponse<UserResponse> response = new ApiResponse<>(409, e.getMessage(), null);
+            return ResponseEntity.status(409).body(response);
+        } catch (java.util.NoSuchElementException e) {
+            // Role không tồn tại
+            ApiResponse<UserResponse> response = new ApiResponse<>(400, e.getMessage(), null);
+            return ResponseEntity.status(400).body(response);
+        }
+    }
+
+    /**
+     * Admin thay đổi role cho user đã tồn tại.
+     * Body: { "roleCode": "MANAGER" }
+     */
+    @PatchMapping("/users/{id}/role")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserRole(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
+        String roleCode = body.get("roleCode");
+
+        if (roleCode == null || roleCode.isBlank()) {
+            ApiResponse<UserResponse> response = new ApiResponse<>(400, "roleCode is required", null);
+            return ResponseEntity.status(400).body(response);
+        }
+
+        try {
+            User updatedUser = userService.updateUserRole(id, roleCode.toUpperCase(), token);
+            UserResponse responseData = utilsUser.toUserResponse(updatedUser);
+            ApiResponse<UserResponse> response = new ApiResponse<>(200, "User role updated successfully", responseData);
+            return ResponseEntity.ok(response);
+        } catch (SecurityException e) {
+            ApiResponse<UserResponse> response = new ApiResponse<>(403, e.getMessage(), null);
+            return ResponseEntity.status(403).body(response);
+        } catch (java.util.NoSuchElementException e) {
+            ApiResponse<UserResponse> response = new ApiResponse<>(404, e.getMessage(), null);
+            return ResponseEntity.status(404).body(response);
+        }
     }
 
     /**

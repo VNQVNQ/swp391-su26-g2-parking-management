@@ -9,30 +9,34 @@ import {
 
 // ── Role-based navigation items ──────────────────────────────────────────────
 const navItems = [
-  // ADMIN
-  { to: '/dashboard',  label: 'Dashboard',         icon: LayoutDashboard, roles: ['ADMIN'] },
-  { to: '/slots',      label: 'Slot Management',   icon: CircleDot,       roles: ['ADMIN'] },
-  { to: '/pricing',    label: 'Pricing',           icon: DollarSign,      roles: ['ADMIN'] },
-  { to: '/passes',     label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['ADMIN'] },
-  { to: '/exceptions', label: 'Exceptions',        icon: AlertTriangle,   roles: ['ADMIN'] },
-  { to: '/reports',    label: 'Reports',           icon: BarChart3,       roles: ['ADMIN'] },
-  { to: '/settings',   label: 'Settings',          icon: SettingsIcon,    roles: ['ADMIN'] },
+  // ADMIN (System Administrator)
+  { to: '/admin/dashboard', label: 'Dashboard',  icon: LayoutDashboard, roles: ['ADMIN'] },
+  { to: '/admin/pricing',   label: 'Pricing',    icon: DollarSign,      roles: ['ADMIN'] },
+  { to: '/admin/reports',   label: 'Reports',    icon: BarChart3,       roles: ['ADMIN'] },
+  { to: '/admin/settings',  label: 'Settings',   icon: SettingsIcon,    roles: ['ADMIN'] },
+  // MANAGER (Parking Lot Manager)
+  { to: '/manager/dashboard',   label: 'Dashboard',         icon: LayoutDashboard, roles: ['MANAGER'] },
+  { to: '/manager/slots',       label: 'Slot Management',   icon: CircleDot,       roles: ['MANAGER'] },
+  { to: '/manager/passes',      label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['MANAGER'] },
+  { to: '/manager/exceptions',  label: 'Exceptions',        icon: AlertTriangle,   roles: ['MANAGER'] },
+  { to: '/manager/reports',     label: 'Reports',           icon: BarChart3,       roles: ['MANAGER'] },
   // STAFF
   { to: '/entry',       label: 'Vehicle Entry',     icon: LogIn,           roles: ['STAFF'] },
   { to: '/exit',        label: 'Vehicle Exit',      icon: LogOut,          roles: ['STAFF'] },
   { to: '/staff/slots', label: 'Slot View',         icon: MapPin,          roles: ['STAFF'] },
   // DRIVER
-{ to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
-{ to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
-{ to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
-{ to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
-{ to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
+  { to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
+  { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
+  { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
+  { to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
+  { to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN:  'Admin / Manager',
-  STAFF:  'Staff',
-  DRIVER: 'Driver',
+  ADMIN:   'System Admin',
+  MANAGER: 'Manager',
+  STAFF:   'Staff',
+  DRIVER:  'Driver',
 };
 
 export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }: any) {

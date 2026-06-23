@@ -3,7 +3,6 @@ package parking_Building_Management_System.service.auth;
 import parking_Building_Management_System.entity.user.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,11 +19,11 @@ public class JWTService {
 
     public String createToken(Map<String, Object> claims, String subject, long accessTime){
         return Jwts.builder()
-                .setClaims(claims) // dữ liệu cần lưu
-                .setSubject(subject) // tên tài khoản
-                .setIssuedAt(new Date()) //thời gian tạo
-                .setExpiration(new Date(System.currentTimeMillis() + accessTime)) //thời gian kết thúc
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTime))
+                .signWith(getSignKey())
                 .compact();
     }
 
@@ -66,10 +65,10 @@ public class JWTService {
 
     public Claims extractAllClaims(String token){
         return Jwts.parser()
-                .setSigningKey(getSignKey())
+                .verifyWith(getSignKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public boolean isTokenExpired(String token) {
