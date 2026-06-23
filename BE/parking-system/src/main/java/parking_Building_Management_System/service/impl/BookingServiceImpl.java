@@ -166,7 +166,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingDetailResponse confirmBooking(UUID bookingId, UUID staffId) throws BookingExpiredException {
+    public BookingDetailResponse confirmBooking(UUID bookingId, Long staffId) throws BookingExpiredException {
         log.info("Confirming booking ID: {} by staff ID: {}", bookingId, staffId);
         
         Booking booking = bookingRepository.findById(bookingId)
@@ -192,7 +192,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingDetailResponse cancelBooking(UUID bookingId, UUID cancelledByUserId) {
+    public BookingDetailResponse cancelBooking(UUID bookingId, Long cancelledByUserId) {
         log.info("Cancelling booking ID: {} by user ID: {}", bookingId, cancelledByUserId);
         
         Booking booking = bookingRepository.findById(bookingId)

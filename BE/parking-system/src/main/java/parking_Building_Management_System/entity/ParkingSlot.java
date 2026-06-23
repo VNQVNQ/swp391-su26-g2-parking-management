@@ -1,6 +1,7 @@
 package parking_Building_Management_System.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -50,6 +51,7 @@ public class ParkingSlot {
     @Enumerated(EnumType.STRING)
     SlotMaintenanceStatus maintenanceStatus;
 
+    @JsonIgnoreProperties({"slot", "currentSession", "hibernateLazyInitializer", "handler"})
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_session_id", referencedColumnName = "id")
     ParkingSession currentSession;

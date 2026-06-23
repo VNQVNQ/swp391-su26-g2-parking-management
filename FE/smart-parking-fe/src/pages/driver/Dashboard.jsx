@@ -18,10 +18,11 @@ export default function DriverDashboard() {
   }, []);
 
   const quickActions = [
-    { icon: '🚗', label: 'Đăng ký xe',  route: '/driver/register-vehicle', color: '#10b981' },
-    { icon: '📋', label: 'Xe của tôi',   route: '/driver/my-vehicles',      color: '#3b82f6' },
-    { icon: '🅿️', label: 'Xem slot',    route: '/driver/slots',            color: '#8b5cf6' },
-    { icon: '📅', label: 'Đặt chỗ',     route: '/driver/booking',          color: '#f59e0b' },
+    { icon: '🚗', label: 'Đăng ký xe',     route: '/driver/register-vehicle', color: '#10b981' },
+    { icon: '📋', label: 'Xe của tôi',      route: '/driver/my-vehicles',      color: '#3b82f6' },
+    { icon: '🅿️', label: 'Xem slot',       route: '/driver/slots',            color: '#8b5cf6' },
+    { icon: '📅', label: 'Đặt chỗ',        route: '/driver/booking',          color: '#f59e0b' },
+    { icon: '📜', label: 'Lịch sử đặt chỗ', route: '/driver/booking-history',  color: '#ec4899' },
   ];
 
   return (
@@ -46,7 +47,7 @@ export default function DriverDashboard() {
       {/* Quick actions */}
       <div className="card">
         <div className="card-title">⚡ Thao tác nhanh</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 16 }}>
           {quickActions.map(a => (
             <button key={a.label} onClick={() => navigate(a.route)}
               style={{

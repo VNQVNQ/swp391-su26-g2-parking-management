@@ -39,6 +39,8 @@ import MyVehicles from './pages/driver/MyVehicles';
 import DriverSlotView from './pages/driver/SlotView';
 // @ts-ignore
 import Booking from './pages/driver/Booking';
+// @ts-ignore
+import BookingHistory from './pages/driver/BookingHistory';
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // BE role → App role
 const mapRole = (roleCode: string): string => {
@@ -170,8 +172,12 @@ function AppShell() {
             } />
 
             {/* Driver */}
+            <Route path="/driver/dashboard" element={<RoleRoute allowedRoles={['DRIVER']}><DriverDashboard /></RoleRoute>} />
             <Route path="/driver/register-vehicle" element={<RoleRoute allowedRoles={['DRIVER']}><RegisterVehicle /></RoleRoute>} />
             <Route path="/driver/my-vehicles" element={<RoleRoute allowedRoles={['DRIVER']}><MyVehicles /></RoleRoute>} />
+            <Route path="/driver/slots" element={<RoleRoute allowedRoles={['DRIVER']}><DriverSlotView /></RoleRoute>} />
+            <Route path="/driver/booking" element={<RoleRoute allowedRoles={['DRIVER']}><Booking /></RoleRoute>} />
+            <Route path="/driver/booking-history" element={<RoleRoute allowedRoles={['DRIVER']}><BookingHistory /></RoleRoute>} />
 
             <Route path="*" element={<Navigate to={defaultPage} replace />} />
           </Routes>

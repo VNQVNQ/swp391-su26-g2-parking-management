@@ -18,6 +18,7 @@ import parking_Building_Management_System.dto.parkingSession.response.AvailableS
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
 import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
 import parking_Building_Management_System.service.ParkingSessionService;
+import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.ApiResponseFactory;
 import jakarta.validation.Valid;
@@ -40,6 +41,7 @@ import java.util.UUID;
 public class ParkingSessionController {
 
     private final ParkingSessionService parkingSessionService;
+    private final UserRepository userRepository;
 
     /**
      * Step 1: Validate vehicle before entry
@@ -401,9 +403,14 @@ public class ParkingSessionController {
         }
 
         try {
-            return Long.parseLong(authentication.getName());
+            String email = authentication.getName();
+            return userRepository.findByEmail(email)
+                    .map(u -> u.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Staff user not found: " + email));
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Invalid staff ID in token");
+            throw new RuntimeException("Invalid staff authentication");
         }
     }
 }

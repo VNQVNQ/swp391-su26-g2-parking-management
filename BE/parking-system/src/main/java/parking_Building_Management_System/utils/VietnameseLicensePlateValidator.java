@@ -4,24 +4,23 @@ import java.util.regex.Pattern;
 
 public class VietnameseLicensePlateValidator {
     
-    // Vietnamese license plate pattern: XX-XXXXX or XX-XXXX (2 letters + 4-5 digits)
-    // Format: AB-12345 or AB-1234
+    // Vietnamese license plate pattern (định dạng thật): 2 số (mã tỉnh) + 1 chữ
+    // + tùy chọn 1 số (seri thứ 2, dùng cho xe máy) + dấu "-" hoặc "." + 4-5 số
+    // Ví dụ: 51A-12345 (ô tô), 59A1-20001 (xe máy), 30F-88888
     private static final Pattern VIETNAM_PLATE_PATTERN = Pattern.compile(
-            "^[A-Z]{2}-\\d{4,5}$|^[A-Z]{2}\\.\\d{4,5}$"
+            "^\\d{2}[A-Z]\\d?-\\d{4,5}$|^\\d{2}[A-Z]\\d?\\.\\d{4,5}$"
     );
 
-    // Province codes for Vietnam (first 2 characters)
+    // Mã tỉnh hợp lệ của Việt Nam (2 số đầu của biển số)
     private static final String[] PROVINCE_CODES = {
-            "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39",
-            "40", "41", "42", "43", "44", "45", "46", "47", "48", "49",
-            "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
-            "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
-            "70", "71", "72", "73", "74", "75", "76", "77", "78", "79",
-            "80", "81", "82", "83", "84", "85", "86", "87",
-            "AA", "AB", "AC", "AD", "AE", "AF", "AG",
-            "BA", "BB", "BC", "BD", "BE", "BF", "BG",
-            "CA", "CB", "CC", "CD", "CE", "CF", "CG",
-            "DA", "DB", "DC", "DD", "DE", "DF", "DG"
+            "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+            "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
+            "31", "32", "33", "34", "35", "36", "37", "38", "39", "40",
+            "41", "43", "47", "48", "49", "50", "51", "52", "53", "54",
+            "55", "56", "57", "58", "59", "60", "61", "62", "63", "64",
+            "65", "66", "67", "68", "69", "70", "71", "72", "73", "74",
+            "75", "76", "77", "78", "79", "80", "81", "82", "83", "84",
+            "85", "86", "88", "89", "90", "92", "93", "94", "95", "97", "98", "99"
     };
 
     /**
@@ -49,13 +48,13 @@ public class VietnameseLicensePlateValidator {
         }
 
         String plate = licensePlate.trim().toUpperCase();
-        String[] parts = plate.replace(".", "-").split("-");
-        
-        if (parts.length < 1) {
+
+        // Mã tỉnh luôn là 2 ký tự số đầu tiên của biển số (ví dụ "51" trong "51A-12345")
+        if (plate.length() < 2 || !Character.isDigit(plate.charAt(0)) || !Character.isDigit(plate.charAt(1))) {
             return false;
         }
+        String code = plate.substring(0, 2);
 
-        String code = parts[0];
         for (String provinceCode : PROVINCE_CODES) {
             if (code.equals(provinceCode)) {
                 return true;

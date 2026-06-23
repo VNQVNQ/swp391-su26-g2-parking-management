@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import parking_Building_Management_System.entity.user.ParkingUserDetails;
 import parking_Building_Management_System.dto.booking.request.BookingRequest;
 import parking_Building_Management_System.dto.booking.request.UpdateBookingRequest;
 import parking_Building_Management_System.dto.booking.response.BookingResponse;
@@ -129,8 +130,8 @@ public class BookingController {
         log.info("POST /api/v1/bookings/{}/confirm - Confirming booking", id);
         try {
             Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID staffId = UUID.fromString(principal.toString());
-            
+            Long staffId = ((ParkingUserDetails) principal).getUserId();
+
             BookingDetailResponse response = bookingService.confirmBooking(id, staffId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking confirmed successfully");
             return ResponseEntity.ok(apiResponse);
@@ -146,8 +147,8 @@ public class BookingController {
         log.info("POST /api/v1/bookings/{}/cancel - Cancelling booking", id);
         try {
             Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID userId = UUID.fromString(principal.toString());
-            
+            Long userId = ((ParkingUserDetails) principal).getUserId();
+
             BookingDetailResponse response = bookingService.cancelBooking(id, userId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking cancelled successfully");
             return ResponseEntity.ok(apiResponse);
