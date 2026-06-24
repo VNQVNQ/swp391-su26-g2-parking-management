@@ -8,14 +8,14 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.Set;
 
-@AllArgsConstructor
 @Data
+@AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RoleResponse {
     String roleName;
     String roleCode;
     String roleDescription;
-    Boolean is_Active;
+    boolean isActive;
     Set<String> privileges;
 }

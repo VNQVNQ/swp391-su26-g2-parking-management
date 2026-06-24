@@ -9,7 +9,7 @@
 -- ============================================================
 
 -- Admin user (password hashed: 123456 using bcrypt)
--- Real hash: $2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm
+-- Real hash: $2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i
 
 
 
@@ -27,7 +27,7 @@ VALUES (
     'admin@parking.com',
     '0901000001',
     '001234567890',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '100 Đường Abc, TP.HCM',
     '1990-01-15',
     'MALE',
@@ -42,7 +42,7 @@ VALUES (
     'manager@parking.com',
     '0901000002',
     '001234567891',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '101 Đường Def, TP.HCM',
     '1992-03-20',
     'FEMALE',
@@ -58,7 +58,7 @@ VALUES
     'staff01@parking.com',
     '0901000003',
     '001234567892',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '102 Đường Ghi, TP.HCM',
     '1995-05-10',
     'MALE',
@@ -70,7 +70,7 @@ VALUES
     'staff02@parking.com',
     '0901000004',
     '001234567893',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '103 Đường Jkl, TP.HCM',
     '1996-07-25',
     'FEMALE',
@@ -82,7 +82,7 @@ VALUES
     'staff03@parking.com',
     '0901000005',
     '001234567894',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '104 Đường Mno, TP.HCM',
     '1998-09-30',
     'MALE',
@@ -94,7 +94,7 @@ VALUES
     'staff04@parking.com',
     '0901000006',
     '001234567895',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '105 Đường Pqr, TP.HCM',
     '1997-11-12',
     'FEMALE',
