@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import parking_Building_Management_System.entity.user.User;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -40,9 +42,11 @@ public class AuditLog {
     String entityId;
 
     @Column(name = "old_values", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     String oldValues;
 
     @Column(name = "new_values", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     String newValues;
 
     @Column(name = "ip_address", length = 45)
