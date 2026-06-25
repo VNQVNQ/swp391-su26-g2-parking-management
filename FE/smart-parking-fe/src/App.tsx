@@ -37,8 +37,7 @@ import RegisterVehicle from './pages/driver/RegisterVehicle';
 import MyVehicles from './pages/driver/MyVehicles';
 // @ts-ignore
 import DriverSlotView from './pages/driver/SlotView';
-// @ts-ignore
-import Booking from './pages/driver/Booking';
+import DriverPassesBookings from './pages/driver/DriverPassesBookings';
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // BE role → App role
 const mapRole = (roleCode: string): string => {
@@ -182,6 +181,7 @@ function AppShell() {
             {/* ═══ DRIVER ═══ */}
             <Route path="/driver/register-vehicle" element={<RoleRoute allowedRoles={['DRIVER']}><RegisterVehicle /></RoleRoute>} />
             <Route path="/driver/my-vehicles" element={<RoleRoute allowedRoles={['DRIVER']}><MyVehicles /></RoleRoute>} />
+            <Route path="/driver/passes-bookings" element={<RoleRoute allowedRoles={['DRIVER']}><DriverPassesBookings /></RoleRoute>} />
 
             {/* Legacy redirects */}
             <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />

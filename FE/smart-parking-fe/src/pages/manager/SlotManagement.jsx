@@ -1,4 +1,4 @@
-import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
+import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useParkingStore } from '../../store/parkingStore';
 
@@ -61,6 +61,9 @@ export default function SlotManagement() {
   const [filterType, setFilterType] = useState('All Types');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [editingZoneId, setEditingZoneId] = useState(null);
+  const [zoneForm, setZoneForm] = useState({ name: '', floor: 'Basement 1', vehicleType: 'Car', total: 10 });
 
   // Status counters from live data
   const statusCounts = useMemo(() => {
@@ -137,9 +140,14 @@ export default function SlotManagement() {
 
   return (
     <div className="page-full-width">
-      <div className="page-header" style={{ marginBottom: '24px' }}>
-        <h2>Slot Management</h2>
-        <p>Monitor and manage parking slots across all zones</p>
+      <div className="page-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2>Slot Management</h2>
+          <p>Monitor and manage parking slots across all zones</p>
+        </div>
+        <button className="btn-sm btn-sm-primary" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setEditingZoneId(null); setZoneForm({ name: '', floor: 'Basement 1', vehicleType: 'Car', total: 10 }); setShowZoneModal(true); }}>
+          <Plus size={16} /> Add Zone
+        </button>
       </div>
 
       {/* Stats Overview */}
@@ -233,6 +241,29 @@ export default function SlotManagement() {
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 {zone.floor} • Capacity: {zone.slots.length} / {zone.total}
               </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn-sm" 
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                onClick={() => store.addSlot(zone.id)}
+              >
+                <Plus size={14} /> Add Slot
+              </button>
+              <button 
+                className="btn-sm" 
+                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                onClick={() => { setEditingZoneId(zone.id); setZoneForm({ name: zone.name, floor: zone.floor, vehicleType: zone.vehicleType, total: zone.total }); setShowZoneModal(true); }}
+              >
+                <Edit2 size={14} /> Edit Zone
+              </button>
+              <button 
+                className="btn-sm" 
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }} 
+                onClick={() => { if(window.confirm('Are you sure you want to delete this zone?')) store.deleteZone(zone.id); }}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
             </div>
           </div>
 
@@ -366,6 +397,80 @@ export default function SlotManagement() {
                 <span>Occupied slots must be cleared via the Vehicle Exit process.</span>
               </div>
             )}
+            
+            {selectedSlot.status !== 'occupied' && (
+              <button 
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to delete this slot?')) {
+                    store.deleteSlot(selectedSlot.zoneId, selectedSlot.id);
+                    setShowStatusModal(false);
+                  }
+                }}
+                style={{
+                  width: '100%', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '16px'
+                }}
+              >
+                <Trash2 size={16} /> Delete Slot
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Zone Modal */}
+      {showZoneModal && (
+        <div className="modal-overlay" onClick={() => setShowZoneModal(false)}>
+          <div className="modal modal-md" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingZoneId ? 'Edit Zone' : 'Add New Zone'}</h3>
+              <button className="modal-close-btn" onClick={() => setShowZoneModal(false)}><X size={16} /></button>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Zone Name <span className="required">*</span></label>
+              <input style={selectStyle} value={zoneForm.name} onChange={e => setZoneForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Zone A - Cars" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Floor <span className="required">*</span></label>
+              <select style={selectStyle} value={zoneForm.floor} onChange={e => setZoneForm(p => ({ ...p, floor: e.target.value }))}>
+                <option value="Basement 1">Basement 1</option>
+                <option value="Basement 2">Basement 2</option>
+                <option value="Floor 1">Floor 1</option>
+                <option value="Floor 2">Floor 2</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Vehicle Type <span className="required">*</span></label>
+              <select style={selectStyle} value={zoneForm.vehicleType} onChange={e => setZoneForm(p => ({ ...p, vehicleType: e.target.value }))}>
+                <option value="Car">Car</option>
+                <option value="Motorbike">Motorbike</option>
+                <option value="Bicycle">Bicycle</option>
+              </select>
+            </div>
+            {!editingZoneId && (
+              <div className="form-group">
+                <label className="form-label">Initial Slots <span className="required">*</span></label>
+                <input style={selectStyle} type="number" min="1" max="100" value={zoneForm.total} onChange={e => setZoneForm(p => ({ ...p, total: parseInt(e.target.value) || 0 }))} />
+              </div>
+            )}
+            
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowZoneModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={() => {
+                if (!zoneForm.name) {
+                  store.showToast('Please enter zone name', 'error');
+                  return;
+                }
+                if (editingZoneId) {
+                  store.updateZone(editingZoneId, zoneForm);
+                } else {
+                  store.addZone(zoneForm);
+                }
+                setShowZoneModal(false);
+              }}>
+                {editingZoneId ? 'Save Changes' : 'Create Zone'}
+              </button>
+            </div>
           </div>
         </div>
       )}

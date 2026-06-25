@@ -29,7 +29,7 @@ const navItems = [
   { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
   { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
   { to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
-  { to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
+  { to: '/driver/passes-bookings',  label: 'Vé tháng & Đặt chỗ', icon: CalendarCheck, roles: ['DRIVER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

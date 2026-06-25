@@ -35,6 +35,9 @@ export default function Settings() {
   const [editingRole, setEditingRole] = useState('');
   const [roleUpdating, setRoleUpdating] = useState(false);
   const [roleUpdateMsg, setRoleUpdateMsg] = useState(null); // { type: 'success'|'error', text }
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({ fullName: '', email: '', password: '', phoneNumber: '', roleCode: 'MANAGER' });
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   // Check if we're in demo mode
   const isDemoMode = localStorage.getItem('accessToken') === 'demo-token';
@@ -150,6 +153,58 @@ export default function Settings() {
     }, 500); // Simulate network delay for UX
   };
 
+  const handleCreateUser = async () => {
+    if (!createUserForm.fullName || !createUserForm.email || !createUserForm.password) {
+      setRoleUpdateMsg({ type: 'error', text: 'Please fill all required fields' });
+      return;
+    }
+
+    setIsCreatingUser(true);
+    setRoleUpdateMsg(null);
+
+    if (isDemoMode) {
+      setTimeout(() => {
+        const newUser = {
+          id: users.length + 10,
+          fullName: createUserForm.fullName,
+          email: createUserForm.email,
+          phoneNumber: createUserForm.phoneNumber,
+          roleCode: createUserForm.roleCode,
+          userIsActivated: true
+        };
+        setUsers(prev => [...prev, newUser]);
+        setIsCreatingUser(false);
+        setShowCreateUserModal(false);
+        setCreateUserForm({ fullName: '', email: '', password: '', phoneNumber: '', roleCode: 'MANAGER' });
+        setRoleUpdateMsg({ type: 'success', text: `User ${newUser.fullName} created successfully` });
+        setTimeout(() => setRoleUpdateMsg(null), 3000);
+      }, 800);
+      return;
+    }
+
+    try {
+      // Typically there is an admin endpoint to create users, assuming /auth/users or /auth/register
+      const res = await api.post('/auth/register', {
+        fullName: createUserForm.fullName,
+        email: createUserForm.email,
+        password: createUserForm.password,
+        phoneNumber: createUserForm.phoneNumber,
+        roleCode: createUserForm.roleCode
+      });
+      fetchUsers(); // Refresh the list
+      setIsCreatingUser(false);
+      setShowCreateUserModal(false);
+      setCreateUserForm({ fullName: '', email: '', password: '', phoneNumber: '', roleCode: 'MANAGER' });
+      setRoleUpdateMsg({ type: 'success', text: 'User created successfully' });
+      setTimeout(() => setRoleUpdateMsg(null), 3000);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to create user';
+      setRoleUpdateMsg({ type: 'error', text: msg });
+      setIsCreatingUser(false);
+      setTimeout(() => setRoleUpdateMsg(null), 5000);
+    }
+  };
+
   const inputSt = { width: '100%', padding: '10px 14px', background: 'var(--bg-input)', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none' };
 
   return (
@@ -247,16 +302,27 @@ export default function Settings() {
             <Users size={20} /> User Management
             {isDemoMode && <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Demo Mode</span>}
           </span>
-          <button
-            className="btn-sm btn-sm-secondary"
-            onClick={fetchUsers}
-            disabled={usersLoading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
-            title="Refresh user list"
-          >
-            <RefreshCw size={14} className={usersLoading ? 'spin-animation' : ''} />
-            Refresh
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn-sm btn-sm-primary"
+              onClick={() => setShowCreateUserModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
+              title="Create new user"
+            >
+              <UserPlus size={14} />
+              Create User
+            </button>
+            <button
+              className="btn-sm btn-sm-secondary"
+              onClick={fetchUsers}
+              disabled={usersLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
+              title="Refresh user list"
+            >
+              <RefreshCw size={14} className={usersLoading ? 'spin-animation' : ''} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Role update feedback message */}
@@ -487,6 +553,50 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      {/* Create User Modal */}
+      {showCreateUserModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateUserModal(false)}>
+          <div className="modal modal-md" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create New User</h3>
+              <button className="modal-close-btn" onClick={() => setShowCreateUserModal(false)}><X size={16} /></button>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Full Name <span className="required">*</span></label>
+              <input style={inputSt} value={createUserForm.fullName} onChange={e => setCreateUserForm(p => ({ ...p, fullName: e.target.value }))} placeholder="Enter full name" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email <span className="required">*</span></label>
+              <input style={inputSt} type="email" value={createUserForm.email} onChange={e => setCreateUserForm(p => ({ ...p, email: e.target.value }))} placeholder="Enter email address" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Password <span className="required">*</span></label>
+              <input style={inputSt} type="password" value={createUserForm.password} onChange={e => setCreateUserForm(p => ({ ...p, password: e.target.value }))} placeholder="Enter password" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input style={inputSt} value={createUserForm.phoneNumber} onChange={e => setCreateUserForm(p => ({ ...p, phoneNumber: e.target.value }))} placeholder="Enter phone number" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Role <span className="required">*</span></label>
+              <select style={inputSt} value={createUserForm.roleCode} onChange={e => setCreateUserForm(p => ({ ...p, roleCode: e.target.value }))}>
+                <option value="MANAGER">Manager</option>
+                <option value="STAFF">Staff</option>
+                <option value="DRIVER">Driver</option>
+              </select>
+            </div>
+            
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowCreateUserModal(false)} disabled={isCreatingUser}>Cancel</button>
+              <button className="btn-primary" onClick={handleCreateUser} disabled={isCreatingUser}>
+                {isCreatingUser ? <><RefreshCw size={14} className="spin-animation" /> Creating...</> : 'Create User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -263,6 +263,57 @@ export function ParkingProvider({ children }) {
     showToast(`Slot status updated to ${newStatus}`);
   }, [showToast]);
 
+  const addZone = useCallback((zone) => {
+    const newZone = {
+      ...zone,
+      id: `zone-${Date.now()}`,
+      slots: Array.from({ length: zone.total || 10 }, (_, i) => ({
+        id: String(i + 1).padStart(3, '0'),
+        status: 'available',
+        vehicle: null,
+      }))
+    };
+    setZones(prev => [...prev, newZone]);
+    showToast(`Zone ${zone.name} added`);
+  }, [showToast]);
+
+  const updateZone = useCallback((id, data) => {
+    setZones(prev => prev.map(z => z.id === id ? { ...z, ...data } : z));
+    showToast(`Zone updated`);
+  }, [showToast]);
+
+  const deleteZone = useCallback((id) => {
+    setZones(prev => prev.filter(z => z.id !== id));
+    showToast(`Zone deleted`);
+  }, [showToast]);
+
+  const addSlot = useCallback((zoneId) => {
+    setZones(prev => prev.map(z => {
+      if (z.id !== zoneId) return z;
+      // Find max ID to avoid duplicates if slots were deleted
+      const maxNum = z.slots.reduce((max, s) => {
+        const num = parseInt(s.id, 10);
+        return num > max ? num : max;
+      }, 0);
+      const newSlotId = String(maxNum + 1).padStart(3, '0');
+      const newSlot = { id: newSlotId, status: 'available', vehicle: null };
+      return { ...z, total: z.total + 1, slots: [...z.slots, newSlot] };
+    }));
+    showToast(`Slot added to zone`);
+  }, [showToast]);
+
+  const deleteSlot = useCallback((zoneId, slotId) => {
+    setZones(prev => prev.map(z => {
+      if (z.id !== zoneId) return z;
+      return { 
+        ...z, 
+        total: z.total - 1, 
+        slots: z.slots.filter(s => s.id !== slotId) 
+      };
+    }));
+    showToast(`Slot deleted`);
+  }, [showToast]);
+
   // --- Pricing Actions ---
   const addPricing = useCallback((config) => {
     const newConfig = { ...config, id: Date.now(), active: true };
@@ -389,7 +440,8 @@ export function ParkingProvider({ children }) {
     slotStats, todayRevenue, getFloorStats,
     // Actions
     registerVehicle, exitVehicle, calculateFee, getOverstayPenalty,
-    updateSlotStatus, addPricing, updatePricing, togglePricing,
+    updateSlotStatus, addZone, updateZone, deleteZone, addSlot, deleteSlot,
+    addPricing, updatePricing, togglePricing,
     addPass, addBooking, cancelBooking,
     addException, resolveException, updateSettings,
     getVehicleAvailability, showToast,
@@ -397,7 +449,8 @@ export function ParkingProvider({ children }) {
     vehicles, exitedVehicles, zones, pricingConfigs, passes, bookings, exceptions, settings, toastMessage,
     slotStats, todayRevenue, getFloorStats,
     registerVehicle, exitVehicle, calculateFee, getOverstayPenalty,
-    updateSlotStatus, addPricing, updatePricing, togglePricing,
+    updateSlotStatus, addZone, updateZone, deleteZone, addSlot, deleteSlot,
+    addPricing, updatePricing, togglePricing,
     addPass, addBooking, cancelBooking,
     addException, resolveException, updateSettings,
     getVehicleAvailability, showToast,
