@@ -9,6 +9,8 @@ import parking_Building_Management_System.dto.vehicle.response.VehicleResponse;
 import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.repository.VehicleRepository;
+import parking_Building_Management_System.repository.UserRepository;
+import parking_Building_Management_System.entity.user.User;
 import parking_Building_Management_System.service.VehicleService;
 import parking_Building_Management_System.utils.VietnameseLicensePlateValidator;
 import java.time.LocalDate;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRepository;
+    private final UserRepository userRepository;
 
     @Override
     public VehicleResponse createVehicle(VehicleRequest request) {
@@ -39,6 +42,12 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setLicensePlate(request.getLicensePlate());
         vehicle.setVehicleType(request.getVehicleType());
         vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
+
+        if (request.getUserId() != null) {
+            User user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
+            vehicle.setUser(user);
+        }
 
         vehicle = vehicleRepository.save(vehicle);
         log.info("Vehicle created successfully with ID: {}", vehicle.getId());
@@ -61,6 +70,20 @@ public class VehicleServiceImpl implements VehicleService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<VehicleResponse> getMyVehicles() {
+        log.info("Getting vehicles for current user");
+        Object principal = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof parking_Building_Management_System.entity.user.ParkingUserDetails userDetails) {
+            Long userId = userDetails.getUserId();
+            return vehicleRepository.findByUserId(userId)
+                    .stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+        return List.of();
     }
 
     @Override

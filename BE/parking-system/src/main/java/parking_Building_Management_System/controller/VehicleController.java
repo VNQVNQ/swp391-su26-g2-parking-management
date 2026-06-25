@@ -15,6 +15,8 @@ import parking_Building_Management_System.service.VehicleService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.ApiResponseFactory;
 import jakarta.validation.Valid;
+import org.springframework.security.core.context.SecurityContextHolder;
+import parking_Building_Management_System.entity.user.ParkingUserDetails;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,6 +33,13 @@ public class VehicleController {
     public ResponseEntity<ApiResponse<VehicleResponse>> createVehicle(@Valid @RequestBody VehicleRequest request) {
         log.info("POST /api/v1/vehicles - Creating vehicle with license plate: {}", request.getLicensePlate());
         try {
+            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            if (principal instanceof ParkingUserDetails userDetails) {
+                if (request.getUserId() == null) {
+                    request.setUserId(userDetails.getUserId());
+                }
+            }
+
             VehicleResponse response = vehicleService.createVehicle(request);
             ApiResponse<VehicleResponse> apiResponse = ApiResponseFactory.created(response, "Vehicle created successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
@@ -46,6 +55,15 @@ public class VehicleController {
         List<VehicleResponse> responses = vehicleService.getAllVehicles();
         ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses, 
                 "Retrieved " + responses.size() + " vehicles");
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<ApiResponse<List<VehicleResponse>>> getMyVehicles() {
+        log.info("GET /api/v1/vehicles/my - Getting current user's vehicles");
+        List<VehicleResponse> responses = vehicleService.getMyVehicles();
+        ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
+                "Found " + responses.size() + " vehicles");
         return ResponseEntity.ok(apiResponse);
     }
 

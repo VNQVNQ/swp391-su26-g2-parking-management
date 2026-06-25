@@ -25,6 +25,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         System.out.println("--- ĐANG TẢI SECURITY FILTER CHAIN TÙY CHỈNH (Patient Service) ---");
         http
+                .cors(org.springframework.security.config.Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         // ĐÃ SỬA: Cho phép truy cập công khai vào /auth và toàn bộ tài liệu Swagger UI

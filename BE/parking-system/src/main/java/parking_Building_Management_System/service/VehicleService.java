@@ -26,6 +26,8 @@ public interface VehicleService {
     
     List<VehicleResponse> getVehiclesByType(VehicleType vehicleType);
     
+    List<VehicleResponse> getMyVehicles();
+    
     MonthlyPassCheckResponse checkMonthlyPassValidity(String licensePlate);
     
     MonthlyPassCheckResponse checkMonthlyPassValidityById(UUID vehicleId);
