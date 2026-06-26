@@ -9,7 +9,7 @@ export default function DriverDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await api.get('/api/v1/vehicles');
+        const res = await api.get('/api/v1/vehicles/my-vehicles');
         const vehicles = res.data.data ?? res.data ?? [];
         setStats(s => ({ ...s, vehicles: vehicles.length }));
       } catch {}
