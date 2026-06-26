@@ -19,7 +19,7 @@ public interface PricingRuleRepository extends JpaRepository<PricingRule, UUID> 
 
     List<PricingRule> findByIsActiveTrue();
 
-    List<PricingRule> findByZoneIdAndIsActiveTrue(UUID zoneId);
+    List<PricingRule> findByZone_IdAndIsActiveTrue(UUID zoneId);
 
     @Query("SELECT p FROM PricingRule p WHERE p.vehicleType = :vehicleType AND p.ticketType = :ticketType " +
            "AND p.zone.id = :zoneId AND p.effectiveFrom <= :date AND (p.effectiveTo IS NULL OR p.effectiveTo >= :date) " +

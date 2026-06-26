@@ -20,12 +20,12 @@ public class BookingRequest {
     
     UUID slotId;
     
+    @NotNull(message = "Start time is required")
+    LocalDateTime startTime;
+
     @NotNull(message = "Duration is required")
     @Positive(message = "Duration must be greater than 0")
     Integer durationMinutes;
-    
-    @NotNull(message = "Start time is required")
-    LocalDateTime startTime;
-    
+
     String notes;
 }

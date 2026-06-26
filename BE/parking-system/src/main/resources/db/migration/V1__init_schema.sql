@@ -13,16 +13,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ENUMS
 -- ============================================================
 
-CREATE TYPE vehicle_type_enum AS ENUM ('MOTORBIKE', 'CAR', 'TRUCK');
-CREATE TYPE slot_maintenance_enum AS ENUM ('AVAILABLE', 'MAINTENANCE');
-CREATE TYPE session_status_enum AS ENUM ('ACTIVE', 'COMPLETED', 'CANCELLED');
-CREATE TYPE payment_status_enum AS ENUM ('UNPAID', 'PAID', 'REFUNDED', 'FAILED');
-CREATE TYPE ticket_type_enum AS ENUM ('HOURLY', 'DAILY', 'MONTHLY', 'LOST_TICKET', 'OVERSTAY');
-CREATE TYPE booking_status_enum AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'EXPIRED');
-CREATE TYPE exception_type_enum AS ENUM ('LOST_TICKET', 'OVERSTAY', 'WRONG_ZONE', 'UNPAID_EXIT');
-CREATE TYPE exception_status_enum AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
-CREATE TYPE report_type_enum AS ENUM ('REVENUE', 'UTILIZATION', 'PEAK_HOURS', 'VEHICLE_COUNT');
-CREATE TYPE notification_type_enum AS ENUM ('OVERSTAY_ALERT', 'EXCEPTION_PENDING', 'BOOKING_EXPIRED', 'UNPAID_SESSION');
 
 -- ============================================================
 -- ROLES & PERMISSIONS
@@ -97,7 +87,7 @@ CREATE TABLE zones (
     id           UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     floor_id     UUID NOT NULL REFERENCES floors(id) ON DELETE CASCADE,
     name         VARCHAR(100) NOT NULL,
-    vehicle_type vehicle_type_enum NOT NULL,
+    vehicle_type VARCHAR(20) NOT NULL,
     total_slots  INTEGER NOT NULL CHECK (total_slots > 0),
     is_active    BOOLEAN NOT NULL DEFAULT TRUE,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -112,8 +102,8 @@ CREATE TABLE parking_slots (
     slot_code            VARCHAR(20) NOT NULL UNIQUE,  -- A1-01, B2-15, ...
     floor_id             UUID NOT NULL REFERENCES floors(id) ON DELETE CASCADE,
     zone_id              UUID NOT NULL REFERENCES zones(id) ON DELETE CASCADE,
-    vehicle_type         vehicle_type_enum NOT NULL,
-    maintenance_status   slot_maintenance_enum NOT NULL DEFAULT 'AVAILABLE',
+    vehicle_type         VARCHAR(20) NOT NULL,
+    maintenance_status   VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
     -- NULL = FREE, có value = OCCUPIED
     -- Không dùng FK để tránh circular dependency với parking_sessions
     -- Enforce tại application layer trong @Transactional
@@ -135,7 +125,7 @@ CREATE TABLE vehicles (
     id                   UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id              BIGINT REFERENCES users(user_id) ON DELETE SET NULL,  -- NULL = khách vãng lai
     license_plate        VARCHAR(20) NOT NULL,
-    vehicle_type         vehicle_type_enum NOT NULL,
+    vehicle_type         VARCHAR(20) NOT NULL,
     has_monthly_pass     BOOLEAN NOT NULL DEFAULT FALSE,
     monthly_pass_expiry  DATE,
     --face_descriptor      vector(128),   -- pgvector: cosine similarity match khi ra không cần vé
@@ -159,7 +149,7 @@ CREATE TABLE monthly_passes (
     start_date      DATE NOT NULL,
     end_date        DATE NOT NULL,
     fee             NUMERIC(15,0) NOT NULL CHECK (fee > 0),
-    payment_status  payment_status_enum NOT NULL DEFAULT 'UNPAID',
+    payment_status  VARCHAR(20) NOT NULL DEFAULT 'UNPAID',
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -182,7 +172,7 @@ CREATE TABLE bookings (
     end_time            TIMESTAMP NOT NULL,
     -- BR-05: scheduler release slot khi booking_expiry_at < now() và status = PENDING
     booking_expiry_at   TIMESTAMP NOT NULL,           -- = start_time + 30 phút
-    status              booking_status_enum NOT NULL DEFAULT 'PENDING',
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_booking_times CHECK (end_time > start_time)
@@ -199,8 +189,8 @@ CREATE TABLE pricing_rules (
     id                       UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     zone_id                  UUID REFERENCES zones(id),  -- NULL = áp toàn bộ bãi
     name                     VARCHAR(100) NOT NULL,
-    vehicle_type             vehicle_type_enum NOT NULL,
-    ticket_type              ticket_type_enum  NOT NULL,
+    vehicle_type             VARCHAR(20) NOT NULL,
+    ticket_type              VARCHAR(20)  NOT NULL,
     rate_per_hour            NUMERIC(15,0) CHECK (rate_per_hour > 0),
     minimum_fee              NUMERIC(15,0) NOT NULL CHECK (minimum_fee > 0),   -- BR-26
     maximum_daily_fee        NUMERIC(15,0) CHECK (maximum_daily_fee > 0),
@@ -226,41 +216,69 @@ CREATE INDEX idx_pricing_effective ON pricing_rules(effective_from, effective_to
 -- ============================================================
 
 CREATE TABLE parking_sessions (
-    id                   UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-    booking_id           UUID REFERENCES bookings(id),            -- NULL nếu không đặt trước
-    vehicle_id           UUID NOT NULL REFERENCES vehicles(id),
-    slot_id              UUID NOT NULL REFERENCES parking_slots(id),
-    staff_entry_id       BIGINT NOT NULL REFERENCES users(user_id),
-    staff_exit_id        BIGINT REFERENCES users(user_id),
-    applied_rule_id      UUID REFERENCES pricing_rules(id),       -- rule đã dùng tính phí (audit)
-    -- BR-18: entry_time do server set, không cho Staff nhập
-    entry_time           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    exit_time            TIMESTAMP,
-    -- BR-01: fee = ceil((exit-entry)/60) × rate, áp minimum_fee
-    fee                  NUMERIC(15,0) CHECK (fee >= 0),
-    discount_amount      NUMERIC(15,0) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
-    final_fee            NUMERIC(15,0) CHECK (final_fee >= 0),    -- fee - discount_amount
-    payment_status       payment_status_enum NOT NULL DEFAULT 'UNPAID',
-    status               session_status_enum NOT NULL DEFAULT 'ACTIVE',
-    ticket_type          ticket_type_enum NOT NULL,
-    face_verified_at_exit BOOLEAN DEFAULT FALSE,
-    -- BR-02: nếu TRUE thì bắt buộc có ExceptionRecord đi kèm
-    staff_override_used  BOOLEAN DEFAULT FALSE,
-    -- BR-04: scheduler set khi session > 24h. NULL = chưa flag. Tránh duplicate exception.
-    overstay_flagged_at  TIMESTAMP,
-    created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_session_times CHECK (exit_time IS NULL OR exit_time > entry_time)
+    id                          UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+
+    booking_id                  UUID REFERENCES bookings(id),
+    vehicle_id                  UUID NOT NULL REFERENCES vehicles(id),
+    slot_id                     UUID NOT NULL REFERENCES parking_slots(id),
+
+    staff_entry_id              BIGINT NOT NULL REFERENCES users(user_id),
+    staff_exit_id               BIGINT REFERENCES users(user_id),
+
+    applied_rule_id             UUID REFERENCES pricing_rules(id),
+
+    monthly_pass_id             UUID REFERENCES monthly_passes(id),
+    applied_monthly_pass_fee    NUMERIC(15,0),
+
+    entry_time                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    exit_time                   TIMESTAMP,
+
+    fee                         NUMERIC(15,0) CHECK (fee >= 0),
+    discount_amount             NUMERIC(15,0) NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
+    final_fee                   NUMERIC(15,0) CHECK (final_fee >= 0),
+
+    payment_status              VARCHAR(20) NOT NULL DEFAULT 'UNPAID',
+    status                      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    ticket_type                 VARCHAR(20) NOT NULL,
+
+    face_verified_at_exit       BOOLEAN DEFAULT FALSE,
+    staff_override_used         BOOLEAN DEFAULT FALSE,
+
+    overstay_flagged_at         TIMESTAMP,
+
+    created_at                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_session_times
+        CHECK (exit_time IS NULL OR exit_time > entry_time)
 );
 
-CREATE INDEX idx_sessions_status       ON parking_sessions(status);
-CREATE INDEX idx_sessions_entry_time   ON parking_sessions(entry_time);
-CREATE INDEX idx_sessions_vehicle_id   ON parking_sessions(vehicle_id);          -- BR-03: check nợ phí
-CREATE INDEX idx_sessions_slot_active  ON parking_sessions(slot_id, status)
-    WHERE status = 'ACTIVE';     -- BR-16: đảm bảo 1 slot chỉ có 1 ACTIVE session
-CREATE INDEX idx_sessions_overstay     ON parking_sessions(overstay_flagged_at, entry_time)
-    WHERE overstay_flagged_at IS NULL AND status = 'ACTIVE';   -- Scheduler scan
+CREATE INDEX idx_sessions_status
+    ON parking_sessions(status);
 
+CREATE INDEX idx_sessions_entry_time
+    ON parking_sessions(entry_time);
+
+CREATE INDEX idx_sessions_vehicle_id
+    ON parking_sessions(vehicle_id);
+
+CREATE INDEX idx_sessions_slot_active
+    ON parking_sessions(slot_id, status)
+    WHERE status = 'ACTIVE';
+
+CREATE INDEX idx_sessions_overstay
+    ON parking_sessions(overstay_flagged_at, entry_time)
+    WHERE overstay_flagged_at IS NULL
+      AND status = 'ACTIVE';
+
+CREATE INDEX idx_session_pricing_rule
+    ON parking_sessions(applied_rule_id);
+
+CREATE INDEX idx_session_booking
+    ON parking_sessions(booking_id);
+
+CREATE INDEX idx_session_monthly_pass
+    ON parking_sessions(monthly_pass_id);
 -- ============================================================
 -- PAYMENTS
 -- ============================================================
@@ -270,7 +288,7 @@ CREATE TABLE payments (
     session_id      UUID NOT NULL REFERENCES parking_sessions(id),
     amount          NUMERIC(15,0) NOT NULL CHECK (amount > 0),
     method          VARCHAR(50) NOT NULL,   -- CASH | INTERNAL_TRANSFER
-    status          payment_status_enum NOT NULL,
+    status          VARCHAR(20) NOT NULL,
     reference_code  VARCHAR(50),
     note            TEXT,
     paid_at         TIMESTAMP,
@@ -292,8 +310,8 @@ CREATE INDEX idx_payments_collector   ON payments(collected_by);
 CREATE TABLE exceptions (
     id              UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     session_id      UUID NOT NULL REFERENCES parking_sessions(id),
-    exception_type  exception_type_enum  NOT NULL,
-    status          exception_status_enum NOT NULL DEFAULT 'PENDING',
+    exception_type  VARCHAR(30)  NOT NULL,
+    status          VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     reason          TEXT NOT NULL,
     -- BR-34: resolution bắt buộc trước khi đổi status → APPROVED/REJECTED
     resolution      TEXT,
@@ -317,7 +335,7 @@ CREATE INDEX idx_exceptions_staff        ON exceptions(created_by);
 CREATE TABLE notifications (
     id            UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     recipient_id  BIGINT NOT NULL REFERENCES users(user_id),
-    type          notification_type_enum NOT NULL,
+    type          VARCHAR(30) NOT NULL,
     reference_id  UUID,    -- ID của session / exception liên quan
     message       TEXT NOT NULL,
     is_read       BOOLEAN NOT NULL DEFAULT FALSE,
@@ -335,7 +353,7 @@ CREATE TABLE reports (
     id               UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     -- BR-41: chỉ Manager được generate
     generated_by     BIGINT NOT NULL REFERENCES users(user_id),
-    report_type      report_type_enum NOT NULL,
+    report_type      VARCHAR(30) NOT NULL,
     period_from      DATE NOT NULL,
     period_to        DATE NOT NULL,
     total_vehicles   INTEGER,

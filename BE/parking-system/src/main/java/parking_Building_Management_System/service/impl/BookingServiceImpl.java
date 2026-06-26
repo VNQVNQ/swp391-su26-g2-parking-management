@@ -45,18 +45,30 @@ public class BookingServiceImpl implements BookingService {
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime minStartTime = now.plusMinutes(5);
-        
+
+        if (request.getStartTime() == null) {
+            throw new IllegalArgumentException("Start time is required");
+        }
+
+        if (request.getDurationMinutes() == null) {
+            throw new IllegalArgumentException("Duration is required");
+        }
+
         if (request.getStartTime().isBefore(minStartTime)) {
             throw new IllegalArgumentException("Booking start time must be at least 5 minutes from now");
         }
 
-        if (request.getDurationMinutes() < 15 || request.getDurationMinutes() > 720) {
-            throw new IllegalArgumentException("Booking duration must be between 15 minutes and 12 hours");
+        if (request.getDurationMinutes() < 30) {
+            throw new IllegalArgumentException("Booking duration must be at least 30 minutes");
+        }
+
+        if (request.getDurationMinutes() > 720) {
+            throw new IllegalArgumentException("Booking duration must not exceed 12 hours");
         }
 
         LocalDateTime endTime = request.getStartTime().plusMinutes(request.getDurationMinutes());
 
-        ParkingSlot slot = null;
+        ParkingSlot slot;
         if (request.getSlotId() != null) {
             slot = parkingSlotRepository.findById(request.getSlotId())
                     .orElseThrow(() -> {
@@ -139,7 +151,7 @@ public class BookingServiceImpl implements BookingService {
         log.info("Getting active bookings for vehicle ID: {}", vehicleId);
         LocalDateTime now = LocalDateTime.now();
         List<BookingStatus> activeStatuses = Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-        
+
         return bookingRepository.findByStatusAndStartTimeAfter(activeStatuses.get(0), now).stream()
                 .filter(b -> b.getVehicle().getId().equals(vehicleId) && activeStatuses.contains(b.getStatus()))
                 .sorted(Comparator.comparing(Booking::getStartTime))
@@ -168,7 +180,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingDetailResponse confirmBooking(UUID bookingId, Long staffId) throws BookingExpiredException {
         log.info("Confirming booking ID: {} by staff ID: {}", bookingId, staffId);
-        
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {
                     log.error("Booking not found with ID: {}", bookingId);
@@ -194,7 +206,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public BookingDetailResponse cancelBooking(UUID bookingId, Long cancelledByUserId) {
         log.info("Cancelling booking ID: {} by user ID: {}", bookingId, cancelledByUserId);
-        
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {
                     log.error("Booking not found with ID: {}", bookingId);
@@ -216,7 +228,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public void expireBooking(UUID bookingId) {
         log.info("Expiring booking ID: {}", bookingId);
-        
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {
                     log.error("Booking not found with ID: {}", bookingId);
@@ -235,9 +247,9 @@ public class BookingServiceImpl implements BookingService {
     public int autoExpireBookings() {
         log.info("Starting auto-expire bookings process");
         LocalDateTime now = LocalDateTime.now();
-        
+
         List<Booking> expiredBookings = bookingRepository.findByStatusAndBookingExpiryAtBefore(BookingStatus.PENDING, now);
-        
+
         int count = 0;
         for (Booking booking : expiredBookings) {
             try {
@@ -247,7 +259,7 @@ public class BookingServiceImpl implements BookingService {
                 log.error("Error expiring booking ID {}: {}", booking.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Auto-expire bookings process completed. Expired {} bookings", count);
         return count;
     }
@@ -255,7 +267,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public boolean isSlotAvailableForBooking(UUID slotId, LocalDateTime startTime, LocalDateTime endTime) {
         log.debug("Checking availability for slot ID: {} between {} and {}", slotId, startTime, endTime);
-        
+
         ParkingSlot slot = parkingSlotRepository.findById(slotId)
                 .orElseThrow(() -> new RuntimeException("Slot not found"));
 
@@ -264,7 +276,7 @@ public class BookingServiceImpl implements BookingService {
             return false;
         }
 
-        Optional<ParkingSession> activeSession = parkingSessionRepository.findBySlotIdAndStatus(slotId, 
+        Optional<ParkingSession> activeSession = parkingSessionRepository.findBySlotIdAndStatus(slotId,
                 ParkingSessionStatus.ACTIVE);
         if (activeSession.isPresent()) {
             log.debug("Slot {} has active session", slotId);
@@ -324,12 +336,12 @@ public class BookingServiceImpl implements BookingService {
 
     private ParkingSlot findAvailableSlot(Vehicle vehicle, LocalDateTime startTime, LocalDateTime endTime) {
         log.debug("Finding available slot for vehicle type: {}", vehicle.getVehicleType());
-        
+
         List<Zone> zones = zoneRepository.findByVehicleType(vehicle.getVehicleType());
-        
+
         for (Zone zone : zones) {
             List<ParkingSlot> availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId());
-            
+
             for (ParkingSlot slot : availableSlots) {
                 if (isSlotAvailableForBooking(slot.getId(), startTime, endTime)) {
                     log.debug("Found available slot: {} in zone: {}", slot.getSlotCode(), zone.getName());
@@ -337,7 +349,7 @@ public class BookingServiceImpl implements BookingService {
                 }
             }
         }
-        
+
         log.warn("No available slots found for vehicle type: {}", vehicle.getVehicleType());
         return null;
     }

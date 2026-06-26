@@ -118,42 +118,42 @@ INSERT INTO zones (floor_id, name, vehicle_type, total_slots, is_active)
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu A - Xe máy',
-    'MOTORBIKE'::vehicle_type_enum,
+    'MOTORBIKE',
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = -1),
     'Khu B - Xe máy',
-    'MOTORBIKE'::vehicle_type_enum,
+    'MOTORBIKE',
     50,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu C - Xe ô tô',
-    'CAR'::vehicle_type_enum,
+    'CAR',
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 1),
     'Khu D - Xe ô tô',
-    'CAR'::vehicle_type_enum,
+    'CAR',
     30,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu E - Xe ô tô',
-    'CAR'::vehicle_type_enum,
+    'CAR',
     40,
     true
 UNION ALL
 SELECT
     (SELECT id FROM floors WHERE level_number = 2),
     'Khu F - Xe tải',
-    'TRUCK'::vehicle_type_enum,
+    'TRUCK',
     20,
     true;
 
@@ -168,8 +168,8 @@ SELECT
     'A1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu A - Xe máy'),
-    'MOTORBIKE'::vehicle_type_enum,
-    CASE WHEN counter = 5 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
+    'MOTORBIKE',
+    CASE WHEN counter = 5 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -182,8 +182,8 @@ SELECT
     'B1-' || LPAD(counter::text, 2, '0'),
     (SELECT id FROM floors WHERE level_number = -1),
     (SELECT id FROM zones WHERE name = 'Khu B - Xe máy'),
-    'MOTORBIKE'::vehicle_type_enum,
-    CASE WHEN counter = 25 THEN 'MAINTENANCE'::slot_maintenance_enum ELSE 'AVAILABLE'::slot_maintenance_enum END,
+    'MOTORBIKE',
+    CASE WHEN counter = 25 THEN 'MAINTENANCE' ELSE 'AVAILABLE' END,
     NULL,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

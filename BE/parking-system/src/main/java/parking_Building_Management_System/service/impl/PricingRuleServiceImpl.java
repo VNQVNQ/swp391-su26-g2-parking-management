@@ -90,7 +90,7 @@ public class PricingRuleServiceImpl implements PricingRuleService {
     @Override
     @Transactional(readOnly = true)
     public List<PricingRuleResponse> getPricingRulesByZone(UUID zoneId) {
-        return pricingRuleRepository.findByZoneIdAndIsActiveTrue(zoneId)
+        return pricingRuleRepository.findByZone_IdAndIsActiveTrue(zoneId)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());

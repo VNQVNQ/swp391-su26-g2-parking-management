@@ -75,7 +75,7 @@ class BookingServiceTest {
     private UUID testSlotId;
     private UUID testZoneId;
     private UUID testFloorId;
-    private UUID testStaffId;
+    private Long testStaffId;
 
     @BeforeEach
     void setUp() {
@@ -84,7 +84,7 @@ class BookingServiceTest {
         testSlotId = UUID.randomUUID();
         testZoneId = UUID.randomUUID();
         testFloorId = UUID.randomUUID();
-        testStaffId = UUID.randomUUID();
+        testStaffId = 1L;
 
         // Setup test floor
         testFloor = new Floor();

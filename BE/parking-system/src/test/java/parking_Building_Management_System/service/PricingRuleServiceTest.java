@@ -265,7 +265,7 @@ class PricingRuleServiceTest {
     void testGetPricingRulesByZone() {
         // Arrange
         List<PricingRule> rules = List.of(testPricingRule);
-        when(pricingRuleRepository.findByZoneIdAndIsActiveTrue(testZoneId)).thenReturn(rules);
+        when(pricingRuleRepository.findByZone_IdAndIsActiveTrue(testZoneId)).thenReturn(rules);
 
         // Act
         List<PricingRuleResponse> responses = pricingRuleService.getPricingRulesByZone(testZoneId);
@@ -273,7 +273,7 @@ class PricingRuleServiceTest {
         // Assert
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        verify(pricingRuleRepository).findByZoneIdAndIsActiveTrue(testZoneId);
+        verify(pricingRuleRepository).findByZone_IdAndIsActiveTrue(testZoneId);
     }
 
     @Test

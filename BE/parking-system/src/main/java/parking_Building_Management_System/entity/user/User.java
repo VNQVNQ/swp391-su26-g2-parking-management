@@ -48,7 +48,7 @@ public class User {
     String gender;
 
     // ĐÃ THÊM: Khai báo trường age để sửa lỗi thiếu hàm getAge() và setAge()
-    @Column(name = "age")
+    @Transient
     Integer age;
 
     @Column(name = "user_is_active", nullable = false)
@@ -97,5 +97,12 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public Integer getAge() {
+        if (dateOfBirth == null) {
+            return null;
+        }
+        return java.time.Period.between(dateOfBirth, java.time.LocalDate.now()).getYears();
     }
 }

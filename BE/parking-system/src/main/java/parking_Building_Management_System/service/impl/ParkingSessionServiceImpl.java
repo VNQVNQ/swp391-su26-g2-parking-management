@@ -216,10 +216,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 linkedBooking = new Booking();
                 linkedBooking.setId(bookingDetail.getId());
                 
-                // Confirm the booking (convert staffId Long to UUID for now, or pass as is if the signature accepts Long)
-                // Note: Creating a temporary UUID from the long staff ID
-                UUID staffUUID = new UUID(0, staffId);
-                bookingService.confirmBooking(bookingDetail.getId(), staffUUID);
+
+                bookingService.confirmBooking(bookingDetail.getId(), staffId);
                 
                 // Use booking slot if available
                 ParkingSlot bookedSlot = parkingSlotRepository.findById(bookingDetail.getSlotId()).orElse(null);

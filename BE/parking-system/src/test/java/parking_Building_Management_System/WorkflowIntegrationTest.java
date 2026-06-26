@@ -449,7 +449,10 @@ class WorkflowIntegrationTest {
         Booking booking = bookingRepository.findByBookingCode(bookingCode).orElse(null);
         assertNotNull(booking);
 
-        bookingService.cancelBooking(booking.getId(), new UUID(0, staffUserId));
+        bookingService.cancelBooking(
+                booking.getId(),
+                staffUserId
+        );
 
         Booking cancelledBooking = bookingRepository.findById(booking.getId()).orElse(null);
         assertNotNull(cancelledBooking);
