@@ -31,7 +31,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('DRIVER', 'STAFF', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PARKING_STAFF', 'PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @Valid @RequestBody BookingRequest request) {
         log.info("POST /api/v1/bookings - Creating booking for vehicle ID: {}", request.getVehicleId());
@@ -47,7 +47,7 @@ public class BookingController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<List<BookingResponse>>> getAllBookings() {
         log.info("GET /api/v1/bookings - Getting all bookings");
         List<BookingResponse> responses = bookingService.getAllBookings();
@@ -124,14 +124,14 @@ public class BookingController {
     }
 
     @PostMapping("/{id}/confirm")
-    @PreAuthorize("hasAnyRole('STAFF', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('PARKING_STAFF', 'PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<BookingDetailResponse>> confirmBooking(@PathVariable UUID id) {
         log.info("POST /api/v1/bookings/{}/confirm - Confirming booking", id);
         try {
             Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID staffId = UUID.fromString(principal.toString());
+            UUID PARKING_STAFFId = UUID.fromString(principal.toString());
             
-            BookingDetailResponse response = bookingService.confirmBooking(id, staffId);
+            BookingDetailResponse response = bookingService.confirmBooking(id, PARKING_STAFFId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking confirmed successfully");
             return ResponseEntity.ok(apiResponse);
         } catch (Exception e) {
@@ -141,7 +141,7 @@ public class BookingController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('DRIVER', 'STAFF', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PARKING_STAFF', 'PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<BookingDetailResponse>> cancelBooking(@PathVariable UUID id) {
         log.info("POST /api/v1/bookings/{}/cancel - Cancelling booking", id);
         try {
@@ -158,7 +158,7 @@ public class BookingController {
     }
 
     @GetMapping("/stats/active-count")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<Long>> getActiveBookingsCount() {
         log.info("GET /api/v1/bookings/stats/active-count - Getting active bookings count");
         long count = bookingService.getActiveBookingsCount();
@@ -167,7 +167,7 @@ public class BookingController {
     }
 
     @GetMapping("/stats/expiring-count")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<Long>> getExpiringBookingsCount() {
         log.info("GET /api/v1/bookings/stats/expiring-count - Getting expiring bookings count");
         long count = bookingService.getExpiringBookingsCount();

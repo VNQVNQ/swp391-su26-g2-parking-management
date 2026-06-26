@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDateTime;
@@ -30,8 +32,9 @@ public class Zone {
     @Column(name = "name", nullable = false, length = 100)
     String name;
 
-    @Column(name = "vehicle_type", nullable = false)
+    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
     @Column(name = "total_slots", nullable = false)

@@ -19,7 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "reports", schema = "public", indexes = {
-    @Index(name = "idx_reports_manager", columnList = "generated_by"),
+    @Index(name = "idx_reports_PARKING_MANAGER", columnList = "generated_by"),
     @Index(name = "idx_reports_period", columnList = "period_from, period_to")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)

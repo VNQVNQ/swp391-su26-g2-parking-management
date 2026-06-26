@@ -28,7 +28,7 @@ public class MonthlyPassController {
     private final MonthlyPassService monthlyPassService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<MonthlyPassResponse>> createMonthlyPass(
             @Valid @RequestBody MonthlyPassRequest request) {
         log.info("POST /api/v1/monthly-passes - Creating monthly pass for vehicle ID: {}", request.getVehicleId());
@@ -43,7 +43,7 @@ public class MonthlyPassController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<List<MonthlyPassResponse>>> getAllMonthlyPasses() {
         log.info("GET /api/v1/monthly-passes - Getting all monthly passes");
         List<MonthlyPassResponse> responses = monthlyPassService.getAllMonthlyPasses();
@@ -53,7 +53,7 @@ public class MonthlyPassController {
     }
 
     @GetMapping("/stats/active-count")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<Long>> getActiveMonthlyPassCount() {
         log.info("GET /api/v1/monthly-passes/stats/active-count - Getting active monthly pass count");
         long count = monthlyPassService.getActiveMonthlyPassCount();
@@ -62,7 +62,7 @@ public class MonthlyPassController {
     }
 
     @GetMapping("/expiring")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<List<MonthlyPassResponse>>> getExpiringMonthlyPasses(
             @RequestParam(defaultValue = "7") int days) {
         log.info("GET /api/v1/monthly-passes/expiring?days={} - Getting expiring monthly passes", days);
@@ -129,7 +129,7 @@ public class MonthlyPassController {
     }
 
     @PostMapping("/{id}/renew")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<MonthlyPassDetailResponse>> renewMonthlyPass(
             @PathVariable UUID id,
             @Valid @RequestBody RenewMonthlyPassRequest request) {
@@ -145,7 +145,7 @@ public class MonthlyPassController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<MonthlyPassDetailResponse>> updateMonthlyPass(
             @PathVariable UUID id,
             @Valid @RequestBody MonthlyPassRequest request) {
@@ -161,7 +161,7 @@ public class MonthlyPassController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> cancelMonthlyPass(@PathVariable UUID id) {
         log.info("DELETE /api/v1/monthly-passes/{} - Cancelling monthly pass", id);
         try {

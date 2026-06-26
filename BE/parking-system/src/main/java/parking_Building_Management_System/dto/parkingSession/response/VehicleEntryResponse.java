@@ -60,10 +60,10 @@ public class VehicleEntryResponse {
     PaymentStatus paymentStatus;
     
     /**
-     * Staff thực hiện check-in
+     * PARKING_STAFF thực hiện check-in
      */
-    Long staffId;
-    String staffName;
+    Long PARKING_STAFFId;
+    String PARKING_STAFFName;
     
     /**
      * Phase 4: Monthly pass information

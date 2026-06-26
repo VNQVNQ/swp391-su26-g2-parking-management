@@ -28,7 +28,7 @@ public interface BookingService {
     
     List<BookingResponse> getAvailableBookingsByDateRange(LocalDateTime startTime, LocalDateTime endTime);
     
-    BookingDetailResponse confirmBooking(UUID bookingId, UUID staffId) throws BookingExpiredException;
+    BookingDetailResponse confirmBooking(UUID bookingId, UUID PARKING_STAFFId) throws BookingExpiredException;
     
     BookingDetailResponse cancelBooking(UUID bookingId, UUID cancelledByUserId);
     

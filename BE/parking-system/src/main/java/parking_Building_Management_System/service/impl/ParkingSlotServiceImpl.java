@@ -38,6 +38,15 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new RuntimeException("Zone not found"));
 
+        // Validate required fields
+        if (request.getSlotCode() == null || request.getSlotCode().trim().isEmpty()) {
+            throw new RuntimeException("Slot code is required");
+        }
+
+        if (request.getVehicleType() == null) {
+            throw new RuntimeException("Vehicle type is required");
+        }
+
         // Verify slot code is unique
         if (parkingSlotRepository.findBySlotCode(request.getSlotCode()).isPresent()) {
             throw new RuntimeException("Slot code already exists: " + request.getSlotCode());
@@ -48,9 +57,14 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
         slot.setFloor(floor);
         slot.setZone(zone);
         slot.setVehicleType(request.getVehicleType());
-        slot.setMaintenanceStatus(SlotMaintenanceStatus.AVAILABLE);
+        slot.setMaintenanceStatus(request.getMaintenanceStatus() != null ? request.getMaintenanceStatus() : SlotMaintenanceStatus.AVAILABLE);
 
         slot = parkingSlotRepository.save(slot);
+
+        if (slot.getId() == null) {
+            throw new RuntimeException("Failed to generate ID for parking slot - database error");
+        }
+
         return mapToResponse(slot);
     }
 
@@ -61,6 +75,10 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new RuntimeException("Zone not found"));
+
+        if (request.getVehicleType() == null) {
+            throw new RuntimeException("Vehicle type is required");
+        }
 
         List<ParkingSlot> slots = request.getSlotCodes().stream()
                 .map(slotCode -> {
@@ -74,7 +92,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                     slot.setFloor(floor);
                     slot.setZone(zone);
                     slot.setVehicleType(request.getVehicleType());
-                    slot.setMaintenanceStatus(SlotMaintenanceStatus.AVAILABLE);
+                    slot.setMaintenanceStatus(request.getMaintenanceStatus() != null ? request.getMaintenanceStatus() : SlotMaintenanceStatus.AVAILABLE);
                     return slot;
                 })
                 .collect(Collectors.toList());

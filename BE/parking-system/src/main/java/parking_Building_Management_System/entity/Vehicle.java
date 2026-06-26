@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.entity.user.User;
 import java.time.LocalDate;
@@ -34,8 +36,9 @@ public class Vehicle {
     @Column(name = "license_plate", nullable = false, unique = true, length = 20)
     String licensePlate;
 
-    @Column(name = "vehicle_type", nullable = false)
+    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
     @Column(name = "has_monthly_pass", nullable = false, columnDefinition = "boolean default false")

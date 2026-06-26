@@ -47,13 +47,17 @@ public class VehicleController {
     public ResponseEntity<ApiResponse<List<VehicleResponse>>> getMyVehicles() {
         log.info("GET /api/v1/vehicles/my-vehicles - Getting current user's vehicles");
         var auth = SecurityContextHolder.getContext().getAuthentication();
+
         if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails)) {
+            // SỬA LỖI Ở ĐÂY: Thêm (ApiResponse) để ép kiểu, giúp Java bỏ qua việc check Generic khắt khe
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponseFactory.error("Unauthorized"));
+                    .body((ApiResponse) ApiResponseFactory.error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Người dùng chưa xác thực"));
         }
+
         ParkingUserDetails userDetails = (ParkingUserDetails) auth.getPrincipal();
         Long userId = userDetails.getUserId();
         List<VehicleResponse> responses = vehicleService.getVehiclesByUserId(userId);
+
         ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
                 "Retrieved " + responses.size() + " vehicles for current user");
         return ResponseEntity.ok(apiResponse);

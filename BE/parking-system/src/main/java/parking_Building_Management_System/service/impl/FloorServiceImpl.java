@@ -49,9 +49,18 @@ public class FloorServiceImpl implements FloorService {
         Floor floor = floorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Floor not found"));
 
-        floor.setName(request.getName());
-        floor.setLevelNumber(request.getLevelNumber());
-        floor.setDescription(request.getDescription());
+        if (request.getName() != null) {
+            floor.setName(request.getName());
+        }
+
+        // Only update level number if it's provided (not null)
+        if (request.getLevelNumber() != null) {
+            floor.setLevelNumber(request.getLevelNumber());
+        }
+
+        if (request.getDescription() != null) {
+            floor.setDescription(request.getDescription());
+        }
 
         floor = floorRepository.save(floor);
         return mapToResponse(floor);

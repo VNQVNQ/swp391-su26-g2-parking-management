@@ -48,7 +48,7 @@ public class User {
     String gender;
 
     // ĐÃ THÊM: Khai báo trường age để sửa lỗi thiếu hàm getAge() và setAge()
-    @Column(name = "age")
+    @Transient
     Integer age;
 
     @Column(name = "user_is_active", nullable = false)

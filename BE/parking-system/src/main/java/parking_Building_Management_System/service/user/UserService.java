@@ -5,8 +5,10 @@ import parking_Building_Management_System.dto.user.request.ResetPasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserChangePasswordRequest;
 import parking_Building_Management_System.dto.user.request.UserRequest;
 import parking_Building_Management_System.dto.user.request.UserRequestForUpdate;
+import parking_Building_Management_System.entity.AuditLog;
 import parking_Building_Management_System.entity.role.Role;
 import parking_Building_Management_System.entity.user.User;
+import parking_Building_Management_System.repository.AuditLogRepository;
 import parking_Building_Management_System.repository.RoleRepository;
 import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.service.auth.EmailService;
@@ -38,6 +40,7 @@ public class UserService {
     final JWTService jwtService;
     final EmailService emailService;
     final AuditLogService auditLogService;
+    final AuditLogRepository auditLogRepository;
 
     // Role mặc định cho mọi user tự đăng ký trên web (không cho phép tự chọn role)
     private static final String DEFAULT_SELF_REGISTER_ROLE = "DRIVER";
@@ -100,7 +103,7 @@ public class UserService {
      * Chỉ tài khoản ADMIN mới được phép thực hiện.
      *
      * @param userId   ID của user cần đổi role
-     * @param roleCode mã role mới (DRIVER / STAFF / MANAGER / ADMIN)
+     * @param roleCode mã role mới (DRIVER / PARKING_STAFF / PARKING_MANAGER / ADMIN)
      * @param token    JWT token của admin đang thực hiện
      */
     @Transactional
@@ -126,18 +129,31 @@ public class UserService {
             throw new NoSuchElementException("Role code '" + roleCode + "' is not active");
         }
 
+        // FIX: Lưu old role TRƯỚC khi ghi đè
+        String oldRoleCode = targetUser.getRole() != null ? targetUser.getRole().getRoleCode() : "UNKNOWN";
         targetUser.setRole(newRole);
         userRepository.save(targetUser);
 
         try {
-            String logDetails = String.format(
+            // Store detailed info in new_values field (JSONB) instead of concatenating to action string
+            String newValuesJson = String.format(
                     "{\"targetUserId\":%d,\"oldRole\":\"%s\",\"newRole\":\"%s\",\"changedByAdminId\":%d}",
                     targetUser.getUserId(),
-                    targetUser.getRole().getRoleCode(),
+                    oldRoleCode,
                     roleCode,
                     adminActor.getUserId()
             );
-            auditLogService.createAuditLog(adminActor, "ADMIN_UPDATE_USER_ROLE:" + logDetails, LocalDateTime.now());
+
+            // Create a custom audit log with new_values instead of action string
+            AuditLog auditLog = new AuditLog();
+            auditLog.setUser(adminActor);
+            auditLog.setAction("ADMIN_UPDATE_USER_ROLE");
+            auditLog.setEntityName("users");
+            auditLog.setEntityId(String.valueOf(targetUser.getUserId()));
+            auditLog.setNewValues(newValuesJson);
+            auditLog.setCreatedAt(LocalDateTime.now());
+
+            auditLogRepository.save(auditLog);
         } catch (Exception e) {
             System.err.println("Không thể ghi nhận Audit Log: " + e.getMessage());
         }
@@ -148,7 +164,7 @@ public class UserService {
     /**
      * Luồng admin tạo tài khoản cho người dùng khác.
      * Khác biệt duy nhất so với createUser(): admin được phép chỉ định roleCode
-     * (DRIVER / STAFF / ADMIN / ...) thay vì bị ép cứng về DRIVER.
+     * (DRIVER / PARKING_STAFF / ADMIN / ...) thay vì bị ép cứng về DRIVER.
      *
      * @param userRequest thông tin tài khoản cần tạo, kèm roleCode do admin chọn
      * @param token       token của admin đang thực hiện thao tác (để xác thực quyền + ghi audit log)

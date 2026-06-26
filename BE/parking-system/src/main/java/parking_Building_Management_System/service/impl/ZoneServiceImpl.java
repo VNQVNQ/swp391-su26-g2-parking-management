@@ -2,6 +2,7 @@ package parking_Building_Management_System.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import parking_Building_Management_System.dto.zone.request.ZoneRequest;
 import parking_Building_Management_System.dto.zone.response.ZoneResponse;
 import parking_Building_Management_System.entity.Floor;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ZoneServiceImpl implements ZoneService {
 
     private final ZoneRepository zoneRepository;
@@ -25,6 +27,10 @@ public class ZoneServiceImpl implements ZoneService {
     public ZoneResponse createZone(ZoneRequest request) {
         Floor floor = floorRepository.findById(request.getFloorId())
                 .orElseThrow(() -> new RuntimeException("Floor not found"));
+
+        if (request.getVehicleType() == null) {
+            throw new RuntimeException("Vehicle type is required");
+        }
 
         Zone zone = new Zone();
         zone.setFloor(floor);
@@ -82,9 +88,17 @@ public class ZoneServiceImpl implements ZoneService {
         Zone zone = zoneRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Zone not found"));
 
-        zone.setName(request.getName());
-        zone.setVehicleType(request.getVehicleType());
-        zone.setTotalSlots(request.getTotalSlots());
+        if (request.getName() != null) {
+            zone.setName(request.getName());
+        }
+
+        if (request.getVehicleType() != null) {
+            zone.setVehicleType(request.getVehicleType());
+        }
+
+        if (request.getTotalSlots() != null) {
+            zone.setTotalSlots(request.getTotalSlots());
+        }
 
         zone = zoneRepository.save(zone);
         return mapToResponse(zone);

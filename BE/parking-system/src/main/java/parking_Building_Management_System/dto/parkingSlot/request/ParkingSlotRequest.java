@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.util.UUID;
 
@@ -17,5 +18,6 @@ public class ParkingSlotRequest {
     UUID floorId;
     UUID zoneId;
     VehicleType vehicleType;
+    SlotMaintenanceStatus maintenanceStatus;
 }
 

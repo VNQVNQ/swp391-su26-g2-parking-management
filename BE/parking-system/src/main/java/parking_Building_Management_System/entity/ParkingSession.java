@@ -53,12 +53,12 @@ public class ParkingSession {
     ParkingSlot slot;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_entry_id", nullable = false)
-    User staffEntry;
+    @JoinColumn(name = "PARKING_STAFF_entry_id", nullable = false)
+    User PARKING_STAFFEntry;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_exit_id")
-    User staffExit;
+    @JoinColumn(name = "PARKING_STAFF_exit_id")
+    User PARKING_STAFFExit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applied_rule_id")
@@ -86,23 +86,23 @@ public class ParkingSession {
     @Column(name = "final_fee", precision = 15, scale = 0)
     BigDecimal finalFee;
 
-    @Column(name = "payment_status", nullable = false)
+    @Column(name = "payment_status", nullable = false, columnDefinition = "payment_status_enum")
     @Enumerated(EnumType.STRING)
     PaymentStatus paymentStatus;
 
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "session_status_enum")
     @Enumerated(EnumType.STRING)
     ParkingSessionStatus status;
 
-    @Column(name = "ticket_type", nullable = false)
+    @Column(name = "ticket_type", nullable = false, columnDefinition = "ticket_type_enum")
     @Enumerated(EnumType.STRING)
     TicketType ticketType;
 
     @Column(name = "face_verified_at_exit")
     Boolean faceVerifiedAtExit;
 
-    @Column(name = "staff_override_used")
-    Boolean staffOverrideUsed;
+    @Column(name = "PARKING_STAFF_override_used")
+    Boolean PARKING_STAFFOverrideUsed;
 
     @Column(name = "overstay_flagged_at")
     LocalDateTime overstayFlaggedAt;

@@ -37,11 +37,11 @@ public class ParkingRate {
     @Column(name = "name", nullable = false, length = 100)
     String name;
 
-    @Column(name = "vehicle_type", nullable = false)
+    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
     VehicleType vehicleType;
 
-    @Column(name = "ticket_type", nullable = false)
+    @Column(name = "ticket_type", nullable = false, columnDefinition = "ticket_type_enum")
     @Enumerated(EnumType.STRING)
     TicketType ticketType;
 
@@ -76,7 +76,7 @@ public class ParkingRate {
     Boolean isActive;
 
     @Column(name = "created_by", nullable = false)
-    Long createdBy; // User ID của manager tạo rule
+    Long createdBy; // User ID của PARKING_MANAGER tạo rule
 
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

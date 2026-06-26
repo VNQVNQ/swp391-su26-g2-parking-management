@@ -1,17 +1,10 @@
 package parking_Building_Management_System.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
+// CORS được handle bởi SecurityConfig.corsConfigurationSource()
+// WebMvcConfigurer CORS sẽ bị override bởi Spring Security CORS nên để trống
 @Configuration
-public class WebConfig implements WebMvcConfigurer {
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:8084")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
+public class WebConfig {
+    // Không cần addCorsMappings nữa vì SecurityConfig đã xử lý CORS đúng cách
+    // Việc định nghĩa CORS ở 2 nơi gây conflict và OPTIONS bị block
 }

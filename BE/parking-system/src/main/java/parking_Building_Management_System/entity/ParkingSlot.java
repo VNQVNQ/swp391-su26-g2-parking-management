@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.Zone;
@@ -42,12 +44,14 @@ public class ParkingSlot {
     @JoinColumn(name = "zone_id", nullable = false)
     Zone zone;
 
-    @Column(name = "vehicle_type", nullable = false)
+    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
-    @Column(name = "maintenance_status", nullable = false)
+    @Column(name = "maintenance_status", nullable = false, columnDefinition = "slot_maintenance_enum")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     SlotMaintenanceStatus maintenanceStatus;
 
     @OneToOne(fetch = FetchType.LAZY)

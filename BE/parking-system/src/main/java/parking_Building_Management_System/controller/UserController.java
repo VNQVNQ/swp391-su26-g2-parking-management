@@ -77,7 +77,7 @@ public class UserController {
 
     /**
      * Admin thay đổi role cho user đã tồn tại.
-     * Body: { "roleCode": "MANAGER" }
+     * Body: { "roleCode": "PARKING_MANAGER" }
      */
     @PatchMapping("/users/{id}/role")
     public ResponseEntity<ApiResponse<UserResponse>> updateUserRole(
@@ -109,7 +109,7 @@ public class UserController {
 
     /**
      * Endpoint dành riêng cho ADMIN: tạo tài khoản cho người dùng khác và được
-     * quyền chỉ định role (DRIVER / STAFF / ADMIN ...) ngay khi tạo.
+     * quyền chỉ định role (DRIVER / PARKING_STAFF / ADMIN ...) ngay khi tạo.
      * Khác với /register (tự đăng ký, role luôn bị ép cứng = DRIVER), endpoint
      * này bắt buộc phải có Authorization header của một tài khoản ADMIN, và
      * body phải có thêm field roleCode.

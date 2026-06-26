@@ -34,12 +34,12 @@ VALUES (
     true
 );
 
--- Manager user (Sửa từ 'MANAGER' thành 'PARKING_MANAGER')
+-- PARKING_MANAGER user (Sửa từ 'PARKING_MANAGER' thành 'PARKING_PARKING_MANAGER')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_MANAGER' LIMIT 1),
-    'Trần Thị Manager',
-    'manager@parking.com',
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_MANAGER' LIMIT 1),
+    'Trần Thị PARKING_MANAGER',
+    'PARKING_MANAGER@parking.com',
     '0901000002',
     '001234567891',
     '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
@@ -49,13 +49,13 @@ VALUES (
     true
 );
 
--- Staff users (Sửa từ 'STAFF' thành 'PARKING_STAFF')
+-- PARKING_STAFF users (Sửa từ 'PARKING_STAFF' thành 'PARKING_PARKING_STAFF')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
-    'Nguyễn Văn Staff01',
-    'staff01@parking.com',
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    'Nguyễn Văn PARKING_STAFF01',
+    'PARKING_STAFF01@parking.com',
     '0901000003',
     '001234567892',
     '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
@@ -65,9 +65,9 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
-    'Lê Thị Staff02',
-    'staff02@parking.com',
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    'Lê Thị PARKING_STAFF02',
+    'PARKING_STAFF02@parking.com',
     '0901000004',
     '001234567893',
     '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
@@ -77,9 +77,9 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
-    'Hoàng Văn Staff03',
-    'staff03@parking.com',
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    'Hoàng Văn PARKING_STAFF03',
+    'PARKING_STAFF03@parking.com',
     '0901000005',
     '001234567894',
     '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
@@ -89,9 +89,9 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
-    'Đỗ Thị Staff04',
-    'staff04@parking.com',
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    'Đỗ Thị PARKING_STAFF04',
+    'PARKING_STAFF04@parking.com',
     '0901000006',
     '001234567895',
     '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
@@ -339,25 +339,25 @@ VALUES
 -- 6. SEED PRICING RULES
 -- ============================================================
 
--- Manager user ID for creating pricing rules
--- We'll use the first manager ID
+-- PARKING_MANAGER user ID for creating pricing rules
+-- We'll use the first PARKING_MANAGER ID
 
 -- Motorbike pricing
 INSERT INTO pricing_rules (zone_id, name, vehicle_type, ticket_type, rate_per_hour, minimum_fee, maximum_daily_fee, overstay_rate_multiplier, peak_hour_start, peak_hour_end, peak_hour_multiplier, effective_from, effective_to, is_active, created_by)
 VALUES
-(NULL, 'Giá xe máy - Vé theo giờ', 'MOTORBIKE', 'HOURLY', 5000, 5000, 50000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe máy - Vé theo ngày', 'MOTORBIKE', 'DAILY', 4000, 20000, 30000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE', 'MONTHLY', 2000, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé theo giờ', 'MOTORBIKE', 'HOURLY', 5000, 5000, 50000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé theo ngày', 'MOTORBIKE', 'DAILY', 4000, 20000, 30000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe máy - Vé tháng', 'MOTORBIKE', 'MONTHLY', 2000, 200000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
 
 -- Car pricing
-(NULL, 'Giá xe ô tô - Vé theo giờ', 'CAR', 'HOURLY', 10000, 15000, 150000, 2.5, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe ô tô - Vé theo ngày', 'CAR', 'DAILY', 8000, 50000, 100000, 2.5, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe ô tô - Vé tháng', 'CAR', 'MONTHLY', 5000, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé theo giờ', 'CAR', 'HOURLY', 10000, 15000, 150000, 2.5, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé theo ngày', 'CAR', 'DAILY', 8000, 50000, 100000, 2.5, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe ô tô - Vé tháng', 'CAR', 'MONTHLY', 5000, 500000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
 
 -- Truck pricing
-(NULL, 'Giá xe tải - Vé theo giờ', 'TRUCK', 'HOURLY', 20000, 30000, 250000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe tải - Vé theo ngày', 'TRUCK', 'DAILY', 15000, 80000, 200000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1)),
-(NULL, 'Giá xe tải - Vé tháng', 'TRUCK', 'MONTHLY', 10000, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'manager@parking.com' LIMIT 1));
+(NULL, 'Giá xe tải - Vé theo giờ', 'TRUCK', 'HOURLY', 20000, 30000, 250000, 2.0, '08:00', '17:00', 1.5, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe tải - Vé theo ngày', 'TRUCK', 'DAILY', 15000, 80000, 200000, 2.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1)),
+(NULL, 'Giá xe tải - Vé tháng', 'TRUCK', 'MONTHLY', 10000, 1000000, NULL, 1.0, NULL, NULL, NULL, CURRENT_DATE, NULL, true, (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com' LIMIT 1));
 
 -- ============================================================
 -- 7. SEED MONTHLY PASSES
@@ -405,12 +405,12 @@ LIMIT 5;
 -- ============================================================
 
 -- Recent completed sessions
-INSERT INTO parking_sessions (vehicle_id, slot_id, staff_entry_id, staff_exit_id, applied_rule_id, entry_time, exit_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, staff_override_used)
+INSERT INTO parking_sessions (vehicle_id, slot_id, PARKING_STAFF_entry_id, PARKING_STAFF_exit_id, applied_rule_id, entry_time, exit_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, PARKING_STAFF_override_used)
 SELECT DISTINCT ON (v.id, ps.id)
     v.id,
     ps.id,
-    (SELECT user_id FROM users WHERE email = 'staff01@parking.com'),
-    (SELECT user_id FROM users WHERE email = 'staff02@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF01@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF02@parking.com'),
     (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY' LIMIT 1),
     (CURRENT_TIMESTAMP - INTERVAL '3 hours'),
     (CURRENT_TIMESTAMP - INTERVAL '2 hours'),
@@ -433,11 +433,11 @@ CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status 
 WHERE ps.vehicle_type = v.vehicle_type;
 
 -- Active sessions (currently parked)
-INSERT INTO parking_sessions (vehicle_id, slot_id, staff_entry_id, applied_rule_id, entry_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, staff_override_used)
+INSERT INTO parking_sessions (vehicle_id, slot_id, PARKING_STAFF_entry_id, applied_rule_id, entry_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, PARKING_STAFF_override_used)
 SELECT DISTINCT ON (v.id, ps.id)
     v.id,
     ps.id,
-    (SELECT user_id FROM users WHERE email = 'staff03@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF03@parking.com'),
     (SELECT id FROM pricing_rules WHERE vehicle_type = v.vehicle_type AND ticket_type = 'HOURLY' LIMIT 1),
     (CURRENT_TIMESTAMP - INTERVAL '45 minutes'),
     NULL,
@@ -466,7 +466,7 @@ SELECT
     'PAID',
     'REF-' || UPPER(SUBSTR(MD5(RANDOM()::text), 1, 6)),
     CURRENT_TIMESTAMP,
-    (SELECT user_id FROM users WHERE email = 'staff04@parking.com')
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF04@parking.com')
 FROM parking_sessions ps
 WHERE ps.status = 'COMPLETED' AND ps.payment_status = 'PAID'
 AND NOT EXISTS (SELECT 1 FROM payments WHERE session_id = ps.id);
@@ -481,7 +481,7 @@ SELECT
     'OVERSTAY',
     'PENDING',
     'Xe đỗ quá thời gian cho phép, vượt quá 24 giờ',
-    (SELECT user_id FROM users WHERE email = 'staff01@parking.com')
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF01@parking.com')
 FROM parking_sessions ps
 WHERE ps.status = 'ACTIVE'
 AND (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - ps.entry_time)) / 3600) > 24
@@ -494,7 +494,7 @@ LIMIT 2;
 
 INSERT INTO notifications (recipient_id, type, reference_id, message, is_read)
 SELECT
-    (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com'),
     'OVERSTAY_ALERT',
     ps.id,
     'Cảnh báo: Xe ' || v.license_plate || ' đang đỗ quá 24 giờ tại slot ' || slots.slot_code,
@@ -508,7 +508,7 @@ LIMIT 2;
 
 INSERT INTO notifications (recipient_id, type, message, is_read)
 SELECT
-    (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com'),
     'EXCEPTION_PENDING',
     'Có ' || COUNT(*) || ' exception đang chờ duyệt',
     false
@@ -524,7 +524,7 @@ HAVING COUNT(*) > 0;
 INSERT INTO reports (generated_by, report_type, period_from, period_to, total_vehicles, total_revenue, utilization_rate, generated_at)
 VALUES
 (
-    (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com'),
     'REVENUE',
     CURRENT_DATE - INTERVAL '7 days',
     CURRENT_DATE,
@@ -534,7 +534,7 @@ VALUES
     CURRENT_TIMESTAMP
 ),
 (
-    (SELECT user_id FROM users WHERE email = 'manager@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_MANAGER@parking.com'),
     'UTILIZATION',
     CURRENT_DATE - INTERVAL '30 days',
     CURRENT_DATE,
@@ -550,7 +550,7 @@ VALUES
 
 INSERT INTO audit_logs (user_id, action, entity_name, entity_id, new_values, ip_address)
 SELECT
-    (SELECT user_id FROM users WHERE email = 'staff01@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF01@parking.com'),
     'SESSION_CREATE',
     'parking_sessions',
     ps.id::text,
@@ -566,7 +566,7 @@ LIMIT 5;
 
 INSERT INTO audit_logs (user_id, action, entity_name, entity_id, old_values, new_values, ip_address)
 SELECT
-    (SELECT user_id FROM users WHERE email = 'staff02@parking.com'),
+    (SELECT user_id FROM users WHERE email = 'PARKING_STAFF02@parking.com'),
     'SESSION_EXIT',
     'parking_sessions',
     ps.id::text,
@@ -585,7 +585,7 @@ LIMIT 5;
 -- SUMMARY
 -- ============================================================
 -- Data seeded successfully:
--- - 1 Admin, 1 Manager, 4 Staff users
+-- - 1 Admin, 1 PARKING_MANAGER, 4 PARKING_STAFF users
 -- - 3 Floors with 6 Zones
 -- - 270 Parking Slots (50+50+30+30+40+20)
 -- - 9 Vehicles (3 motorbikes, 4 cars, 2 trucks)

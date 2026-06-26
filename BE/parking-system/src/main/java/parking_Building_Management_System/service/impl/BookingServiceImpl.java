@@ -166,8 +166,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingDetailResponse confirmBooking(UUID bookingId, UUID staffId) throws BookingExpiredException {
-        log.info("Confirming booking ID: {} by staff ID: {}", bookingId, staffId);
+    public BookingDetailResponse confirmBooking(UUID bookingId, UUID PARKING_STAFFId) throws BookingExpiredException {
+        log.info("Confirming booking ID: {} by PARKING_STAFF ID: {}", bookingId, PARKING_STAFFId);
         
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {

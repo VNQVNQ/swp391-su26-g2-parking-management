@@ -34,7 +34,7 @@ public class PricingRule {
     @Column(name = "name", nullable = false, length = 100)
     String name;
 
-    @Column(name = "vehicle_type", nullable = false)
+    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
     VehicleType vehicleType;
 
@@ -42,7 +42,7 @@ public class PricingRule {
     @JoinColumn(name = "zone_id")
     Zone zone;
 
-    @Column(name = "ticket_type", nullable = false)
+    @Column(name = "ticket_type", nullable = false, columnDefinition = "ticket_type_enum")
     @Enumerated(EnumType.STRING)
     TicketType ticketType;
 

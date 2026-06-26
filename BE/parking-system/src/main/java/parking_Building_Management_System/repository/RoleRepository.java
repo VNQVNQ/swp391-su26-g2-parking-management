@@ -15,6 +15,6 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
     @Query("SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.privileges")
     List<Role> findAllRole();
 
-    @Query("SELECT r FROM Role r WHERE r.roleCode = :roleCode")
+    @Query("SELECT r FROM Role r WHERE UPPER(r.roleCode) = UPPER(:roleCode)")
     Role findRoleByRoleCode(@Param("roleCode") String roleCode);
 }

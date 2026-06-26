@@ -34,12 +34,12 @@ public interface ParkingSessionService {
     /**
      * BR-27: Tạo ParkingSession + Update Slot (transactional)
      * BR-28: entry_time do server generate
-     * BR-29: Chỉ Staff mới tạo được
+     * BR-29: Chỉ PARKING_STAFF mới tạo được
      * BR-30: vehicleType xe phải khớp slot
      * BR-31: sessionID phải unique (UUID)
      * Phase 4: Support booking confirmation and monthly pass linking
      */
-    VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId, String bookingCode);
+    VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long PARKING_STAFFId, String bookingCode);
 
     /**
      * Lấy thông tin session hiện tại của xe
@@ -67,7 +67,7 @@ public interface ParkingSessionService {
      * Cập nhật session khi exit (dành cho exit flow)
      * Phase 4: Calculate fee with monthly pass and pricing rule logic
      */
-    ParkingSession updateSessionOnExit(UUID sessionId, Long staffId);
+    ParkingSession updateSessionOnExit(UUID sessionId, Long PARKING_STAFFId);
 
     /**
      * Kiểm tra xe có nợ phí hay không
@@ -78,7 +78,7 @@ public interface ParkingSessionService {
      * BR-33: Xử lý thanh toán
      * Cập nhật payment status, tạo payment record
      */
-    Long processPayment(PaymentRequest request, Long staffId);
+    Long processPayment(PaymentRequest request, Long PARKING_STAFFId);
 
     /**
      * Cập nhật payment status của session
