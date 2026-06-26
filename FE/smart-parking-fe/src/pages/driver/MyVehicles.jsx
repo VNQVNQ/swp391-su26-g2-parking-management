@@ -14,7 +14,7 @@ export default function MyVehicles() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/api/v1/vehicles');
+        const res = await api.get('/api/v1/vehicles/my-vehicles');
         const data = res.data.data ?? res.data ?? [];
         setVehicles(Array.isArray(data) ? data : []);
       } catch {
