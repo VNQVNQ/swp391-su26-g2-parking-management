@@ -180,8 +180,31 @@ function AppShell() {
             } />
 
             {/* ═══ DRIVER ═══ */}
-            <Route path="/driver/register-vehicle" element={<RoleRoute allowedRoles={['DRIVER']}><RegisterVehicle /></RoleRoute>} />
-            <Route path="/driver/my-vehicles" element={<RoleRoute allowedRoles={['DRIVER']}><MyVehicles /></RoleRoute>} />
+            <Route path="/driver/dashboard" element={
+              <RoleRoute allowedRoles={['DRIVER']}>
+                <DriverDashboard />
+              </RoleRoute>
+            } />
+            <Route path="/driver/register-vehicle" element={
+              <RoleRoute allowedRoles={['DRIVER']}>
+                <RegisterVehicle />
+              </RoleRoute>
+            } />
+            <Route path="/driver/my-vehicles" element={
+              <RoleRoute allowedRoles={['DRIVER']}>
+                <MyVehicles />
+              </RoleRoute>
+            } />
+            <Route path="/driver/slots" element={
+              <RoleRoute allowedRoles={['DRIVER']}>
+                <DriverSlotView />
+              </RoleRoute>
+            } />
+            <Route path="/driver/booking" element={
+              <RoleRoute allowedRoles={['DRIVER']}>
+                <Booking />
+              </RoleRoute>
+            } />
 
             {/* Legacy redirects */}
             <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
