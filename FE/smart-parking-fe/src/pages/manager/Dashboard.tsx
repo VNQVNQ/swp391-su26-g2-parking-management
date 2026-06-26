@@ -16,7 +16,7 @@ export default function Dashboard() {
     <div className="p-6 max-w-screen-xl">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Manager Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white">PARKING_MANAGER Dashboard</h1>
         <p className="text-sm text-gray-500 mt-1">
           Xin chào, <span className="text-indigo-400">{user?.fullName}</span> · Cập nhật realtime
         </p>

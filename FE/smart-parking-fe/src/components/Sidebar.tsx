@@ -4,7 +4,7 @@ import {
   DollarSign, CalendarCheck, AlertTriangle,
   BarChart3, Settings as SettingsIcon,
   ChevronLeft, ChevronRight, Car, Power,
-  Ticket, BookOpen, MapPin, Calendar,
+  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket,
 } from 'lucide-react';
 
 // ── Role-based navigation items ──────────────────────────────────────────────
@@ -14,28 +14,32 @@ const navItems = [
   { to: '/admin/pricing',   label: 'Pricing',    icon: DollarSign,      roles: ['ADMIN'] },
   { to: '/admin/reports',   label: 'Reports',    icon: BarChart3,       roles: ['ADMIN'] },
   { to: '/admin/settings',  label: 'Settings',   icon: SettingsIcon,    roles: ['ADMIN'] },
-  // MANAGER (Parking Lot Manager)
-  { to: '/manager/dashboard',   label: 'Dashboard',         icon: LayoutDashboard, roles: ['MANAGER'] },
-  { to: '/manager/slots',       label: 'Slot Management',   icon: CircleDot,       roles: ['MANAGER'] },
-  { to: '/manager/passes',      label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['MANAGER'] },
-  { to: '/manager/exceptions',  label: 'Exceptions',        icon: AlertTriangle,   roles: ['MANAGER'] },
-  { to: '/manager/reports',     label: 'Reports',           icon: BarChart3,       roles: ['MANAGER'] },
-  // STAFF
-  { to: '/entry',       label: 'Vehicle Entry',     icon: LogIn,           roles: ['STAFF'] },
-  { to: '/exit',        label: 'Vehicle Exit',      icon: LogOut,          roles: ['STAFF'] },
-  { to: '/staff/slots', label: 'Slot View',         icon: MapPin,          roles: ['STAFF'] },
+  // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
+  { to: '/PARKING_MANAGER/dashboard',   label: 'Dashboard',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/floors',      label: 'Manage Floors',     icon: Building2,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/zones',       label: 'Manage Zones',      icon: MapPin,          roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/parking-slots', label: 'Manage Slots',    icon: Grid3x3,         roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/slots',       label: 'Slot Management',   icon: CircleDot,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/passes',      label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/exceptions',  label: 'Exceptions',        icon: AlertTriangle,   roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/reports',     label: 'Reports',           icon: BarChart3,       roles: ['PARKING_MANAGER'] },
+  // PARKING_STAFF
+  { to: '/entry',       label: 'Vehicle Entry',     icon: LogIn,           roles: ['PARKING_STAFF'] },
+  { to: '/exit',        label: 'Vehicle Exit',      icon: LogOut,          roles: ['PARKING_STAFF'] },
+  { to: '/PARKING_STAFF/slots', label: 'Slot View',         icon: MapPin,          roles: ['PARKING_STAFF'] },
   // DRIVER
   { to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
   { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
   { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
+  { to: '/driver/monthly-pass',     label: 'Pass hàng tháng', icon: Ticket,       roles: ['DRIVER'] },
   { to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
   { to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN:   'System Admin',
-  MANAGER: 'Manager',
-  STAFF:   'Staff',
+  PARKING_MANAGER: 'Parking Manager',
+  PARKING_STAFF:   'Parking Staff',
   DRIVER:  'Driver',
 };
 
@@ -44,7 +48,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
 
   const displayName = user?.fullName || user?.name || 'User';
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
-  const userRole  = user?.role || 'STAFF';
+  const userRole  = user?.role || 'PARKING_STAFF';
   const visibleItems = navItems.filter(item => item.roles.includes(userRole));
 
   return (

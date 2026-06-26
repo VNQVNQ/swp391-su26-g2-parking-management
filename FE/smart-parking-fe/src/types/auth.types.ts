@@ -1,5 +1,5 @@
 // BR-50: Role-based access control
-export type Role = "MANAGER" | "STAFF" | "DRIVER" | "SYSTEM_ADMIN";
+export type Role = "PARKING_MANAGER" | "PARKING_STAFF" | "DRIVER" | "SYSTEM_ADMIN";
 
 // Match BE UserResponse
 export interface User {

@@ -73,9 +73,9 @@ export interface ParkingSession {
   ticketType: TicketType;        // match BE entity
   fee?: number;                  // BigDecimal → number
   paymentStatus: PaymentStatus;
-  staffEntryName: string;
+  PARKING_STAFFEntryName: string;
   hasFaceData: boolean;          // faceDescriptor != null
   hasMonthlyPass: boolean;       // từ vehicle
   faceVerifiedAtExit?: boolean;  // match BE entity
-  staffOverrideUsed?: boolean;   // match BE entity
+  PARKING_STAFFOverrideUsed?: boolean;   // match BE entity
 }

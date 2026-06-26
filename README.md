@@ -43,8 +43,8 @@
 - **Xe ra**: tra cứu session → tính phí theo BR-01 → ghi nhận thanh toán
 - **Cấu hình giá** linh hoạt theo loại xe, zone, khung giờ cao điểm
 - **Dashboard real-time**: tỉ lệ lấp đầy theo tầng/zone
-- **Xử lý ngoại lệ**: mất vé, quá giờ, sai zone, nợ phí (cần manager approve)
-- **Báo cáo Manager**: doanh thu, utilization %, giờ cao điểm
+- **Xử lý ngoại lệ**: mất vé, quá giờ, sai zone, nợ phí (cần PARKING_MANAGER approve)
+- **Báo cáo PARKING_MANAGER**: doanh thu, utilization %, giờ cao điểm
 - **Đặt chỗ trước** (optional): giữ slot theo loại xe & thời gian
 
 ---
@@ -56,8 +56,8 @@
 | 1 | **Võ Nhật Quang** | SE196584 | 🔱 Team Leader · Backend Dev | `feature/BE-floor-zone-slot`|
 | 2 | **Nguyễn Phước Sanh** | SE181668 | ⚙️ Backend Dev |  `feature/BE-auth` · `feature/BE-session` |
 | 3 | **Trần Hữu Trọng Nhân** | SE196231 | ⚙️ Backend Dev | `feature/BE-payment-report` |
-| 4 | **Nguyễn Lê Nhật Vinh** | SE193661 | 🎨 Frontend Dev | `feature/FE-staff-ui` |
-| 5 | **Nguyễn Quốc Hưng** | SE180315 | 🎨 Frontend Dev | `feature/FE-manager-ui` |
+| 4 | **Nguyễn Lê Nhật Vinh** | SE193661 | 🎨 Frontend Dev | `feature/FE-PARKING_STAFF-ui` |
+| 5 | **Nguyễn Quốc Hưng** | SE180315 | 🎨 Frontend Dev | `feature/FE-PARKING_MANAGER-ui` |
 
 ---
 
@@ -67,7 +67,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                          │
 │          React + Vite  ·  Tailwind CSS  ·  Axios            │
-│    Staff UI (entry/exit)  │  Manager UI (report/config)     │
+│    PARKING_STAFF UI (entry/exit)  │  PARKING_MANAGER UI (report/config)     │
 └────────────────────────┬────────────────────────────────────┘
                          │ REST API (JSON)
 ┌────────────────────────▼────────────────────────────────────┐
@@ -128,9 +128,9 @@
 | ID | Loại | Mô tả |
 |:--:|------|-------|
 | **BR-01** | Calculational | Phí = `ceil((exitTime − entryTime) / 60)` × giá/giờ; áp dụng `minimum_fee` nếu < 1 giờ |
-| **BR-02** | Behavioral | Staff **không được** tự free slot → phải tạo ExceptionRecord → Manager approve |
+| **BR-02** | Behavioral | PARKING_STAFF **không được** tự free slot → phải tạo ExceptionRecord → PARKING_MANAGER approve |
 | **BR-03** | Behavioral | Xe có session **chưa thanh toán** → chặn tạo session mới đến khi trả nợ |
-| **BR-04** | Temporal | Session > 24h không exit → auto-flag `OVERSTAY`; áp dụng phí phạt; notify Manager |
+| **BR-04** | Temporal | Session > 24h không exit → auto-flag `OVERSTAY`; áp dụng phí phạt; notify PARKING_MANAGER |
 | **BR-05** | Temporal | Booking slot chỉ giữ **30 phút** sau giờ hẹn; hết thời gian → slot tự về `FREE` |
 
 > ⚠️ Tất cả Business Rules được enforce tại **Service layer** — không chỉ validate ở UI.
@@ -184,8 +184,8 @@ main          ← Code sạch, chỉ Leader merge từ develop (protected branch
         ├── feature/BE-floor-zone-slot
         ├── feature/BE-parking-session
         ├── feature/BE-payment-report
-        ├── feature/FE-staff-ui
-        └── feature/FE-manager-ui
+        ├── feature/FE-PARKING_STAFF-ui
+        └── feature/FE-PARKING_MANAGER-ui
 ```
 
 **Quy tắc commit:**
@@ -215,16 +215,16 @@ git push origin feature/BE-ten-tinh-nang
 | Method | Endpoint | Mô tả | Role |
 |:------:|----------|-------|:----:|
 | `GET` | `/api/floors` | Danh sách tầng | All |
-| `POST` | `/api/floors` | Tạo tầng mới | Manager |
+| `POST` | `/api/floors` | Tạo tầng mới | PARKING_MANAGER |
 | `GET` | `/api/zones?floorId=` | Zone theo tầng | All |
-| `GET` | `/api/slots/available?floorId=&vehicleType=` | Slot trống | Staff |
-| `POST` | `/api/slots/bulk` | Tạo slot hàng loạt | Manager |
-| `POST` | `/api/sessions/entry` | Xe vào | Staff |
-| `POST` | `/api/sessions/exit/{id}` | Xe ra | Staff |
-| `GET` | `/api/sessions/active` | Session đang chạy | Staff/Manager |
-| `GET` | `/api/reports/revenue` | Báo cáo doanh thu | Manager |
-| `POST` | `/api/exceptions` | Tạo exception record | Staff |
-| `PUT` | `/api/exceptions/{id}/approve` | Duyệt exception | Manager |
+| `GET` | `/api/slots/available?floorId=&vehicleType=` | Slot trống | PARKING_STAFF |
+| `POST` | `/api/slots/bulk` | Tạo slot hàng loạt | PARKING_MANAGER |
+| `POST` | `/api/sessions/entry` | Xe vào | PARKING_STAFF |
+| `POST` | `/api/sessions/exit/{id}` | Xe ra | PARKING_STAFF |
+| `GET` | `/api/sessions/active` | Session đang chạy | PARKING_STAFF/PARKING_MANAGER |
+| `GET` | `/api/reports/revenue` | Báo cáo doanh thu | PARKING_MANAGER |
+| `POST` | `/api/exceptions` | Tạo exception record | PARKING_STAFF |
+| `PUT` | `/api/exceptions/{id}/approve` | Duyệt exception | PARKING_MANAGER |
 
 > 📖 Xem đầy đủ tại Swagger UI sau khi chạy backend.
 

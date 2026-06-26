@@ -30,7 +30,7 @@ CREATE TYPE notification_type_enum AS ENUM ('OVERSTAY_ALERT', 'EXCEPTION_PENDING
 
 CREATE TABLE roles (
     role_id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_code   VARCHAR(50)  NOT NULL UNIQUE,   -- ADMIN | MANAGER | STAFF
+    role_code   VARCHAR(50)  NOT NULL UNIQUE,   -- ADMIN | PARKING_MANAGER | PARKING_STAFF
     role_name   VARCHAR(100) NOT NULL UNIQUE,
     role_description VARCHAR(255) NOT NULL,
     is_active   BOOLEAN NOT NULL DEFAULT TRUE
@@ -177,7 +177,7 @@ CREATE TABLE bookings (
     id                  UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     vehicle_id          UUID NOT NULL REFERENCES vehicles(id),
     slot_id             UUID NOT NULL REFERENCES parking_slots(id),
-    booking_code        VARCHAR(20) NOT NULL UNIQUE,  -- BR-47: mã Staff tra cứu xe vào
+    booking_code        VARCHAR(20) NOT NULL UNIQUE,  -- BR-47: mã PARKING_STAFF tra cứu xe vào
     start_time          TIMESTAMP NOT NULL,
     end_time            TIMESTAMP NOT NULL,
     -- BR-05: scheduler release slot khi booking_expiry_at < now() và status = PENDING
@@ -212,7 +212,7 @@ CREATE TABLE pricing_rules (
     effective_from           DATE NOT NULL DEFAULT CURRENT_DATE,
     effective_to             DATE,   -- NULL = hiệu lực vô thời hạn
     is_active                BOOLEAN NOT NULL DEFAULT TRUE,
-    created_by               BIGINT NOT NULL REFERENCES users(user_id),  -- BR-30: chỉ Manager
+    created_by               BIGINT NOT NULL REFERENCES users(user_id),  -- BR-30: chỉ PARKING_MANAGER
     created_at               TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at               TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_pricing_effective CHECK (effective_to IS NULL OR effective_to > effective_from)
@@ -230,10 +230,10 @@ CREATE TABLE parking_sessions (
     booking_id           UUID REFERENCES bookings(id),            -- NULL nếu không đặt trước
     vehicle_id           UUID NOT NULL REFERENCES vehicles(id),
     slot_id              UUID NOT NULL REFERENCES parking_slots(id),
-    staff_entry_id       BIGINT NOT NULL REFERENCES users(user_id),
-    staff_exit_id        BIGINT REFERENCES users(user_id),
+    PARKING_STAFF_entry_id       BIGINT NOT NULL REFERENCES users(user_id),
+    PARKING_STAFF_exit_id        BIGINT REFERENCES users(user_id),
     applied_rule_id      UUID REFERENCES pricing_rules(id),       -- rule đã dùng tính phí (audit)
-    -- BR-18: entry_time do server set, không cho Staff nhập
+    -- BR-18: entry_time do server set, không cho PARKING_STAFF nhập
     entry_time           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     exit_time            TIMESTAMP,
     -- BR-01: fee = ceil((exit-entry)/60) × rate, áp minimum_fee
@@ -245,7 +245,7 @@ CREATE TABLE parking_sessions (
     ticket_type          ticket_type_enum NOT NULL,
     face_verified_at_exit BOOLEAN DEFAULT FALSE,
     -- BR-02: nếu TRUE thì bắt buộc có ExceptionRecord đi kèm
-    staff_override_used  BOOLEAN DEFAULT FALSE,
+    PARKING_STAFF_override_used  BOOLEAN DEFAULT FALSE,
     -- BR-04: scheduler set khi session > 24h. NULL = chưa flag. Tránh duplicate exception.
     overstay_flagged_at  TIMESTAMP,
     created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -298,9 +298,9 @@ CREATE TABLE exceptions (
     -- BR-34: resolution bắt buộc trước khi đổi status → APPROVED/REJECTED
     resolution      TEXT,
     resolved_at     TIMESTAMP,
-    -- BR-36: hệ thống tự điền, không cho Staff nhập tay
+    -- BR-36: hệ thống tự điền, không cho PARKING_STAFF nhập tay
     created_by      BIGINT NOT NULL REFERENCES users(user_id),
-    -- BR-33: Manager duyệt Overstay
+    -- BR-33: PARKING_MANAGER duyệt Overstay
     approved_by     BIGINT REFERENCES users(user_id),
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -308,7 +308,7 @@ CREATE TABLE exceptions (
 
 CREATE INDEX idx_exceptions_session_type ON exceptions(session_id, exception_type);
 CREATE INDEX idx_exceptions_status       ON exceptions(status);
-CREATE INDEX idx_exceptions_staff        ON exceptions(created_by);
+CREATE INDEX idx_exceptions_PARKING_STAFF        ON exceptions(created_by);
 
 -- ============================================================
 -- NOTIFICATIONS
@@ -333,7 +333,7 @@ CREATE INDEX idx_notif_created  ON notifications(created_at);
 
 CREATE TABLE reports (
     id               UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-    -- BR-41: chỉ Manager được generate
+    -- BR-41: chỉ PARKING_MANAGER được generate
     generated_by     BIGINT NOT NULL REFERENCES users(user_id),
     report_type      report_type_enum NOT NULL,
     period_from      DATE NOT NULL,
@@ -350,7 +350,7 @@ CREATE TABLE reports (
     CONSTRAINT chk_report_period CHECK (period_to >= period_from)
 );
 
-CREATE INDEX idx_reports_manager ON reports(generated_by);
+CREATE INDEX idx_reports_PARKING_MANAGER ON reports(generated_by);
 CREATE INDEX idx_reports_period  ON reports(period_from, period_to);
 
 -- ============================================================
@@ -381,8 +381,9 @@ CREATE INDEX idx_audit_time    ON audit_logs(created_at);
 
 INSERT INTO roles (role_code, role_name, role_description) VALUES
     ('ADMIN',   'System Admin',     'Quản lý tài khoản và phân quyền hệ thống'),
-    ('MANAGER', 'Parking Manager',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
-    ('STAFF',   'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ');
+    ('PARKING_MANAGER', 'Parking PARKING_MANAGER',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
+    ('PARKING_STAFF',   'Parking PARKING_STAFF',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
+    ('DRIVER',          'Driver',                   'Tài xế - đặt xe, quản lý biển số, đăng ký pass hàng tháng');
 
 INSERT INTO privileges (privilege_code, privilege_name) VALUES
     ('USER_MANAGE',       'Quản lý tài khoản'),
@@ -401,14 +402,21 @@ INSERT INTO privileges (privilege_code, privilege_name) VALUES
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r CROSS JOIN privileges p WHERE r.role_code = 'ADMIN';
 
--- Manager
+-- PARKING_MANAGER
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('EXCEPTION_APPROVE','SLOT_MANAGE','PRICING_MANAGE','REPORT_VIEW','DASHBOARD_VIEW','BOOKING_MANAGE')
-WHERE r.role_code = 'MANAGER';
+WHERE r.role_code = 'PARKING_MANAGER';
 
--- Staff
+-- PARKING_STAFF
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('SESSION_CREATE','SESSION_EXIT','EXCEPTION_CREATE','DASHBOARD_VIEW')
-WHERE r.role_code = 'STAFF';
+WHERE r.role_code = 'PARKING_STAFF';
+
+-- DRIVER
+INSERT INTO role_privileges (role_id, privilege_id)
+SELECT r.role_id, p.id FROM roles r JOIN privileges p
+ON p.privilege_code IN ('DASHBOARD_VIEW','BOOKING_MANAGE')
+WHERE r.role_code = 'DRIVER';
+

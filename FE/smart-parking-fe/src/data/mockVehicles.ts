@@ -1,4 +1,4 @@
-import type { VehicleType } from "../types/staff.types";
+import type { VehicleType } from "../types/PARKING_STAFF.types";
 
 // FIX: vehicleType phải là "CAR" | "MOTORBIKE" | "TRUCK" (match BE enum)
 export interface MockVehicle {

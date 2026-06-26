@@ -23,7 +23,7 @@ export const logoutApi = async (): Promise<void> => {
 
 // ── REGISTER ──────────────────────────────────────────────────────────────────
 // POST /auth/register → ApiResponse<UserResponse>
-// BE tự gán role STAFF cho user mới
+// BE tự gán role PARKING_STAFF cho user mới
 export const registerApi = async (payload: RegisterPayload): Promise<void> => {
   try {
     // Gọi BE thật
@@ -59,8 +59,8 @@ export const registerApi = async (payload: RegisterPayload): Promise<void> => {
         gender:          payload.gender,
         dateOfBirth:     payload.dateOfBirth,
         address:         payload.address,
-        roleCode:        "STAFF",
-        role:            "STAFF",
+        roleCode:        "PARKING_STAFF",
+        role:            "PARKING_STAFF",
       });
       localStorage.setItem("mockUsers", JSON.stringify(users));
       return;

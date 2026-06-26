@@ -1,5 +1,5 @@
 import axiosInstance from "./axiosInstance";
-import type { Floor, ParkingSlot, Vehicle } from "../types/staff.types";
+import type { Floor, ParkingSlot, Vehicle } from "../types/PARKING_STAFF.types";
 
 // ── BE trả về bọc trong ApiResponse<T> ───────────────────────────────────────
 // { statusCode, message, data }

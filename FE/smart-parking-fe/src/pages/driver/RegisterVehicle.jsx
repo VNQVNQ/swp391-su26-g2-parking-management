@@ -108,7 +108,7 @@ export default function RegisterVehicle() {
           <div className="card" style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)' }}>
             <p style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 600, marginBottom: 8 }}>✅ Sau khi đăng ký</p>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Xe sẽ được lưu vào hệ thống và Staff có thể check-in xe khi vào bãi.
+              Xe sẽ được lưu vào hệ thống và PARKING_STAFF có thể check-in xe khi vào bãi.
             </p>
           </div>
         </div>

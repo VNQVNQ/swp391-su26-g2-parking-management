@@ -4,17 +4,17 @@ import { useParkingStore } from '../../store/parkingStore';
 import api from '../../services/api';
 
 // ── Role config ──────────────────────────────────────────────────────────────
-const ROLE_OPTIONS = ['ADMIN', 'MANAGER', 'STAFF', 'DRIVER'];
+const ROLE_OPTIONS = ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF', 'DRIVER'];
 
 const roleBadge = (r) => {
   const upper = (r || '').toUpperCase();
-  const m = { ADMIN: 'badge-danger', MANAGER: 'badge-warning', STAFF: 'badge-info', DRIVER: 'badge-neutral' };
+  const m = { ADMIN: 'badge-danger', PARKING_MANAGER: 'badge-warning', PARKING_STAFF: 'badge-info', DRIVER: 'badge-neutral' };
   return m[upper] || 'badge-neutral';
 };
 
 const roleLabel = (r) => {
   const upper = (r || '').toUpperCase();
-  const m = { ADMIN: 'Admin', MANAGER: 'Manager', STAFF: 'Staff', DRIVER: 'Driver' };
+  const m = { ADMIN: 'Admin', PARKING_MANAGER: 'Parking Manager', PARKING_STAFF: 'Parking Staff', DRIVER: 'Driver' };
   return m[upper] || r;
 };
 
@@ -52,9 +52,9 @@ export default function Settings() {
       // Demo mode: use mock data
       setUsers([
         { id: 1, fullName: 'Admin User', email: 'admin@parking.vn', roleCode: 'ADMIN', userIsActivated: true, phoneNumber: '0901000001' },
-        { id: 2, fullName: 'Nguyen Van Manager', email: 'manager@parking.vn', roleCode: 'MANAGER', userIsActivated: true, phoneNumber: '0901000002' },
-        { id: 3, fullName: 'Tran Thi Staff', email: 'staff1@parking.vn', roleCode: 'STAFF', userIsActivated: true, phoneNumber: '0901000003' },
-        { id: 4, fullName: 'Le Van Staff', email: 'staff2@parking.vn', roleCode: 'STAFF', userIsActivated: true, phoneNumber: '0901000004' },
+        { id: 2, fullName: 'Nguyen Van PARKING_MANAGER', email: 'PARKING_MANAGER@parking.vn', roleCode: 'PARKING_MANAGER', userIsActivated: true, phoneNumber: '0901000002' },
+        { id: 3, fullName: 'Tran Thi PARKING_STAFF', email: 'PARKING_STAFF1@parking.vn', roleCode: 'PARKING_STAFF', userIsActivated: true, phoneNumber: '0901000003' },
+        { id: 4, fullName: 'Le Van PARKING_STAFF', email: 'PARKING_STAFF2@parking.vn', roleCode: 'PARKING_STAFF', userIsActivated: true, phoneNumber: '0901000004' },
         { id: 5, fullName: 'Pham Driver', email: 'driver@email.vn', roleCode: 'DRIVER', userIsActivated: false, phoneNumber: '0901000005' },
       ]);
       return;
@@ -476,8 +476,8 @@ export default function Settings() {
         <div className="rules-grid">
           {[
             { role: 'Admin', desc: 'Full system access', color: '#ef4444' },
-            { role: 'Manager', desc: 'Configuration, reports, approve exceptions', color: '#f59e0b' },
-            { role: 'Staff', desc: 'Vehicle entry/exit, create exceptions', color: '#3b82f6' },
+            { role: 'PARKING_MANAGER', desc: 'Configuration, reports, approve exceptions', color: '#f59e0b' },
+            { role: 'PARKING_STAFF', desc: 'Vehicle entry/exit, create exceptions', color: '#3b82f6' },
             { role: 'Driver', desc: 'View slots, make bookings', color: '#6b7280' },
           ].map((r, i) => (
             <div key={i} className="rule-card" style={{ borderLeft: `3px solid ${r.color}` }}>

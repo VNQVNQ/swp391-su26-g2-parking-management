@@ -141,7 +141,7 @@ export default function Register() {
                 </div>
                 <div>
                   <h4>Team Management</h4>
-                  <p>Invite and manage your parking staff</p>
+                  <p>Invite and manage your parking PARKING_STAFF</p>
                 </div>
               </div>
               <div className="auth-feature-item">

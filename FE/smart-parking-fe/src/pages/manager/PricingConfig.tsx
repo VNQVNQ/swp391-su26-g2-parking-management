@@ -51,10 +51,10 @@ export default function PricingConfig() {
         <div>
           <h1 className="text-2xl font-bold text-white">Pricing Configuration</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Chỉ Manager được sửa cấu hình giá · BR-13
+            Chỉ PARKING_MANAGER được sửa cấu hình giá · BR-13
           </p>
         </div>
-        {/* BR-13: chỉ Manager thấy nút Add */}
+        {/* BR-13: chỉ PARKING_MANAGER thấy nút Add */}
         <button
           onClick={handleAdd}
           className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20 flex items-center gap-2"

@@ -75,7 +75,7 @@ Enum notification_type_enum {
 
 Table roles {
   role_id bigint [pk, increment]
-  role_code varchar(50) [not null, unique, note: 'ADMIN | MANAGER | STAFF']
+  role_code varchar(50) [not null, unique, note: 'ADMIN | PARKING_MANAGER | PARKING_STAFF']
   role_name varchar(100) [not null, unique]
   role_description varchar(255) [not null]
   is_active boolean [not null, default: true]
@@ -221,7 +221,7 @@ Table bookings {
   id uuid [pk, default: `gen_random_uuid()`]
   vehicle_id uuid [not null]
   slot_id uuid [not null]
-  booking_code varchar(20) [not null, unique, note: 'BR-47: Mã Staff dùng để tra cứu xe vào, sinh ngẫu nhiên uppercase+số']
+  booking_code varchar(20) [not null, unique, note: 'BR-47: Mã PARKING_STAFF dùng để tra cứu xe vào, sinh ngẫu nhiên uppercase+số']
   start_time timestamp [not null]
   end_time timestamp [not null]
   booking_expiry_at timestamp [not null, note: 'BR-05: = start_time + 30 phút. Scheduler tự release slot khi vượt mốc này']
@@ -254,7 +254,7 @@ Table pricing_rules {
   effective_from date [not null, default: `CURRENT_DATE`, note: 'BR-29: Rule mới chỉ áp session tạo sau ngày này']
   effective_to date [note: 'NULL = còn hiệu lực vô thời hạn']
   is_active boolean [not null, default: true]
-  created_by bigint [not null, note: 'BR-30: Chỉ Manager được tạo rule']
+  created_by bigint [not null, note: 'BR-30: Chỉ PARKING_MANAGER được tạo rule']
   created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
 
@@ -271,10 +271,10 @@ Table parking_sessions {
   booking_id uuid [note: 'NULL nếu xe vào không đặt trước']
   vehicle_id uuid [not null]
   slot_id uuid [not null]
-  staff_entry_id bigint [not null]
-  staff_exit_id bigint
+  PARKING_STAFF_entry_id bigint [not null]
+  PARKING_STAFF_exit_id bigint
   applied_rule_id uuid [note: 'FK → pricing_rules: lưu rule đã dùng để tính phí, phục vụ audit']
-  entry_time timestamp [not null, note: 'BR-18: Set bởi server, không cho Staff nhập tay']
+  entry_time timestamp [not null, note: 'BR-18: Set bởi server, không cho PARKING_STAFF nhập tay']
   exit_time timestamp
   fee numeric(15,0) [note: 'BR-01: ceil((exit-entry)/60) × rate, áp minimum_fee']
   discount_amount numeric(15,0) [default: 0, note: 'Giảm giá vé tháng / khuyến mãi']
@@ -283,7 +283,7 @@ Table parking_sessions {
   status session_status_enum [not null, default: 'ACTIVE']
   ticket_type ticket_type_enum [not null]
   face_verified_at_exit boolean [default: false]
-  staff_override_used boolean [default: false, note: 'BR-02: True nếu Staff đã dùng override, bắt buộc có ExceptionRecord đi kèm']
+  PARKING_STAFF_override_used boolean [default: false, note: 'BR-02: True nếu PARKING_STAFF đã dùng override, bắt buộc có ExceptionRecord đi kèm']
   overstay_flagged_at timestamp [note: 'BR-04: Scheduler set khi session > 24h, NULL = chưa flag. Tránh tạo duplicate exception.']
   created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
@@ -331,15 +331,15 @@ Table exceptions {
   reason text [not null]
   resolution text [note: 'BR-34: Bắt buộc điền trước khi đóng exception, ≥20 ký tự']
   resolved_at timestamp
-  created_by bigint [not null, note: 'BR-36: StaffID đang đăng nhập, không cho nhập tay']
-  approved_by bigint [note: 'BR-33: Manager duyệt Overstay']
+  created_by bigint [not null, note: 'BR-36: PARKING_STAFFID đang đăng nhập, không cho nhập tay']
+  approved_by bigint [note: 'BR-33: PARKING_MANAGER duyệt Overstay']
   created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
 
   Indexes {
     (session_id, exception_type) [name: 'idx_exceptions_session_type']
-    status [name: 'idx_exceptions_status', note: 'Query danh sách PENDING cho Manager duyệt']
-    created_by [name: 'idx_exceptions_staff']
+    status [name: 'idx_exceptions_status', note: 'Query danh sách PENDING cho PARKING_MANAGER duyệt']
+    created_by [name: 'idx_exceptions_PARKING_STAFF']
   }
 }
 
@@ -347,7 +347,7 @@ Table exceptions {
 
 Table notifications {
   id uuid [pk, default: `gen_random_uuid()`]
-  recipient_id bigint [not null, note: 'Manager nhận alert Overstay, Exception pending']
+  recipient_id bigint [not null, note: 'PARKING_MANAGER nhận alert Overstay, Exception pending']
   type notification_type_enum [not null]
   reference_id uuid [note: 'ID của session / exception liên quan']
   message text [not null]
@@ -364,7 +364,7 @@ Table notifications {
 
 Table reports {
   id uuid [pk, default: `gen_random_uuid()`]
-  generated_by bigint [not null, note: 'BR-41: Chỉ Manager được generate']
+  generated_by bigint [not null, note: 'BR-41: Chỉ PARKING_MANAGER được generate']
   report_type report_type_enum [not null]
   period_from date [not null]
   period_to date [not null]
@@ -376,7 +376,7 @@ Table reports {
   generated_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
 
   Indexes {
-    generated_by [name: 'idx_reports_manager']
+    generated_by [name: 'idx_reports_PARKING_MANAGER']
     (period_from, period_to) [name: 'idx_reports_period']
   }
 }
@@ -442,8 +442,8 @@ Ref: pricing_rules.created_by > users.user_id
 // Quy tắc: INSERT session trước → SET current_session_id sau trong cùng transaction.
 Ref: parking_sessions.vehicle_id > vehicles.id
 Ref: parking_sessions.slot_id > parking_slots.id
-Ref: parking_sessions.staff_entry_id > users.user_id
-Ref: parking_sessions.staff_exit_id > users.user_id
+Ref: parking_sessions.PARKING_STAFF_entry_id > users.user_id
+Ref: parking_sessions.PARKING_STAFF_exit_id > users.user_id
 Ref: parking_sessions.booking_id > bookings.id
 Ref: parking_sessions.applied_rule_id > pricing_rules.id
 

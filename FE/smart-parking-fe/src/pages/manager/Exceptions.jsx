@@ -153,9 +153,9 @@ export default function Exceptions() {
         <div className="rules-grid">
           {[
             { code: 'BR-41', title: 'Lost Ticket', desc: 'ExceptionRecord is required when handling lost tickets. Surcharge: 50,000 VND' },
-            { code: 'BR-04', title: '24h Overstay', desc: 'Sessions over 24h automatically marked as Overstay and Manager is notified' },
+            { code: 'BR-04', title: '24h Overstay', desc: 'Sessions over 24h automatically marked as Overstay and PARKING_MANAGER is notified' },
             { code: 'BR-42', title: 'Wrong Zone', desc: 'Vehicles parked in wrong zone are charged additional surcharge per policy' },
-            { code: 'BR-44', title: 'Approval', desc: 'ExceptionRecord can only be resolved after Manager approval' },
+            { code: 'BR-44', title: 'Approval', desc: 'ExceptionRecord can only be resolved after PARKING_MANAGER approval' },
           ].map((r, i) => (
             <div key={i} className="rule-card">
               <div className="rule-card-title"><span className="rule-code">{r.code}</span>{r.title}</div>

@@ -1,14 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, MapPin } from 'lucide-react';
+import api from '../../services/api';
 
 const FLOORS = ['Basement 1', 'Basement 2', 'Floor 1', 'Floor 2'];
+const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
 export default function Booking() {
-  const [form, setForm] = useState({ licensePlate: '', vehicleType: 'MOTORBIKE', floor: 'Basement 1', date: '', timeFrom: '', timeTo: '' });
-  const [loading,   setLoading]   = useState(false);
-  const [success,   setSuccess]   = useState(false);
-  const [bookingId, setBookingId] = useState('');
-  const [error,     setError]     = useState('');
+  const [form, setForm] = useState({ licensePlate: '', vehicleType: 'MOTORBIKE', floor: 'Basement 1', date: '', timeFrom: '', timeTo: '', useManualEntry: false });
+  const [vehicles,      setVehicles]      = useState([]);
+  const [loading,       setLoading]       = useState(false);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [success,       setSuccess]       = useState(false);
+  const [bookingId,     setBookingId]     = useState('');
+  const [error,         setError]         = useState('');
+
+  // Load driver's registered vehicles on mount
+  useEffect(() => {
+    const loadVehicles = async () => {
+      setVehiclesLoading(true);
+      try {
+        const res = await api.get('/api/v1/vehicles/my-vehicles');
+        const data = res.data.data ?? res.data ?? [];
+        setVehicles(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to load vehicles:', err);
+      } finally {
+        setVehiclesLoading(false);
+      }
+    };
+    loadVehicles();
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.licensePlate.trim()) { setError('Vui lòng nhập biển số');  return; }
@@ -68,30 +89,112 @@ export default function Booking() {
             ⚠️ Chỗ được giữ trong <strong>30 phút</strong> sau giờ hẹn (BR-05). Hết thời gian slot tự về FREE.
           </div>
 
-          {/* Biển số */}
+          {/* Biển số / Xe đã đăng ký */}
           <div className="form-group">
-            <label className="form-label">Biển số xe <span className="required">*</span></label>
-            <div className="form-input-wrapper">
-              <input type="text" className="form-input" placeholder="VD: 51G-123.45"
-                value={form.licensePlate}
-                onChange={e => setForm({ ...form, licensePlate: e.target.value.toUpperCase() })} />
-            </div>
+            <label className="form-label">
+              {vehicles.length > 0 ? 'Chọn xe của tôi' : 'Biển số xe'}
+              <span className="required">*</span>
+            </label>
+
+            {vehiclesLoading ? (
+              <div style={{ padding: '12px', color: 'var(--text-muted)' }}>Đang tải danh sách xe...</div>
+            ) : vehicles.length > 0 && !form.useManualEntry ? (
+              <>
+                <div className="form-select-wrapper">
+                  <select
+                    className="form-select"
+                    value={form.licensePlate}
+                    onChange={e => {
+                      const selected = vehicles.find(v => v.licensePlate === e.target.value);
+                      setForm({
+                        ...form,
+                        licensePlate: e.target.value,
+                        vehicleType: selected?.vehicleType || 'MOTORBIKE'
+                      });
+                    }}>
+                    <option value="">-- Chọn xe --</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.licensePlate}>
+                        {v.licensePlate} ({v.vehicleType})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, useManualEntry: true, licensePlate: '' })}
+                  style={{
+                    marginTop: 8,
+                    fontSize: '0.82rem',
+                    color: 'var(--accent-blue)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline'
+                  }}>
+                  Nhập biển số khác
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="form-input-wrapper">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="VD: 51G-12345"
+                    value={form.licensePlate}
+                    onChange={e => setForm({ ...form, licensePlate: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                {vehicles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, useManualEntry: false })}
+                    style={{
+                      marginTop: 8,
+                      fontSize: '0.82rem',
+                      color: 'var(--accent-blue)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline'
+                    }}>
+                    ← Quay lại danh sách xe
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Loại xe */}
-          <div className="form-group">
-            <label className="form-label">Loại xe</label>
-            <div className="vehicle-type-grid">
-              {[['MOTORBIKE','🏍️','Xe máy'],['CAR','🚗','Ô tô'],['TRUCK','🚛','Xe tải']].map(([type,icon,label]) => (
-                <div key={type}
-                  className={`vehicle-type-card ${form.vehicleType === type ? 'selected' : ''}`}
-                  onClick={() => setForm({ ...form, vehicleType: type })}>
-                  <span style={{ fontSize: 28 }}>{icon}</span>
-                  <span className="vehicle-name">{label}</span>
-                </div>
-              ))}
+          {/* Loại xe - chỉ hiện nếu manual entry hoặc không có xe đăng ký */}
+          {(form.useManualEntry || vehicles.length === 0) && (
+            <div className="form-group">
+              <label className="form-label">Loại xe</label>
+              <div className="vehicle-type-grid">
+                {[['MOTORBIKE','🏍️','Xe máy'],['CAR','🚗','Ô tô'],['TRUCK','🚛','Xe tải']].map(([type,icon,label]) => (
+                  <div key={type}
+                    className={`vehicle-type-card ${form.vehicleType === type ? 'selected' : ''}`}
+                    onClick={() => setForm({ ...form, vehicleType: type })}>
+                    <span style={{ fontSize: 28 }}>{icon}</span>
+                    <span className="vehicle-name">{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Hiển thị loại xe đã chọn từ danh sách */}
+          {!form.useManualEntry && vehicles.length > 0 && form.licensePlate && (
+            <div className="form-group">
+              <label className="form-label">Loại xe</label>
+              <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 24 }}>{VEHICLE_ICON[form.vehicleType] || '🚗'}</span>
+                <span style={{ color: 'var(--text-primary)' }}>{form.vehicleType}</span>
+              </div>
+            </div>
+          )}
 
           {/* Tầng */}
           <div className="form-group">

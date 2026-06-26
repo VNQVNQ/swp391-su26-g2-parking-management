@@ -4,7 +4,7 @@ import {
   floorStatus,
   parkedVehicles,
   zoneStatus,
-} from "../../data/mockStaffDashboard";
+} from "../../data/mockPARKING_STAFFDashboard";
 
 // ── Vehicle type icon ─────────────────────────────────────────────────────────
 const VEHICLE_ICON: Record<string, string> = {
@@ -196,19 +196,19 @@ export default function Dashboard() {
 
         {/* ── Quick Actions ── */}
         <div className="grid grid-cols-3 gap-4">
-          <button onClick={() => navigate("/staff/entry")}
+          <button onClick={() => navigate("/PARKING_STAFF/entry")}
             className="bg-[#0d1117] border border-[#1e2a1e] hover:border-[#00c853]/40 rounded-xl p-4 text-left transition group">
             <span className="text-2xl mb-2 block">🚗</span>
             <p className="text-white font-semibold text-sm group-hover:text-[#00c853] transition">Vehicle Entry</p>
             <p className="text-gray-600 text-xs mt-0.5">Register new vehicle</p>
           </button>
-          <button onClick={() => navigate("/staff/exit")}
+          <button onClick={() => navigate("/PARKING_STAFF/exit")}
             className="bg-[#0d1117] border border-[#1e2a1e] hover:border-[#00c853]/40 rounded-xl p-4 text-left transition group">
             <span className="text-2xl mb-2 block">🚪</span>
             <p className="text-white font-semibold text-sm group-hover:text-[#00c853] transition">Vehicle Exit</p>
             <p className="text-gray-600 text-xs mt-0.5">Process payment</p>
           </button>
-          <button onClick={() => navigate("/staff/slots")}
+          <button onClick={() => navigate("/PARKING_STAFF/slots")}
             className="bg-[#0d1117] border border-[#1e2a1e] hover:border-[#00c853]/40 rounded-xl p-4 text-left transition group">
             <span className="text-2xl mb-2 block">🅿️</span>
             <p className="text-white font-semibold text-sm group-hover:text-[#00c853] transition">Slot View</p>

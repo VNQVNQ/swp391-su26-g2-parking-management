@@ -1,4 +1,4 @@
-// Mock data cho Staff Dashboard — match v0 prototype
+// Mock data cho PARKING_STAFF Dashboard — match v0 prototype
 
 export const dashboardStats = {
   utilizationRate: 62.8,

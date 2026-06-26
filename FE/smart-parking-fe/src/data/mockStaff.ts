@@ -1,4 +1,4 @@
-import type { Floor, ParkingSlot, ParkingSession } from "../types/staff.types";
+import type { Floor, ParkingSlot, ParkingSession } from "../types/PARKING_STAFF.types";
 
 export const mockFloors: Floor[] = [
   { id: "b1", name: "Basement 1", level: -2, totalSlots: 100 },
@@ -86,7 +86,7 @@ export const mockActiveSessions: ParkingSession[] = [
     ownerName: "Jane Doe", vehicleType: "MOTORBIKE",
     slotId: "b1-1", slotCode: "B1-001", floorName: "Basement 1", zoneName: "Zone A",
     entryTime: new Date(Date.now() - 9 * 60000).toISOString(),
-    status: "ACTIVE", paymentStatus: "UNPAID", staffEntryName: "Staff",
+    status: "ACTIVE", paymentStatus: "UNPAID", PARKING_STAFFEntryName: "PARKING_STAFF",
     ticketType: "HOURLY", hasFaceData: false, hasMonthlyPass: false,
   },
   {
@@ -94,7 +94,7 @@ export const mockActiveSessions: ParkingSession[] = [
     ownerName: "John Smith", vehicleType: "CAR",
     slotId: "f1-2", slotCode: "A1-002", floorName: "Floor 1", zoneName: "Zone A",
     entryTime: new Date(Date.now() - 31 * 60000).toISOString(),
-    status: "ACTIVE", paymentStatus: "UNPAID", staffEntryName: "Staff",
+    status: "ACTIVE", paymentStatus: "UNPAID", PARKING_STAFFEntryName: "PARKING_STAFF",
     ticketType: "MONTHLY", hasFaceData: true, hasMonthlyPass: true,
   },
   {
@@ -102,7 +102,7 @@ export const mockActiveSessions: ParkingSession[] = [
     ownerName: "Bob Wilson", vehicleType: "MOTORBIKE",
     slotId: "b1-2", slotCode: "B1-002", floorName: "Basement 1", zoneName: "Zone B",
     entryTime: new Date(Date.now() - 25 * 60 * 60000 - 60000).toISOString(),
-    status: "OVERSTAY", paymentStatus: "UNPAID", staffEntryName: "Staff",
+    status: "OVERSTAY", paymentStatus: "UNPAID", PARKING_STAFFEntryName: "PARKING_STAFF",
     ticketType: "HOURLY", hasFaceData: false, hasMonthlyPass: false,
   },
   {
@@ -110,7 +110,7 @@ export const mockActiveSessions: ParkingSession[] = [
     ownerName: "Emily Davis", vehicleType: "CAR",
     slotId: "f1-3", slotCode: "A1-003", floorName: "Floor 1", zoneName: "Zone A",
     entryTime: new Date(Date.now() - 6 * 60000).toISOString(),
-    status: "ACTIVE", paymentStatus: "UNPAID", staffEntryName: "Staff",
+    status: "ACTIVE", paymentStatus: "UNPAID", PARKING_STAFFEntryName: "PARKING_STAFF",
     ticketType: "HOURLY", hasFaceData: false, hasMonthlyPass: false,
   },
 ];

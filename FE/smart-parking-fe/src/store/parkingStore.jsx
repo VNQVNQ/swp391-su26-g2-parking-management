@@ -75,9 +75,9 @@ const initialBookings = [
 ];
 
 const initialExceptions = [
-  { id: 'EX-001', type: 'Lost Ticket', desc: 'Customer reported lost motorbike ticket', surcharge: 50000, createdBy: 'Staff A', time: '2 hours ago', status: 'Pending', plate: '59B-456.78', resolutionNotes: '' },
+  { id: 'EX-001', type: 'Lost Ticket', desc: 'Customer reported lost motorbike ticket', surcharge: 50000, createdBy: 'PARKING_STAFF A', time: '2 hours ago', status: 'Pending', plate: '59B-456.78', resolutionNotes: '' },
   { id: 'EX-002', type: 'Overstay', desc: 'Vehicle parked over 24 hours', surcharge: 0, createdBy: 'System', time: '5 hours ago', status: 'Resolved', plate: '30H-789.01', resolutionNotes: 'Owner contacted and vehicle removed' },
-  { id: 'EX-003', type: 'Wrong Zone', desc: 'Car parked in motorbike zone', surcharge: 100000, createdBy: 'Staff B', time: '1 day ago', status: 'Resolved', plate: '51A-123.45', resolutionNotes: 'Vehicle relocated and surcharge paid' },
+  { id: 'EX-003', type: 'Wrong Zone', desc: 'Car parked in motorbike zone', surcharge: 100000, createdBy: 'PARKING_STAFF B', time: '1 day ago', status: 'Resolved', plate: '51A-123.45', resolutionNotes: 'Vehicle relocated and surcharge paid' },
 ];
 
 const initialSettings = {

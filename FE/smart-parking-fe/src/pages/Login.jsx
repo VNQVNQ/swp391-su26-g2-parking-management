@@ -36,8 +36,8 @@ export default function Login() {
     if (result.success) {
       // Role-aware redirect after login
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
-      const role = stored.role || 'STAFF';
-      const defaults = { ADMIN: '/admin/dashboard', MANAGER: '/manager/dashboard', STAFF: '/entry' };
+      const role = stored.role || 'PARKING_STAFF';
+      const defaults = { ADMIN: '/admin/dashboard', PARKING_MANAGER: '/PARKING_MANAGER/dashboard', PARKING_STAFF: '/entry' };
       navigate(defaults[role] || '/entry');
     }
     // If login failed, authError will be set by the context

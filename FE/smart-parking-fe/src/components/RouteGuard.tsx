@@ -8,7 +8,7 @@ interface Props {
 }
 
 // BR-50: validate role, sai quyền → redirect /unauthorized
-// BR-13: Staff không được vào Pricing → truyền allowedRoles={["MANAGER"]}
+// BR-13: PARKING_STAFF không được vào Pricing → truyền allowedRoles={["PARKING_MANAGER"]}
 export default function RouteGuard({ children, allowedRoles }: Props) {
   const { isLoggedIn, user } = useAuthStore();
 

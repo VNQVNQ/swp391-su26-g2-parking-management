@@ -4,8 +4,8 @@ import { loginApi, logoutApi, registerApi } from "../api/auth.api";
 
 // Mock fallback khi BE chưa chạy
 const MOCK_USERS = [
-  { email: "manager@parking.vn", password: "123456", id: 1, fullName: "Nguyễn Manager", roleCode: "MANAGER", role: "MANAGER" as Role },
-  { email: "staff@parking.vn",   password: "123456", id: 2, fullName: "Trần Staff",     roleCode: "STAFF",   role: "STAFF"   as Role },
+  { email: "PARKING_MANAGER@parking.vn", password: "123456", id: 1, fullName: "Nguyễn PARKING_MANAGER", roleCode: "PARKING_MANAGER", role: "PARKING_MANAGER" as Role },
+  { email: "PARKING_STAFF@parking.vn",   password: "123456", id: 2, fullName: "Trần PARKING_STAFF",     roleCode: "PARKING_STAFF",   role: "PARKING_STAFF"   as Role },
 ];
 
 const getLocalUsers = () =>
@@ -14,11 +14,11 @@ const getLocalUsers = () =>
 // Map roleCode từ BE → Role dùng trong FE
 const mapRole = (roleCode: string): Role => {
   const upper = roleCode?.toUpperCase();
-  if (upper === "MANAGER")      return "MANAGER";
-  if (upper === "STAFF")        return "STAFF";
+  if (upper === "PARKING_MANAGER")      return "PARKING_MANAGER";
+  if (upper === "PARKING_STAFF")        return "PARKING_STAFF";
   if (upper === "DRIVER")       return "DRIVER";
   if (upper === "SYSTEM_ADMIN") return "SYSTEM_ADMIN";
-  return "STAFF";
+  return "PARKING_STAFF";
 };
 
 export const useAuthStore = create<AuthState>((set) => ({

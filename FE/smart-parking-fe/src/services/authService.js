@@ -1,25 +1,13 @@
 import api from './api';
 
-// ── Auth API service ───────────────────────────────────────────────────
-// Thin wrapper around the shared Axios instance for auth-specific
-// endpoints. Connects to the Spring Boot backend at /auth/*.
-
 const authService = {
-  /**
-   * POST /auth/login
-   * @param {{ email: string, password: string }} credentials
-   * @returns {{ accessToken: string, refreshToken: string, user: object }}
-   */
   login: async (credentials) => {
     const response = await api.post('/auth/login', {
       email: credentials.email,
       password: credentials.password,
     });
     console.log('Login response:', response.data);
-
-    // Backend returns: { accessToken, refreshToken, user: UserResponse }
     const { accessToken, refreshToken, user } = response.data;
-
     return {
       accessToken,
       refreshToken,
@@ -27,28 +15,18 @@ const authService = {
     };
   },
 
-  /**
-   * POST /auth/register
-   * Backend expects UserRequest: { email, password, confirmPassword, fullName, phoneNumber, identifyNumber, gender, dateOfBirth, address }
-   * Backend returns: ApiResponse<UserResponse> = { statusCode, message, data: UserResponse }
-   * NOTE: Register does NOT return a token. User must login after registering.
-   * @param {object} data - Form data from Register page
-   * @returns {{ success: boolean, message: string, user: object }}
-   */
   register: async (data) => {
     const response = await api.post('/auth/register', {
       fullName: data.fullName,
       email: data.email,
-      phoneNumber: data.phone,           // FE uses 'phone', BE expects 'phoneNumber'
-      identifyNumber: data.identityNumber, // FE uses 'identityNumber', BE expects 'identifyNumber'
+      phoneNumber: data.phone,
+      identifyNumber: data.identityNumber,
       gender: data.gender,
-      dateOfBirth: data.dateOfBirth,       // Send as ISO string (yyyy-MM-dd)
+      dateOfBirth: data.dateOfBirth,
       address: data.address,
       password: data.password,
       confirmPassword: data.confirmPassword || data.password,
     });
-
-    // Backend returns ApiResponse<UserResponse>: { statusCode, message, data }
     const apiResponse = response.data;
     return {
       success: true,
@@ -57,38 +35,28 @@ const authService = {
     };
   },
 
-  /**
-   * POST /auth/Logout (note: capital 'L' in backend)
-   */
   logout: async () => {
     try {
       await api.post('/auth/Logout');
     } catch {
-      // Ignore errors – we clear local state regardless
+      // Ignore
     }
     return true;
   },
 
   /**
-   * GET /auth/users/me – validate token & fetch current user
-   * Backend returns: ApiResponse<UserResponse> = { statusCode, message, data: UserResponse }
-   * @returns {{ user: object }}
+   * GET /auth/users/me
+   * BE trả về: ApiResponse<UserResponse> = { statusCode, message, data: UserResponse }
    */
   getCurrentUser: async () => {
     const response = await api.get('/auth/users/me');
-
-    // Backend wraps in ApiResponse: { statusCode, message, data: UserResponse }
-    const apiResponse = response.data;
+    // FIX: BE bọc trong ApiResponse, data nằm ở response.data.data
+    const userRaw = response.data?.data ?? response.data;
     return {
-      user: mapUserResponse(apiResponse.data),
+      user: mapUserResponse(userRaw),
     };
   },
 
-  /**
-   * POST /auth/refresh – refresh the access token
-   * @param {string} refreshToken
-   * @returns {{ accessToken: string }}
-   */
   refreshToken: async (refreshToken) => {
     const response = await api.post('/auth/refresh', { refreshToken });
     return response.data;
@@ -96,24 +64,26 @@ const authService = {
 };
 
 /**
- * Maps backend UserResponse to the frontend user object format.
- * Backend UserResponse fields:
- *   id, email, password, fullName, phoneNumber, identifyNumber,
+ * FIX: Map đầy đủ tất cả field, đặc biệt id và role không được null
+ * BE UserResponse fields: id, email, fullName, phoneNumber, identifyNumber,
  *   gender, userIsActivated, age, address, dateOfBirth, roleCode, roleName, lastActive
- *
- * Frontend expects:
- *   id, email, name, fullName, role, phone, gender, dateOfBirth, address,
- *   identityNumber, avatar, isActive, lastActive
  */
 function mapUserResponse(backendUser) {
   if (!backendUser) return null;
+  
+  // FIX: roleCode có thể nằm ở nhiều chỗ tùy endpoint BE
+  const roleCode = backendUser.roleCode || backendUser.role || null;
+  
   return {
-    id: backendUser.id,
+    id: backendUser.id ?? backendUser.userId ?? null,
     email: backendUser.email,
-    name: backendUser.fullName,         // Sidebar uses 'name' for display
+    name: backendUser.fullName,
     fullName: backendUser.fullName,
-    role: backendUser.roleCode,          // FE uses 'role', BE sends 'roleCode'
+    // FIX: Lưu cả 'role' lẫn 'roleCode' để App.tsx || operator không bị miss
+    role: roleCode,
+    roleCode: roleCode,
     phone: backendUser.phoneNumber,
+    phoneNumber: backendUser.phoneNumber,
     identityNumber: backendUser.identifyNumber,
     gender: backendUser.gender,
     dateOfBirth: backendUser.dateOfBirth,
