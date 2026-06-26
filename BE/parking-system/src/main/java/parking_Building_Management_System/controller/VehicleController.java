@@ -4,17 +4,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import parking_Building_Management_System.dto.vehicle.request.VehicleRequest;
-import parking_Building_Management_System.dto.vehicle.request.VehicleSearchRequest;
 import parking_Building_Management_System.dto.vehicle.response.MonthlyPassCheckResponse;
 import parking_Building_Management_System.dto.vehicle.response.VehicleResponse;
 import parking_Building_Management_System.entity.enums.VehicleType;
+import parking_Building_Management_System.entity.user.ParkingUserDetails;
 import parking_Building_Management_System.service.VehicleService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.ApiResponseFactory;
 import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -40,11 +42,28 @@ public class VehicleController {
         }
     }
 
+    // ── Lấy xe của DRIVER đang đăng nhập ────────────────────────────────────
+    @GetMapping("/my-vehicles")
+    public ResponseEntity<ApiResponse<List<VehicleResponse>>> getMyVehicles() {
+        log.info("GET /api/v1/vehicles/my-vehicles - Getting current user's vehicles");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponseFactory.error("Unauthorized"));
+        }
+        ParkingUserDetails userDetails = (ParkingUserDetails) auth.getPrincipal();
+        Long userId = userDetails.getUserId();
+        List<VehicleResponse> responses = vehicleService.getVehiclesByUserId(userId);
+        ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
+                "Retrieved " + responses.size() + " vehicles for current user");
+        return ResponseEntity.ok(apiResponse);
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<VehicleResponse>>> getAllVehicles() {
         log.info("GET /api/v1/vehicles - Getting all vehicles");
         List<VehicleResponse> responses = vehicleService.getAllVehicles();
-        ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses, 
+        ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
                 "Retrieved " + responses.size() + " vehicles");
         return ResponseEntity.ok(apiResponse);
     }
@@ -80,20 +99,15 @@ public class VehicleController {
             @RequestParam String licensePlate,
             @RequestParam(defaultValue = "0.8") Double fuzzyThreshold) {
         log.info("GET /api/v1/vehicles/search - Searching vehicles by license plate: {}", licensePlate);
-        
-        // If fuzzyThreshold is explicitly provided and is less than 1.0, use fuzzy search
         List<VehicleResponse> responses;
         if (fuzzyThreshold < 1.0) {
             responses = vehicleService.fuzzySearchByLicensePlate(licensePlate, fuzzyThreshold);
-            ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
-                    "Fuzzy search found " + responses.size() + " vehicles");
-            return ResponseEntity.ok(apiResponse);
+            return ResponseEntity.ok(ApiResponseFactory.success(responses,
+                    "Fuzzy search found " + responses.size() + " vehicles"));
         } else {
-            // Otherwise use exact/contains search
             responses = vehicleService.searchByLicensePlate(licensePlate);
-            ApiResponse<List<VehicleResponse>> apiResponse = ApiResponseFactory.success(responses,
-                    "Found " + responses.size() + " vehicles");
-            return ResponseEntity.ok(apiResponse);
+            return ResponseEntity.ok(ApiResponseFactory.success(responses,
+                    "Found " + responses.size() + " vehicles"));
         }
     }
 
@@ -113,7 +127,7 @@ public class VehicleController {
         log.info("PUT /api/v1/vehicles/{} - Updating vehicle", id);
         try {
             VehicleResponse response = vehicleService.updateVehicle(id, request);
-            ApiResponse<VehicleResponse> apiResponse = ApiResponseFactory.success(response, 
+            ApiResponse<VehicleResponse> apiResponse = ApiResponseFactory.success(response,
                     "Vehicle updated successfully");
             return ResponseEntity.ok(apiResponse);
         } catch (RuntimeException e) {
@@ -141,8 +155,7 @@ public class VehicleController {
         log.info("GET /api/v1/vehicles/{}/monthly-pass - Checking monthly pass validity", licensePlate);
         try {
             MonthlyPassCheckResponse response = vehicleService.checkMonthlyPassValidity(licensePlate);
-            ApiResponse<MonthlyPassCheckResponse> apiResponse = ApiResponseFactory.success(response);
-            return ResponseEntity.ok(apiResponse);
+            return ResponseEntity.ok(ApiResponseFactory.success(response));
         } catch (RuntimeException e) {
             log.error("Error checking monthly pass: {}", e.getMessage());
             throw e;
@@ -155,8 +168,7 @@ public class VehicleController {
         log.info("GET /api/v1/vehicles/id/{}/monthly-pass - Checking monthly pass validity", vehicleId);
         try {
             MonthlyPassCheckResponse response = vehicleService.checkMonthlyPassValidityById(vehicleId);
-            ApiResponse<MonthlyPassCheckResponse> apiResponse = ApiResponseFactory.success(response);
-            return ResponseEntity.ok(apiResponse);
+            return ResponseEntity.ok(ApiResponseFactory.success(response));
         } catch (RuntimeException e) {
             log.error("Error checking monthly pass: {}", e.getMessage());
             throw e;
@@ -167,8 +179,7 @@ public class VehicleController {
     public ResponseEntity<ApiResponse<Long>> countActiveVehiclesWithValidPass() {
         log.info("GET /api/v1/vehicles/stats/active-passes - Counting active vehicles with valid pass");
         long count = vehicleService.countActiveVehiclesWithValidPass();
-        ApiResponse<Long> apiResponse = ApiResponseFactory.success(count,
-                "Found " + count + " active vehicles with valid monthly passes");
-        return ResponseEntity.ok(apiResponse);
+        return ResponseEntity.ok(ApiResponseFactory.success(count,
+                "Found " + count + " active vehicles with valid monthly passes"));
     }
 }

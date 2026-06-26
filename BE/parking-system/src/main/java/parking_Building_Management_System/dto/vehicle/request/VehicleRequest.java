@@ -16,8 +16,10 @@ import parking_Building_Management_System.entity.enums.VehicleType;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleRequest {
     @NotBlank(message = "License plate is required")
-    @Pattern(regexp = "^[A-Z]{2}-\\d{4,5}$|^[A-Z]{2}\\.\\d{4,5}$",
-            message = "License plate must follow Vietnamese format: XX-XXXXX or XX-XXXX")
+    @Pattern(
+            regexp = "^\\d{2}[A-Z]{1,2}-\\d{4,5}$|^\\d{2}[A-Z]{1,2}\\.\\d{4,5}$",
+            message = "Biển số không đúng định dạng Việt Nam. VD: 51G-12345 hoặc 30AB-1234"
+    )
     String licensePlate;
 
     @NotNull(message = "Vehicle type is required")
@@ -27,4 +29,3 @@ public class VehicleRequest {
 
     Boolean hasMonthlyPass;
 }
-
