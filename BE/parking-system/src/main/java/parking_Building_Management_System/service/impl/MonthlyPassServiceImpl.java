@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import parking_Building_Management_System.dto.monthlyPass.request.MonthlyPassRequest;
 import parking_Building_Management_System.dto.monthlyPass.request.RenewMonthlyPassRequest;
 import parking_Building_Management_System.dto.monthlyPass.response.MonthlyPassResponse;
@@ -82,6 +84,7 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
         return mapToDetailResponse(pass);
     }
 
+
     @Override
     public MonthlyPassDetailResponse getActiveMonthlyPassByVehicle(UUID vehicleId) {
         log.info("Getting active monthly pass for vehicle ID: {}", vehicleId);
@@ -109,6 +112,20 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     public List<MonthlyPassResponse> getMonthlyPassesByVehicle(UUID vehicleId) {
         log.info("Getting all monthly passes for vehicle ID: {}", vehicleId);
         return monthlyPassRepository.findByVehicleId(vehicleId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<MonthlyPassResponse> getMyMonthlyPasses() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        log.info("Getting monthly passes for current user email: {}", email);
+
+        return monthlyPassRepository.findByVehicle_User_Email(email)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());

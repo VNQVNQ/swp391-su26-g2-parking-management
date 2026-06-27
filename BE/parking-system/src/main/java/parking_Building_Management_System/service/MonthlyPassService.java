@@ -21,6 +21,8 @@ public interface MonthlyPassService {
     Optional<MonthlyPassDetailResponse> findActiveMonthlyPassByLicensePlate(String licensePlate);
     
     List<MonthlyPassResponse> getMonthlyPassesByVehicle(UUID vehicleId);
+
+    List<MonthlyPassResponse> getMyMonthlyPasses();
     
     List<MonthlyPassResponse> getAllMonthlyPasses();
     

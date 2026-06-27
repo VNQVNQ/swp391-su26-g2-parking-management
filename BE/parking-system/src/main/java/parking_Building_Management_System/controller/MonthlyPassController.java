@@ -115,6 +115,22 @@ public class MonthlyPassController {
         return ResponseEntity.ok(apiResponse);
     }
 
+    @GetMapping("/my-passes")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ResponseEntity<ApiResponse<List<MonthlyPassResponse>>> getMyMonthlyPasses() {
+        log.info("GET /api/v1/monthly-passes/my-passes - Getting current user's monthly passes");
+
+        List<MonthlyPassResponse> responses = monthlyPassService.getMyMonthlyPasses();
+
+        ApiResponse<List<MonthlyPassResponse>> apiResponse =
+                ApiResponseFactory.success(
+                        responses,
+                        "Retrieved " + responses.size() + " monthly passes for current user"
+                );
+
+        return ResponseEntity.ok(apiResponse);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MonthlyPassDetailResponse>> getMonthlyPassById(@PathVariable UUID id) {
         log.info("GET /api/v1/monthly-passes/{} - Getting monthly pass by ID", id);

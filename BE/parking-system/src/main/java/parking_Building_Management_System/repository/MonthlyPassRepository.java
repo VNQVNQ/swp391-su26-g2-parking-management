@@ -16,6 +16,8 @@ public interface MonthlyPassRepository extends JpaRepository<MonthlyPass, UUID> 
 
     List<MonthlyPass> findByVehicleId(UUID vehicleId);
 
+    List<MonthlyPass> findByVehicle_User_Email(String email);
+
     List<MonthlyPass> findByPaymentStatus(PaymentStatus status);
 
     List<MonthlyPass> findByEndDateGreaterThanEqual(LocalDate endDate);
