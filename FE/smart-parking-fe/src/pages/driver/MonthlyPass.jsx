@@ -347,11 +347,28 @@ export default function MonthlyPass() {
           )}
 
           {/* Buttons */}
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             <button
-              className="btn-outline"
               onClick={() => { setTab('available'); setError(''); }}
-              disabled={loading}>
+              disabled={loading}
+              style={{
+                padding: '12px 20px',
+                background: 'var(--bg-input)',
+                border: '1.5px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--text-secondary)',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              onMouseOver={e => { if (!loading) { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}}
+              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-input)'; }}
+            >
               ← Quay lại
             </button>
             <button
@@ -359,7 +376,7 @@ export default function MonthlyPass() {
               onClick={handleRegister}
               disabled={loading || !form.vehicleId}
               style={{ flex: 1 }}>
-              {loading ? 'Đang xử lý...' : 'Xác nhận đăng ký'}
+              <span>{loading ? 'Đang xử lý...' : '🎫 Xác nhận đăng ký'}</span>
             </button>
           </div>
         </div>

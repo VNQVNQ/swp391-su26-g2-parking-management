@@ -1,22 +1,25 @@
-import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save, Edit2, Check, X, RefreshCw, UserPlus } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save, Edit2, Check, X, RefreshCw, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useParkingStore } from '../../store/parkingStore';
 import api from '../../services/api';
 
-// ── Role config ──────────────────────────────────────────────────────────────
-const ROLE_OPTIONS = ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF', 'DRIVER'];
+// ── Role config (phải khớp với DB: PARKING_PARKING_MANAGER, PARKING_PARKING_STAFF) ──
+const ROLE_OPTIONS = ['ADMIN', 'PARKING_PARKING_MANAGER', 'PARKING_PARKING_STAFF', 'DRIVER'];
 
 const roleBadge = (r) => {
   const upper = (r || '').toUpperCase();
-  const m = { ADMIN: 'badge-danger', PARKING_MANAGER: 'badge-warning', PARKING_STAFF: 'badge-info', DRIVER: 'badge-neutral' };
+  const m = { ADMIN: 'badge-danger', PARKING_PARKING_MANAGER: 'badge-warning', PARKING_PARKING_STAFF: 'badge-info', DRIVER: 'badge-neutral' };
   return m[upper] || 'badge-neutral';
 };
 
 const roleLabel = (r) => {
   const upper = (r || '').toUpperCase();
-  const m = { ADMIN: 'Admin', PARKING_MANAGER: 'Parking Manager', PARKING_STAFF: 'Parking Staff', DRIVER: 'Driver' };
+  const m = { ADMIN: 'Admin', PARKING_PARKING_MANAGER: 'Parking Manager', PARKING_PARKING_STAFF: 'Parking Staff', DRIVER: 'Driver' };
   return m[upper] || r;
 };
+
+// Role options for admin create account (exclude ADMIN for safety)
+const CREATE_ROLE_OPTIONS = ['PARKING_PARKING_MANAGER', 'PARKING_PARKING_STAFF', 'DRIVER'];
 
 export default function Settings() {
   const store = useParkingStore();
@@ -35,6 +38,17 @@ export default function Settings() {
   const [editingRole, setEditingRole] = useState('');
   const [roleUpdating, setRoleUpdating] = useState(false);
   const [roleUpdateMsg, setRoleUpdateMsg] = useState(null); // { type: 'success'|'error', text }
+
+  // ── Admin Create Account state ─────────────────────────────────────────
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    fullName: '', email: '', phone: '', gender: 'MALE',
+    dateOfBirth: '', address: '', identityNumber: '',
+    password: '', confirmPassword: '', roleCode: 'DRIVER'
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createMsg, setCreateMsg] = useState(null);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
   // Check if we're in demo mode
   const isDemoMode = localStorage.getItem('accessToken') === 'demo-token';
@@ -128,6 +142,41 @@ export default function Settings() {
   const cancelEditing = () => {
     setEditingUserId(null);
     setEditingRole('');
+  };
+
+  // ── Admin Create Account handler ───────────────────────────────────────
+  const handleCreateAccount = async () => {
+    // Validation
+    if (!createForm.fullName.trim()) { setCreateMsg({ type: 'error', text: 'Họ tên là bắt buộc' }); return; }
+    if (!createForm.email.trim()) { setCreateMsg({ type: 'error', text: 'Email là bắt buộc' }); return; }
+    if (!createForm.phone.trim()) { setCreateMsg({ type: 'error', text: 'Số điện thoại là bắt buộc' }); return; }
+    if (!createForm.password) { setCreateMsg({ type: 'error', text: 'Mật khẩu là bắt buộc' }); return; }
+    if (createForm.password !== createForm.confirmPassword) { setCreateMsg({ type: 'error', text: 'Mật khẩu xác nhận không khớp' }); return; }
+
+    setCreateLoading(true);
+    setCreateMsg(null);
+    try {
+      await api.post('/auth/admin/register', {
+        fullName: createForm.fullName,
+        email: createForm.email,
+        phoneNumber: createForm.phone,
+        identifyNumber: createForm.identityNumber,
+        gender: createForm.gender,
+        dateOfBirth: createForm.dateOfBirth || null,
+        address: createForm.address,
+        password: createForm.password,
+        confirmPassword: createForm.confirmPassword,
+        roleCode: createForm.roleCode,
+      });
+      setCreateMsg({ type: 'success', text: `Tạo tài khoản ${roleLabel(createForm.roleCode)} thành công!` });
+      setCreateForm({ fullName: '', email: '', phone: '', gender: 'MALE', dateOfBirth: '', address: '', identityNumber: '', password: '', confirmPassword: '', roleCode: 'DRIVER' });
+      fetchUsers();
+      setTimeout(() => { setCreateMsg(null); setShowCreateForm(false); }, 2500);
+    } catch (err) {
+      setCreateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Tạo tài khoản thất bại' });
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   const handleToggleNotif = (k) => {
@@ -247,17 +296,141 @@ export default function Settings() {
             <Users size={20} /> User Management
             {isDemoMode && <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Demo Mode</span>}
           </span>
-          <button
-            className="btn-sm btn-sm-secondary"
-            onClick={fetchUsers}
-            disabled={usersLoading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
-            title="Refresh user list"
-          >
-            <RefreshCw size={14} className={usersLoading ? 'spin-animation' : ''} />
-            Refresh
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setShowCreateForm(!showCreateForm); setCreateMsg(null); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '0.82rem',
+                background: 'var(--accent-gradient)', color: 'white', border: 'none',
+                borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
+                transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(16,185,129,0.25)',
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(16,185,129,0.35)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(16,185,129,0.25)'; }}
+            >
+              <UserPlus size={15} />
+              {showCreateForm ? 'Ẩn Form' : 'Tạo Tài Khoản'}
+            </button>
+            <button
+              className="btn-sm btn-sm-secondary"
+              onClick={fetchUsers}
+              disabled={usersLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
+              title="Refresh user list"
+            >
+              <RefreshCw size={14} className={usersLoading ? 'spin-animation' : ''} />
+              Refresh
+            </button>
+          </div>
         </div>
+
+        {/* ── Admin Create Account Form ─────────────────────────────────── */}
+        {showCreateForm && (
+          <div style={{
+            padding: '20px', marginBottom: '16px', borderRadius: '12px',
+            background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)',
+          }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UserPlus size={18} style={{ color: '#10b981' }} /> Tạo Tài Khoản Mới
+            </h4>
+
+            {createMsg && (
+              <div style={{
+                padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '0.85rem', fontWeight: 500,
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: createMsg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                border: `1px solid ${createMsg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                color: createMsg.type === 'success' ? '#10b981' : '#ef4444',
+              }}>
+                {createMsg.type === 'success' ? <Check size={16} /> : <X size={16} />}
+                {createMsg.text}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Họ tên *</label>
+                <input style={inputSt} placeholder="Nguyễn Văn A" value={createForm.fullName} onChange={e => setCreateForm(p => ({ ...p, fullName: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Email *</label>
+                <input style={inputSt} placeholder="email@example.com" value={createForm.email} onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Số điện thoại *</label>
+                <input style={inputSt} placeholder="0901234567" value={createForm.phone} onChange={e => setCreateForm(p => ({ ...p, phone: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>CMND/CCCD</label>
+                <input style={inputSt} placeholder="001234567890" maxLength={12} value={createForm.identityNumber} onChange={e => setCreateForm(p => ({ ...p, identityNumber: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Giới tính</label>
+                <select style={inputSt} value={createForm.gender} onChange={e => setCreateForm(p => ({ ...p, gender: e.target.value }))}>
+                  <option value="MALE">Nam</option>
+                  <option value="FEMALE">Nữ</option>
+                  <option value="OTHER">Khác</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Ngày sinh</label>
+                <input type="date" style={{ ...inputSt, colorScheme: 'dark' }} value={createForm.dateOfBirth} onChange={e => setCreateForm(p => ({ ...p, dateOfBirth: e.target.value }))} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Địa chỉ</label>
+              <input style={inputSt} placeholder="123 Đường ABC, TP.HCM" value={createForm.address} onChange={e => setCreateForm(p => ({ ...p, address: e.target.value }))} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Mật khẩu *</label>
+                <div style={{ position: 'relative' }}>
+                  <input type={showCreatePassword ? 'text' : 'password'} style={inputSt} placeholder="Min 6 ký tự" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} />
+                  <button type="button" onClick={() => setShowCreatePassword(!showCreatePassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+                    {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Xác nhận MK *</label>
+                <input type={showCreatePassword ? 'text' : 'password'} style={inputSt} placeholder="Nhập lại mật khẩu" value={createForm.confirmPassword} onChange={e => setCreateForm(p => ({ ...p, confirmPassword: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Quyền *</label>
+                <select style={{ ...inputSt, fontWeight: 600 }} value={createForm.roleCode} onChange={e => setCreateForm(p => ({ ...p, roleCode: e.target.value }))}>
+                  {CREATE_ROLE_OPTIONS.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setShowCreateForm(false); setCreateMsg(null); }}
+                style={{
+                  padding: '8px 20px', background: 'var(--bg-input)', border: '1px solid var(--border-color)',
+                  borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: '0.85rem', fontWeight: 500, transition: 'all 0.2s',
+                }}
+              >Hủy</button>
+              <button
+                onClick={handleCreateAccount}
+                disabled={createLoading}
+                style={{
+                  padding: '8px 24px', background: 'var(--accent-gradient)', color: 'white', border: 'none',
+                  borderRadius: '8px', cursor: createLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                  fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                  opacity: createLoading ? 0.7 : 1, transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(16,185,129,0.25)',
+                }}
+              >
+                {createLoading ? <RefreshCw size={15} className="spin-animation" /> : <UserPlus size={15} />}
+                {createLoading ? 'Đang tạo...' : 'Tạo Tài Khoản'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Role update feedback message */}
         {roleUpdateMsg && (

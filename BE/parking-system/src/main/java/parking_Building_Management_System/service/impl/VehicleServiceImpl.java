@@ -33,32 +33,53 @@ public class VehicleServiceImpl implements VehicleService {
     public VehicleResponse createVehicle(VehicleRequest request) {
         log.info("Creating vehicle with license plate: {}", request.getLicensePlate());
 
-        if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
-            throw new RuntimeException("Vehicle with license plate already exists: " + request.getLicensePlate());
-        }
-
         if (!VietnameseLicensePlateValidator.isValid(request.getLicensePlate())) {
             throw new RuntimeException("Invalid Vietnamese license plate format: " + request.getLicensePlate()
                     + ". Expected format: 51G-12345 or 30AB-1234");
         }
 
-        Vehicle vehicle = new Vehicle();
-        vehicle.setLicensePlate(request.getLicensePlate());
-        vehicle.setVehicleType(request.getVehicleType());
-        vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
-
-        // ── Gán user hiện tại (DRIVER) làm chủ xe ──────────────────────────
+        // Lấy user hiện tại (DRIVER)
+        User currentUser = null;
         try {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof ParkingUserDetails userDetails) {
                 Long userId = userDetails.getUserId();
-                User user = userRepository.findById(userId)
-                        .orElse(null);
-                vehicle.setUser(user);
-                log.info("Associating vehicle with userId: {}", userId);
+                currentUser = userRepository.findById(userId).orElse(null);
             }
         } catch (Exception e) {
             log.warn("Could not determine current user when creating vehicle: {}", e.getMessage());
+        }
+
+        // Kiểm tra biển số đã tồn tại chưa
+        var existingVehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate());
+        if (existingVehicle.isPresent()) {
+            Vehicle existing = existingVehicle.get();
+
+            // Nếu xe đã có chủ (user_id != NULL), kiểm tra xem chủ có phải là user hiện tại không
+            if (existing.getUser() != null) {
+                if (currentUser != null && existing.getUser().getUserId().equals(currentUser.getUserId())) {
+                    // Xe đã thuộc về user này rồi
+                    throw new RuntimeException("Bạn đã đăng ký biển số này rồi: " + request.getLicensePlate());
+                }
+                throw new RuntimeException("Biển số " + request.getLicensePlate() + " đã được đăng ký bởi tài khoản khác");
+            }
+
+            // Nếu xe chưa có chủ (user_id == NULL, từ sample data), cho phép driver "claim" xe này
+            existing.setUser(currentUser);
+            existing.setVehicleType(request.getVehicleType());
+            existing = vehicleRepository.save(existing);
+            log.info("Existing unowned vehicle claimed by userId: {}", currentUser != null ? currentUser.getUserId() : "null");
+            return mapToResponse(existing);
+        }
+
+        // Tạo xe mới
+        Vehicle vehicle = new Vehicle();
+        vehicle.setLicensePlate(request.getLicensePlate());
+        vehicle.setVehicleType(request.getVehicleType());
+        vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
+        vehicle.setUser(currentUser);
+        if (currentUser != null) {
+            log.info("Associating vehicle with userId: {}", currentUser.getUserId());
         }
 
         vehicle = vehicleRepository.save(vehicle);

@@ -56,7 +56,9 @@ function mapRole(user: any): string {
     const r = String(rawRole).toUpperCase().trim();
 
     if (r === 'SYSTEM_ADMIN' || r === 'ADMIN') return 'ADMIN';
+    // DB lưu PARKING_PARKING_MANAGER nhưng hệ thống FE dùng PARKING_MANAGER
     if (r === 'PARKING_MANAGER' || r === 'PARKING_PARKING_MANAGER') return 'PARKING_MANAGER';
+    // DB lưu PARKING_PARKING_STAFF nhưng hệ thống FE dùng PARKING_STAFF
     if (r === 'PARKING_STAFF' || r === 'PARKING_PARKING_STAFF') return 'PARKING_STAFF';
     if (r === 'DRIVER') return 'DRIVER';
 
