@@ -23,6 +23,7 @@ import parking_Building_Management_System.repository.ParkingSessionRepository;
 import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
+import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.service.ParkingSessionService;
 import parking_Building_Management_System.service.PricingRuleService;
 import parking_Building_Management_System.service.MonthlyPassService;
@@ -57,6 +58,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final VehicleRepository vehicleRepository;
     private final ZoneRepository zoneRepository;
     private final AuditLogRepository auditLogRepository;
+    private final UserRepository userRepository;
     private final ParkingSessionMapper parkingSessionMapper;
     private final PricingRuleService pricingRuleService;
     private final MonthlyPassService monthlyPassService;
@@ -68,14 +70,13 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         var vehicleOpt = vehicleRepository.findByLicensePlate(licensePlate);
 
-        // If vehicle not found, allow transient vehicle entry (STAFF can check in unregistered vehicles)
         if (vehicleOpt.isEmpty()) {
-            log.info("Vehicle not found with license plate: {} - allowing transient entry", licensePlate);
+            log.warn("Vehicle not found with license plate: {}", licensePlate);
             return EntryValidationResponse.builder()
-                    .valid(true)
+                    .valid(false)
                     .foundVehicle(false)
-                    .licensePlate(licensePlate)
-                    .message("Transient vehicle - will be registered on entry")
+                    .message("Vehicle not found in system")
+                    .errorCode("VEHICLE_NOT_FOUND")
                     .build();
         }
 
@@ -113,18 +114,13 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + zoneId));
 
-        // For transient vehicles (not registered yet), skip vehicle type matching
-        var vehicleOpt = vehicleRepository.findByLicensePlate(licensePlate);
-        if (vehicleOpt.isPresent()) {
-            Vehicle vehicle = vehicleOpt.get();
-            if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
-                log.warn("Vehicle type {} does not match zone vehicle type {}",
-                        vehicle.getVehicleType(), zone.getVehicleType());
-                return List.of();
-            }
-        } else {
-            // Transient vehicle - user will select vehicle type in next step
-            log.info("Transient vehicle {} - skipping vehicle type validation", licensePlate);
+        var vehicle = vehicleRepository.findByLicensePlate(licensePlate)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + licensePlate));
+
+        if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
+            log.warn("Vehicle type {} does not match zone vehicle type {}",
+                    vehicle.getVehicleType(), zone.getVehicleType());
+            return List.of();
         }
 
         // Phase 4: If booking code provided, validate and prioritize booking slot
@@ -186,7 +182,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
     @Override
     @Transactional
-    public VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long PARKING_STAFFId, String bookingCode) {
+    public VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId, String bookingCode) {
         log.info("Creating parking session for vehicle: {}, bookingCode: {}", request.getLicensePlate(), bookingCode);
 
         var validation = validateVehicleForEntry(request.getLicensePlate());
@@ -194,40 +190,16 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             throw new RuntimeException("Vehicle validation failed: " + validation.getMessage());
         }
 
+        Vehicle vehicle = vehicleRepository.findById(validation.getVehicleId())
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + request.getZoneId()));
 
-        // Handle both registered and transient vehicles
-        Vehicle vehicle;
-        if (validation.isFoundVehicle() && validation.getVehicleId() != null) {
-            // Registered vehicle
-            vehicle = vehicleRepository.findById(validation.getVehicleId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle not found"));
-
-            if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
-                log.error("Vehicle type {} does not match zone type {}",
-                        vehicle.getVehicleType(), zone.getVehicleType());
-                throw new RuntimeException("Vehicle type does not match zone. Zone is for: " + zone.getVehicleType());
-            }
-        } else {
-            // Transient vehicle - create temporary entry with zone's vehicle type
-            log.info("Creating transient vehicle session for license plate: {}", request.getLicensePlate());
-
-            // Check if vehicle already exists by license plate
-            var existingVehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate());
-            if (existingVehicle.isPresent()) {
-                vehicle = existingVehicle.get();
-            } else {
-                // Create new transient vehicle with zone's vehicle type
-                vehicle = new Vehicle();
-                vehicle.setLicensePlate(request.getLicensePlate());
-                vehicle.setVehicleType(zone.getVehicleType());
-                vehicle.setIsActive(true);
-                vehicle.setHasMonthlyPass(false);
-                // Note: transient vehicle has no user_id, will be NULL in DB
-                vehicleRepository.save(vehicle);
-                log.info("Created transient vehicle: {} with type: {}", request.getLicensePlate(), zone.getVehicleType());
-            }
+        if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
+            log.error("Vehicle type {} does not match zone type {}",
+                    vehicle.getVehicleType(), zone.getVehicleType());
+            throw new RuntimeException("Vehicle type does not match zone. Zone is for: " + zone.getVehicleType());
         }
 
         List<ParkingSlot> availableSlots = parkingSlotRepository
@@ -246,10 +218,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 linkedBooking = new Booking();
                 linkedBooking.setId(bookingDetail.getId());
                 
-                // Confirm the booking (convert PARKING_STAFFId Long to UUID for now, or pass as is if the signature accepts Long)
-                // Note: Creating a temporary UUID from the long PARKING_STAFF ID
-                UUID PARKING_STAFFUUID = new UUID(0, PARKING_STAFFId);
-                bookingService.confirmBooking(bookingDetail.getId(), PARKING_STAFFUUID);
+                // Confirm the booking with Long staffId (fixed type)
+                bookingService.confirmBooking(bookingDetail.getId(), staffId);
                 
                 // Use booking slot if available
                 ParkingSlot bookedSlot = parkingSlotRepository.findById(bookingDetail.getSlotId()).orElse(null);
@@ -269,7 +239,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         ParkingSession session = new ParkingSession();
         session.setVehicle(vehicle);
         session.setSlot(slot);
-        session.setPARKING_STAFFEntry(createPARKING_STAFFUser(PARKING_STAFFId));
+        session.setStaffEntry(createStaffUser(staffId));
         session.setEntryTime(LocalDateTime.now());
         session.setStatus(ParkingSessionStatus.ACTIVE);
         session.setPaymentStatus(PaymentStatus.UNPAID);
@@ -319,9 +289,9 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         parkingSlotRepository.save(slot);
         log.info("Slot {} marked as occupied", slot.getSlotCode());
 
-        createAuditLog(PARKING_STAFFId, "SESSION_CREATE", "parking_sessions", session.getId().toString());
+        createAuditLog(staffId, "SESSION_CREATE", "parking_sessions", session.getId().toString());
 
-        return parkingSessionMapper.toVehicleEntryResponse(session, PARKING_STAFFId, "PARKING_STAFF-" + PARKING_STAFFId);
+        return parkingSessionMapper.toVehicleEntryResponse(session, staffId, "Staff-" + staffId);
     }
 
     @Override
@@ -356,12 +326,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
     @Override
     @Transactional
-    public ParkingSession updateSessionOnExit(UUID sessionId, Long PARKING_STAFFId) {
+    public ParkingSession updateSessionOnExit(UUID sessionId, Long staffId) {
         log.info("Updating session on exit: {}", sessionId);
         ParkingSession session = getParkingSessionById(sessionId);
 
         // 1. Cập nhật thông tin và trạng thái của phiên đỗ xe thành COMPLETED
-        session.setPARKING_STAFFExit(createPARKING_STAFFUser(PARKING_STAFFId));
+        session.setStaffExit(createStaffUser(staffId));
         session.setExitTime(LocalDateTime.now());
         session.setStatus(ParkingSessionStatus.COMPLETED); // Đổi trạng thái kết thúc phiên
 
@@ -392,7 +362,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
     @Override
     @Transactional
-    public Long processPayment(PaymentRequest request, Long PARKING_STAFFId) {
+    public Long processPayment(PaymentRequest request, Long staffId) {
         log.info("Processing payment for session: {}", request.getSessionId());
 
         ParkingSession session = getParkingSessionById(request.getSessionId());
@@ -407,12 +377,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         session.setPaymentStatus(PaymentStatus.PAID);
         session.setExitTime(LocalDateTime.now());
-        session.setPARKING_STAFFExit(createPARKING_STAFFUser(PARKING_STAFFId));
+        session.setStaffExit(createStaffUser(staffId));
 
         parkingSessionRepository.save(session);
         log.info("Payment processed: {} - Amount: {}", request.getSessionId(), session.getFinalFee());
 
-        createAuditLog(PARKING_STAFFId, "PAYMENT_PROCESS", "parking_sessions", session.getId().toString());
+        createAuditLog(staffId, "PAYMENT_PROCESS", "parking_sessions", session.getId().toString());
 
         // Hàm này trả về kiểu Long cho Controller, lấy giá trị long từ BigDecimal
         return session.getFinalFee() != null ? session.getFinalFee().longValue() : 0L;
@@ -559,16 +529,15 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .build();
     }
 
-    private parking_Building_Management_System.entity.user.User createPARKING_STAFFUser(Long PARKING_STAFFId) {
-        var PARKING_STAFF = new parking_Building_Management_System.entity.user.User();
-        PARKING_STAFF.setUserId(PARKING_STAFFId);
-        return PARKING_STAFF;
+    private parking_Building_Management_System.entity.user.User createStaffUser(Long staffId) {
+        return userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Staff user not found with ID: " + staffId));
     }
 
     private void createAuditLog(Long userId, String action, String entityName, String entityId) {
         try {
             AuditLog auditLog = new AuditLog();
-            auditLog.setUser(createPARKING_STAFFUser(userId));
+            auditLog.setUser(createStaffUser(userId));
             auditLog.setAction(action);
             auditLog.setEntityName(entityName);
             auditLog.setEntityId(entityId);

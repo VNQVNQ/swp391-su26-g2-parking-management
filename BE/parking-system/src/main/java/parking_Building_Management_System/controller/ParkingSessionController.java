@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import parking_Building_Management_System.entity.user.ParkingUserDetails;
 import parking_Building_Management_System.dto.parkingSession.request.VehicleExitRequest;
 import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
 import parking_Building_Management_System.dto.parkingSession.request.FeeCalculationRequest;
@@ -105,7 +106,7 @@ public class ParkingSessionController {
      * Step 3: Create parking session (Check-in)
      * BR-27: Slot → Occupied ngay khi tạo session (transactional)
      * BR-28: entry_time do server generate
-     * BR-29: Chỉ PARKING_STAFF đăng nhập mới tạo được session
+     * BR-29: Chỉ Staff đăng nhập mới tạo được session
      * BR-30: vehicleType xe phải khớp vehicleType slot
      * BR-31: sessionID phải unique (UUID)
      *
@@ -124,10 +125,10 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/entry - Vehicle: {}, Booking: {}", request.getLicensePlate(), bookingCode);
 
         try {
-            // BR-29: Extract PARKING_STAFF ID from authentication
-            Long PARKING_STAFFId = extractPARKING_STAFFIdFromAuth(authentication);
+            // BR-29: Extract staff ID from authentication
+            Long staffId = extractStaffIdFromAuth(authentication);
 
-            VehicleEntryResponse response = parkingSessionService.createParkingSession(request, PARKING_STAFFId, bookingCode);
+            VehicleEntryResponse response = parkingSessionService.createParkingSession(request, staffId, bookingCode);
 
             ApiResponse<VehicleEntryResponse> apiResponse = ApiResponseFactory.created(
                     response,
@@ -238,10 +239,10 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/exit - Session: {}", request.getSessionId());
 
         try {
-            // Extract PARKING_STAFF ID from authentication
-            Long PARKING_STAFFId = extractPARKING_STAFFIdFromAuth(authentication);
+            // Extract staff ID from authentication
+            Long staffId = extractStaffIdFromAuth(authentication);
 
-            var session = parkingSessionService.updateSessionOnExit(request.getSessionId(), PARKING_STAFFId);
+            var session = parkingSessionService.updateSessionOnExit(request.getSessionId(), staffId);
 
             VehicleExitResponse response = VehicleExitResponse.builder()
                     .sessionId(session.getId())
@@ -311,8 +312,8 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/payment - Session: {}", request.getSessionId());
 
         try {
-            Long PARKING_STAFFId = extractPARKING_STAFFIdFromAuth(authentication);
-            Long totalFee = parkingSessionService.processPayment(request, PARKING_STAFFId);
+            Long staffId = extractStaffIdFromAuth(authentication);
+            Long totalFee = parkingSessionService.processPayment(request, staffId);
 
             PaymentResponse response = PaymentResponse.builder()
                     .sessionId(request.getSessionId())
@@ -392,24 +393,22 @@ public class ParkingSessionController {
     // ============ Helper Methods ============
 
     /**
-     * Extract PARKING_STAFF ID from JWT token
-     * BR-29: Ensure only authenticated PARKING_STAFF can create sessions
+     * Extract staff ID from JWT token
+     * BR-29: Ensure only authenticated staff can create sessions
      */
-    private Long extractPARKING_STAFFIdFromAuth(Authentication authentication) {
+    private Long extractStaffIdFromAuth(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User is not authenticated - PARKING_STAFF ID required");
+            throw new RuntimeException("User is not authenticated - Staff ID required");
         }
 
         try {
             Object principal = authentication.getPrincipal();
-            if (principal instanceof parking_Building_Management_System.entity.user.ParkingUserDetails) {
-                return ((parking_Building_Management_System.entity.user.ParkingUserDetails) principal).getUserId();
+            if (principal instanceof ParkingUserDetails userDetails) {
+                return userDetails.getUserId();
             }
-            throw new RuntimeException("Invalid principal type in authentication");
-        } catch (ClassCastException e) {
-            throw new RuntimeException("Failed to extract user ID from authentication: " + e.getMessage());
+            throw new RuntimeException("Invalid principal type");
         } catch (Exception e) {
-            throw new RuntimeException("Invalid PARKING_STAFF ID in token: " + e.getMessage());
+            throw new RuntimeException("Invalid staff ID in token");
         }
     }
 }
