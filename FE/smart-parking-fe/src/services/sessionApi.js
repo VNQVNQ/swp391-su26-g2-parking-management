@@ -35,10 +35,11 @@ export const getAvailableSlots = async (zoneId, licensePlate) => {
 // POST /api/v1/parking-sessions/entry
 // Body: { licensePlate, zoneId }
 // Response: ApiResponse<VehicleEntryResponse>
-export const createSession = async (licensePlate, zoneId) => {
+export const createSession = async (licensePlate, zoneId, vehicleType = null) => {
   const res = await api.post(`${BASE}/entry`, {
     licensePlate: licensePlate,
     zoneId,
+    vehicleType,
   });
   return res.data.data;
 };

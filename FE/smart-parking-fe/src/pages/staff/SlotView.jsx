@@ -47,10 +47,11 @@ export default function SlotView() {
   useEffect(() => { loadSlots(activeZone); }, [activeZone, loadSlots]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  const total     = slots.length;
-  const occupied  = slots.filter(s => s.currentSessionId !== null && s.currentSessionId !== undefined).length;
-  const available = total - occupied;
-  const pct       = total > 0 ? Math.round((occupied / total) * 100) : 0;
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const total       = slots.length || activeZone?.totalSlots || 0;
+  const maintenance = slots.filter(s => s.maintenanceStatus === 'MAINTENANCE').length;
+  const occupied    = slots.filter(s => s.currentSessionId !== null && s.currentSessionId !== undefined).length;
+  const available   = Math.max(0, total - occupied - maintenance);
 
   // ── Group zones by floor ───────────────────────────────────────────────────
   const floorMap = zones.reduce((acc, z) => {
@@ -82,10 +83,10 @@ export default function SlotView() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Tổng slot',      value: total,     color: 'var(--text-primary)'   },
-          { label: 'Đang đỗ',        value: occupied,  color: '#ef4444'               },
-          { label: 'Còn trống',      value: available, color: 'var(--accent-primary)'  },
-          { label: 'Tỉ lệ lấp đầy', value: `${pct}%`, color: '#f59e0b'               },
+          { label: 'Tổng slot',      value: total,       color: 'var(--text-primary)'   },
+          { label: 'Đang đỗ',        value: occupied,    color: '#ef4444'               },
+          { label: 'Còn trống',      value: available,   color: 'var(--accent-primary)' },
+          { label: 'Bảo trì',        value: maintenance, color: '#f59e0b'               },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-card-header">
@@ -150,8 +151,9 @@ export default function SlotView() {
                 {/* Legend */}
                 <div style={{ display: 'flex', gap: 16 }}>
                   {[
-                    { label: 'Trống',    color: 'var(--accent-primary)' },
-                    { label: 'Đang đỗ', color: '#ef4444'               },
+                    { label: 'Trống',      color: 'var(--accent-primary)' },
+                    { label: 'Đang đỗ',    color: '#ef4444'               },
+                    { label: 'Bảo trì',    color: '#f59e0b'               },
                   ].map(l => (
                     <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
@@ -170,6 +172,7 @@ export default function SlotView() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
                     {slots.map(slot => {
                       const isOccupied = slot.currentSessionId !== null && slot.currentSessionId !== undefined;
+                      const isMaintenance = slot.maintenanceStatus === 'MAINTENANCE';
                       const isHovered  = hoveredSlot === slot.id;
                       return (
                         <div key={slot.id}
@@ -179,19 +182,23 @@ export default function SlotView() {
                             position: 'relative',
                             background: isOccupied
                               ? (isHovered ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.08)')
-                              : (isHovered ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.08)'),
+                              : isMaintenance 
+                                ? (isHovered ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.08)')
+                                : (isHovered ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.08)'),
                             border: `1.5px solid ${isOccupied
                               ? (isHovered ? '#ef4444' : 'rgba(239,68,68,0.3)')
-                              : (isHovered ? 'var(--accent-primary)' : 'rgba(16,185,129,0.3)')}`,
+                              : isMaintenance
+                                ? (isHovered ? '#f59e0b' : 'rgba(245,158,11,0.3)')
+                                : (isHovered ? 'var(--accent-primary)' : 'rgba(16,185,129,0.3)')}`,
                             borderRadius: 'var(--radius-md)',
                             padding: '10px 6px',
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             minHeight: isOccupied ? 82 : 60,
-                            cursor: isOccupied ? 'pointer' : 'default',
+                            cursor: isOccupied ? 'pointer' : isMaintenance ? 'not-allowed' : 'default',
                             transition: 'all 0.15s',
                           }}>
                           {/* Slot code */}
-                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isOccupied ? '#ef4444' : 'var(--accent-primary)' }}>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isOccupied ? '#ef4444' : isMaintenance ? '#f59e0b' : 'var(--accent-primary)' }}>
                             {slot.slotCode.split('-').slice(-1)[0] || slot.slotCode}
                           </span>
 
@@ -213,7 +220,7 @@ export default function SlotView() {
                             </>
                           )}
 
-                          {/* Tooltip khi hover vào slot đang đỗ */}
+                          {/* Tooltip khi hover vào slot đang đỗ hoặc bảo trì */}
                           {isOccupied && isHovered && (
                             <div style={{
                               position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
@@ -230,19 +237,32 @@ export default function SlotView() {
                               </p>
                             </div>
                           )}
+                          {isMaintenance && isHovered && (
+                            <div style={{
+                              position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+                              background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                              borderRadius: 'var(--radius-md)', padding: '8px 12px', zIndex: 200,
+                              boxShadow: '0 6px 24px rgba(0,0,0,0.35)', minWidth: 120, pointerEvents: 'none',
+                            }}>
+                              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>Đang bảo trì</p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Slot: {slot.slotCode}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Progress bar */}
+                  {/* Progress bar info - optional now since we removed the card, but let's keep the bar for visual filling */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tỉ lệ lấp đầy</span>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-primary)' }}>{pct}%</span>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tỉ lệ đỗ xe</span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#ef4444' }}>
+                        {total > 0 ? Math.round((occupied / total) * 100) : 0}%
+                      </span>
                     </div>
                     <div style={{ height: 6, background: 'var(--border-color)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 3, background: 'var(--accent-gradient)', width: `${pct}%`, transition: 'width 0.5s ease' }} />
+                      <div style={{ height: '100%', borderRadius: 3, background: '#ef4444', width: `${total > 0 ? Math.round((occupied / total) * 100) : 0}%`, transition: 'width 0.5s ease' }} />
                     </div>
                   </div>
                 </>

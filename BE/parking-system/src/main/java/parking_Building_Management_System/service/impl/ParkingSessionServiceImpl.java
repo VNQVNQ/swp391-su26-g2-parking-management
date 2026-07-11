@@ -69,11 +69,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         var vehicleOpt = vehicleRepository.findByLicensePlate(licensePlate);
 
         if (vehicleOpt.isEmpty()) {
-            log.warn("Vehicle not found with license plate: {}", licensePlate);
+            log.info("Vehicle not registered: {} — will be created as guest vehicle on entry", licensePlate);
             return EntryValidationResponse.builder()
-                    .valid(false)
+                    .valid(true)
                     .foundVehicle(false)
-                    .message("Vehicle not found in system")
+                    .licensePlate(licensePlate)
+                    .message("Vehicle not registered — guest vehicle will be created")
                     .errorCode("VEHICLE_NOT_FOUND")
                     .build();
         }
@@ -201,8 +202,22 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             throw new RuntimeException("Vehicle validation failed: " + validation.getMessage());
         }
 
-        Vehicle vehicle = vehicleRepository.findById(validation.getVehicleId())
-                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+        Vehicle vehicle;
+        if (!validation.isFoundVehicle()) {
+            log.info("Creating guest vehicle for license plate: {}", request.getLicensePlate());
+            if (request.getVehicleType() == null || request.getVehicleType().isEmpty()) {
+                throw new RuntimeException("vehicleType is required for guest vehicle entry");
+            }
+            vehicle = new Vehicle();
+            vehicle.setLicensePlate(request.getLicensePlate());
+            vehicle.setVehicleType(VehicleType.valueOf(request.getVehicleType().toUpperCase()));
+            vehicle.setHasMonthlyPass(false);
+            vehicle.setIsActive(true);
+            vehicle = vehicleRepository.save(vehicle);
+        } else {
+            vehicle = vehicleRepository.findById(validation.getVehicleId())
+                    .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+        }
 
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + request.getZoneId()));

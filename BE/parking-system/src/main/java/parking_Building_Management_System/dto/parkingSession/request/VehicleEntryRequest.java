@@ -48,5 +48,12 @@ public class VehicleEntryRequest {
      * Phase 4: Optional flag to skip pricing rule lookup (for testing)
      */
     Boolean skipPricingLookup;
+
+    /**
+     * Loại xe (bắt buộc khi xe chưa đăng ký trong hệ thống).
+     * Dùng để tự động tạo xe khách vãng lai.
+     * Giá trị: MOTORBIKE | CAR | TRUCK
+     */
+    String vehicleType;
 }
 

@@ -91,17 +91,14 @@ public class ParkingSession {
 
     @Column(name = "payment_status", nullable = false)
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     PaymentStatus paymentStatus;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     ParkingSessionStatus status;
 
     @Column(name = "ticket_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     TicketType ticketType;
 
     @Column(name = "face_verified_at_exit")

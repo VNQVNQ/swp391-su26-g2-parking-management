@@ -105,7 +105,7 @@ export default function VehicleEntry() {
     setError(''); setLoading(true);
     try {
       const cleanPlate = plate.trim().toUpperCase();
-      const result = await createSession(cleanPlate, selectedZone.id);
+      const result = await createSession(cleanPlate, selectedZone.id, selectedZone.vehicleType);
       setSessionResult(result);
       setStep(5);
     } catch (err) {
