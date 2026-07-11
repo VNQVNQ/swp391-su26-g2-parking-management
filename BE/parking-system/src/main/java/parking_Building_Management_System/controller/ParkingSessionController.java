@@ -126,11 +126,7 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/entry - Vehicle: {}, Booking: {}", request.getLicensePlate(), bookingCode);
 
         try {
-<<<<<<< HEAD
             // BR-29: Extract staff ID from authentication
-=======
-            // BR-29: Extract PARKING_STAFF ID from authentication
->>>>>>> 54ee084 (fix monthlypass, wrong fuction)
             Long staffId = extractStaffIdFromAuth(authentication);
 
             VehicleEntryResponse response = parkingSessionService.createParkingSession(request, staffId, bookingCode);
@@ -244,11 +240,7 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/exit - Session: {}", request.getSessionId());
 
         try {
-<<<<<<< HEAD
             // Extract staff ID from authentication
-=======
-            // Extract PARKING_STAFF ID from authentication
->>>>>>> 54ee084 (fix monthlypass, wrong fuction)
             Long staffId = extractStaffIdFromAuth(authentication);
 
             var session = parkingSessionService.updateSessionOnExit(request.getSessionId(), staffId);
