@@ -28,8 +28,8 @@ public class VehicleEntryRequest {
      */
     @NotBlank(message = "License plate is required")
     @Pattern(
-        regexp = "^[0-9]{2}[A-Z]{1,2}-[0-9]{4,5}$",
-        message = "License plate must follow Vietnamese format: 51G-12345 or 30AB-999"
+        regexp = "^[0-9]{2}[A-Z]{1,2}[0-9]?-[0-9]{4,5}$",
+        message = "License plate must follow Vietnamese format: xe may: 21AC-21342 or 78D1-13290 | o to: 36D-24821"
     )
     String licensePlate;
 

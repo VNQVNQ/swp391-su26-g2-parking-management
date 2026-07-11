@@ -6,8 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.entity.user.User;
 import java.time.LocalDate;
@@ -18,6 +18,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "vehicles", schema = "public", indexes = {
     @Index(name = "idx_vehicles_plate_active", columnList = "license_plate"),
     @Index(name = "idx_vehicles_user_id", columnList = "user_id")
@@ -36,9 +37,8 @@ public class Vehicle {
     @Column(name = "license_plate", nullable = false, unique = true, length = 20)
     String licensePlate;
 
-    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
+    @Column(name = "vehicle_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
     @Column(name = "has_monthly_pass", nullable = false, columnDefinition = "boolean default false")

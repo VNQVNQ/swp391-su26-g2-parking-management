@@ -36,11 +36,8 @@ export const getAvailableSlots = async (zoneId, licensePlate) => {
 // Body: { licensePlate, zoneId }
 // Response: ApiResponse<VehicleEntryResponse>
 export const createSession = async (licensePlate, zoneId) => {
-  // BE regex: ^[0-9]{2}[A-Z]{1,2}-[0-9]{4,5}$
-  // Bỏ dấu chấm trong biển số (VD: 51G-123.45 → 51G-12345)
-  const cleanPlate = licensePlate.replace(/\./g, '');
   const res = await api.post(`${BASE}/entry`, {
-    licensePlate: cleanPlate,
+    licensePlate: licensePlate,
     zoneId,
   });
   return res.data.data;

@@ -15,10 +15,10 @@ export default function Login() {
 
   const validate = () => {
     const errs = {};
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
-    if (!form.password) errs.password = 'Password is required';
-    else if (form.password.length < 6) errs.password = 'Password must be at least 6 characters';
+    if (!form.email.trim()) errs.email = 'Vui lòng nhập Email';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Định dạng email không hợp lệ';
+    if (!form.password) errs.password = 'Vui lòng nhập mật khẩu';
+    else if (form.password.length < 6) errs.password = 'Mật khẩu phải dài ít nhất 6 ký tự';
     return errs;
   };
 
@@ -40,9 +40,7 @@ export default function Login() {
       const defaults = { ADMIN: '/admin/dashboard', PARKING_MANAGER: '/PARKING_MANAGER/dashboard', PARKING_STAFF: '/entry' };
       navigate(defaults[role] || '/entry');
     }
-    // If login failed, authError will be set by the context
   };
-
 
   return (
     <div className="auth-page">
@@ -66,7 +64,7 @@ export default function Login() {
               </div>
             </div>
             <h1 className="auth-brand-title">ParkingPro</h1>
-            <p className="auth-brand-subtitle">Smart Parking Management System</p>
+            <p className="auth-brand-subtitle">Hệ thống Quản lý Bãi đỗ xe Thông minh</p>
 
             <div className="auth-features">
               <div className="auth-feature-item">
@@ -74,8 +72,8 @@ export default function Login() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
                 <div>
-                  <h4>Secure Access</h4>
-                  <p>Enterprise-grade security for your parking data</p>
+                  <h4>Bảo mật An toàn</h4>
+                  <p>Bảo mật dữ liệu bãi xe cấp doanh nghiệp</p>
                 </div>
               </div>
               <div className="auth-feature-item">
@@ -83,8 +81,8 @@ export default function Login() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                 </div>
                 <div>
-                  <h4>Real-time Dashboard</h4>
-                  <p>Monitor all parking zones at a glance</p>
+                  <h4>Quản lý Theo thời gian thực</h4>
+                  <p>Theo dõi tất cả khu vực đỗ xe trong nháy mắt</p>
                 </div>
               </div>
               <div className="auth-feature-item">
@@ -92,15 +90,15 @@ export default function Login() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
                 </div>
                 <div>
-                  <h4>Smart Analytics</h4>
-                  <p>Data-driven insights for better management</p>
+                  <h4>Thống kê Thông minh</h4>
+                  <p>Phân tích số liệu để quản lý hiệu quả hơn</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="auth-brand-footer">
-            <p>© 2026 ParkingPro. All rights reserved.</p>
+            <p>© 2026 ParkingPro. Đã đăng ký bản quyền.</p>
           </div>
         </div>
 
@@ -110,13 +108,12 @@ export default function Login() {
             <div className="auth-form-header">
               <div className="auth-form-badge">
                 <Shield size={16} />
-                <span>Secure Login</span>
+                <span>Đăng nhập An toàn</span>
               </div>
-              <h2>Welcome Back</h2>
-              <p>Enter your credentials to access the dashboard</p>
+              <h2>Chào mừng trở lại</h2>
+              <p>Nhập thông tin xác thực để truy cập hệ thống</p>
             </div>
 
-            {/* Registration success message */}
             {registrationSuccess && !authError && (
               <div style={{
                 padding: '12px 16px',
@@ -136,7 +133,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* Server-side error from AuthContext */}
             {authError && (
               <div className="auth-server-error" style={{
                 padding: '12px 16px',
@@ -158,7 +154,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="auth-form" id="login-form">
               <div className="auth-field">
-                <label htmlFor="login-email">Email Address</label>
+                <label htmlFor="login-email">Địa chỉ Email</label>
                 <div className={`auth-input-wrapper ${errors.email ? 'error' : ''}`}>
                   <Mail size={18} className="auth-input-icon" />
                   <input
@@ -174,13 +170,13 @@ export default function Login() {
               </div>
 
               <div className="auth-field">
-                <label htmlFor="login-password">Password</label>
+                <label htmlFor="login-password">Mật khẩu</label>
                 <div className={`auth-input-wrapper ${errors.password ? 'error' : ''}`}>
                   <Lock size={18} className="auth-input-icon" />
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
+                    placeholder="Nhập mật khẩu của bạn"
                     value={form.password}
                     onChange={(e) => { setForm({ ...form, password: e.target.value }); setErrors({ ...errors, password: '' }); clearError(); }}
                     autoComplete="current-password"
@@ -201,9 +197,9 @@ export default function Login() {
                 <label className="auth-checkbox-label" htmlFor="remember-me">
                   <input type="checkbox" id="remember-me" />
                   <span className="auth-checkmark" />
-                  <span>Remember me</span>
+                  <span>Ghi nhớ đăng nhập</span>
                 </label>
-                <a href="#" className="auth-link">Forgot password?</a>
+                <a href="#" className="auth-link">Quên mật khẩu?</a>
               </div>
 
               <button
@@ -216,19 +212,18 @@ export default function Login() {
                   <div className="auth-spinner" />
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>Đăng Nhập</span>
                     <ArrowRight size={18} />
                   </>
                 )}
               </button>
             </form>
 
-
             <div className="auth-alt-actions">
               <p>
-                Don't have an account?{' '}
+                Bạn chưa có tài khoản?{' '}
                 <Link to="/register" className="auth-link-accent" id="go-to-register">
-                  Create Account
+                  Đăng ký ngay
                 </Link>
               </p>
             </div>

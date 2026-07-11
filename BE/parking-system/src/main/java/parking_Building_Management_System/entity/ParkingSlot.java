@@ -6,13 +6,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
 import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.Zone;
 import parking_Building_Management_System.entity.enums.SlotMaintenanceStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "parking_slots", schema = "public", indexes = {
     @Index(name = "idx_slot_code", columnList = "slot_code", unique = true),
     @Index(name = "idx_slots_zone_id", columnList = "zone_id"),
@@ -44,18 +46,17 @@ public class ParkingSlot {
     @JoinColumn(name = "zone_id", nullable = false)
     Zone zone;
 
-    @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
+    @Column(name = "vehicle_type", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
-    @Column(name = "maintenance_status", nullable = false, columnDefinition = "slot_maintenance_enum")
+    @Column(name = "maintenance_status", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     SlotMaintenanceStatus maintenanceStatus;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_session_id", referencedColumnName = "id")
+    @JsonIgnore
     ParkingSession currentSession;
 
     @Column(name = "created_at", nullable = false, updatable = false)

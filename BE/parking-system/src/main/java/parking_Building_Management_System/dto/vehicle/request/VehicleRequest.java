@@ -17,8 +17,8 @@ import parking_Building_Management_System.entity.enums.VehicleType;
 public class VehicleRequest {
     @NotBlank(message = "License plate is required")
     @Pattern(
-            regexp = "^\\d{2}[A-Z]{1,2}-\\d{4,5}$|^\\d{2}[A-Z]{1,2}\\.\\d{4,5}$",
-            message = "Biển số không đúng định dạng Việt Nam. VD: 51G-12345 hoặc 30AB-1234"
+            regexp = "^[0-9]{2}[A-Z0-9]{1,2}-[0-9]{3}\\.?[0-9]{2}$",
+            message = "Biển số không đúng định dạng Việt Nam. VD: 29A-123.45, 59F2-67890, 80NG-123.45"
     )
     String licensePlate;
 

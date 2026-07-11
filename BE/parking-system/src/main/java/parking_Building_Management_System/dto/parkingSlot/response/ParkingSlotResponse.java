@@ -24,6 +24,8 @@ public class ParkingSlotResponse {
     VehicleType vehicleType;
     SlotMaintenanceStatus maintenanceStatus;
     UUID currentSessionId;
+    String licensePlate;
+    VehicleType occupyingVehicleType;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

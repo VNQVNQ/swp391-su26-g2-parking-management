@@ -24,6 +24,11 @@ export default function MonthlyPass() {
     TRUCK: { price1: 3500000, price3: 9450000, price6: 16800000, price12: 29400000 }
   });
 
+  const [renewModal, setRenewModal] = useState(null); // { pass } or null
+  const [renewDuration, setRenewDuration] = useState(1);
+  const [renewLoading, setRenewLoading] = useState(false);
+  const [renewError, setRenewError] = useState('');
+
   const [form, setForm] = useState({
     vehicleId: '',
     vehicleType: 'CAR',
@@ -67,23 +72,31 @@ export default function MonthlyPass() {
     setLoading(true);
     setError('');
     try {
-      // Simulate API call
-      await new Promise(r => setTimeout(r, 1000));
-
       const vehicle = vehicles.find(v => v.id === form.vehicleId);
       const startDate = new Date();
       const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + form.duration, startDate.getDate());
 
+      // Call real backend API
+      const response = await api.post('/api/v1/monthly-passes', {
+        vehicleId: form.vehicleId,
+        fee: getPassPrice(vehicle?.vehicleType, form.duration),
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      });
+
+      const newPassData = response.data.data;
+
       const newPass = {
-        id: `PASS-${Date.now()}`,
+        id: newPassData.id,
         vehicleId: form.vehicleId,
         licensePlate: vehicle?.licensePlate,
         vehicleType: vehicle?.vehicleType,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+        startDate: newPassData.startDate,
+        endDate: newPassData.endDate,
         duration: form.duration,
-        fee: getPassPrice(vehicle?.vehicleType, form.duration),
-        status: 'ACTIVE',
+        fee: newPassData.fee,
+        status: newPassData.status || 'ACTIVE',
+        isActive: newPassData.isActive,
         paymentMethod: form.paymentMethod
       };
 
@@ -92,8 +105,50 @@ export default function MonthlyPass() {
       setLoading(false);
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Lỗi khi đăng ký pass');
+      // Map backend error messages to user-friendly Vietnamese
+      const backendMsg = err.response?.data?.message || '';
+      let displayMsg = 'Lỗi khi đăng ký pass. Vui lòng thử lại.';
+      if (backendMsg.includes('đã có vé tháng') || backendMsg.includes('active') || backendMsg.includes('hiệu lực')) {
+        displayMsg = 'Xe này đã có vé tháng còn hiệu lực. Vui lòng chọn xe khác hoặc đợi vé hiện tại hết hạn.';
+      } else if (backendMsg) {
+        displayMsg = backendMsg;
+      }
+      setError(displayMsg);
       setLoading(false);
+    }
+  };
+
+  const handleRenew = async () => {
+    if (!renewModal) return;
+    setRenewLoading(true);
+    setRenewError('');
+    try {
+      const pass = renewModal;
+      const vehicleType = pass.vehicleType || 'CAR';
+      const newFee = getPassPrice(vehicleType, renewDuration);
+
+      // Calculate new end date from current end date (or today if expired)
+      const currentEnd = pass.endDate ? new Date(pass.endDate) : new Date();
+      const baseDate = currentEnd > new Date() ? currentEnd : new Date();
+      const newEndDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + renewDuration, baseDate.getDate());
+
+      await api.post(`/api/v1/monthly-passes/${pass.id}/renew`, {
+        endDate: newEndDate.toISOString().split('T')[0],
+        fee: newFee
+      });
+
+      // Reload all passes after renew
+      const passesRes = await api.get('/api/v1/monthly-passes/my-passes');
+      const passesData = passesRes.data.data ?? passesRes.data ?? [];
+      setPasses(Array.isArray(passesData) ? passesData : []);
+
+      setRenewModal(null);
+      setRenewDuration(1);
+      setRenewLoading(false);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Lỗi khi gia hạn. Vui lòng thử lại.';
+      setRenewError(msg);
+      setRenewLoading(false);
     }
   };
 
@@ -366,8 +421,6 @@ export default function MonthlyPass() {
                 alignItems: 'center',
                 gap: 6,
               }}
-              onMouseOver={e => { if (!loading) { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}}
-              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--bg-input)'; }}
             >
               ← Quay lại
             </button>
@@ -394,41 +447,189 @@ export default function MonthlyPass() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-              {passes.map(pass => (
-                <div key={pass.id} className="card" style={{ position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 16 }}>
-                    <div>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 4 }}>{pass.licensePlate}</h4>
-                      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Mã: {pass.id}</p>
-                    </div>
-                    <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>Active</span>
-                  </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+              {passes.map(pass => {
+                const endDate = pass.endDate ? new Date(pass.endDate) : null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const remainingDays = endDate ? Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)) : 0;
+                const isExpiringSoon = remainingDays >= 0 && remainingDays <= 7;
+                const isExpired = remainingDays < 0;
+                
+                const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
+                const vehicleOfPass = vehicles.find(v => v.id === pass.vehicleId || v.licensePlate === pass.licensePlate);
+                const vehicleTypeStr = pass.vehicleType || vehicleOfPass?.vehicleType || 'CAR';
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                    {[
-                      { label: 'Loại xe', value: pass.vehicleType },
-                      { label: 'Ngày bắt đầu', value: new Date(pass.startDate).toLocaleDateString('vi-VN') },
-                      { label: 'Ngày hết hạn', value: new Date(pass.endDate).toLocaleDateString('vi-VN') },
-                      { label: 'Phí', value: `₫${pass.fee.toLocaleString()}` },
-                    ].map(r => (
-                      <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.value}</span>
+                return (
+                  <div key={pass.id} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 20, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative', borderTop: isExpired ? '4px solid #ef4444' : isExpiringSoon ? '4px solid #f59e0b' : '4px solid #10b981' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' }}>
+                          {VEHICLE_ICON[vehicleTypeStr] || '🚗'}
+                        </div>
+                        <div>
+                          <p style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.3rem', letterSpacing: '0.5px' }}>
+                            {pass.licensePlate}
+                          </p>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
+                            {vehicleTypeStr}
+                          </p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      
+                      <span style={{
+                        padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
+                        background: isExpired ? 'rgba(239,68,68,0.12)' : isExpiringSoon ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
+                        color: isExpired ? '#ef4444' : isExpiringSoon ? '#f59e0b' : '#10b981',
+                        border: `1px solid ${isExpired ? 'rgba(239,68,68,0.3)' : isExpiringSoon ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                      }}>
+                        {isExpired ? 'Hết hạn' : isExpiringSoon ? `Còn ${remainingDays} ngày` : 'Đang hoạt động'}
+                      </span>
+                    </div>
 
-                  <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: 'var(--radius-md)', fontSize: '0.82rem', color: '#10b981', textAlign: 'center' }}>
-                    ✓ Có thể đỗ xe không giới hạn
+                    <div style={{ padding: '16px', background: 'var(--bg-input)', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[
+                        { label: 'Ngày bắt đầu', value: pass.startDate ? new Date(pass.startDate).toLocaleDateString('vi-VN') : '—' },
+                        { label: 'Ngày hết hạn', value: endDate ? endDate.toLocaleDateString('vi-VN') : '—' },
+                        { label: 'Phí đăng ký', value: `₫${(pass.fee || 0).toLocaleString()}` },
+                      ].map(r => (
+                        <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>{r.label}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{r.value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
+                      {(isExpired || isExpiringSoon) ? (
+                        <button
+                          onClick={() => { setRenewModal(pass); setRenewDuration(1); setRenewError(''); }}
+                          style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          🔄 Gia hạn vé tháng
+                        </button>
+                      ) : (
+                        <div style={{ flex: 1, display: 'flex', gap: 12 }}>
+                           <div style={{ flex: 2, padding: '12px 16px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: 16, fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                              <span style={{ fontSize: '1.2rem' }}>✓</span> Không giới hạn đỗ xe
+                           </div>
+                           <button
+                              onClick={() => { setRenewModal(pass); setRenewDuration(1); setRenewError(''); }}
+                              style={{ flex: 1, background: 'var(--bg-input)', border: '1.5px solid var(--border-color)', borderRadius: 16, color: 'var(--text-primary)', padding: '12px', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>
+                              🔄 Gia hạn
+                           </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
       )}
+
+      {/* Renew Modal */}
+      {renewModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: 480, padding: 32, position: 'relative' }}>
+            <button
+              onClick={() => setRenewModal(null)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 6 }}>🔄 Gia hạn vé tháng</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: 24 }}>
+              Xe: <strong>{renewModal.licensePlate}</strong> · Hết hạn: <strong>{renewModal.endDate ? new Date(renewModal.endDate).toLocaleDateString('vi-VN') : '—'}</strong>
+            </p>
+
+            <div className="form-group">
+              <label className="form-label">Chọn thời gian gia hạn</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {MONTH_DURATIONS.map(d => (
+                  <button
+                    key={d.months}
+                    onClick={() => setRenewDuration(d.months)}
+                    style={{
+                      padding: '14px 12px',
+                      background: renewDuration === d.months ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-secondary)',
+                      border: renewDuration === d.months ? '2px solid #f59e0b' : '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      cursor: 'pointer',
+                      color: renewDuration === d.months ? '#f59e0b' : 'var(--text-primary)',
+                      fontFamily: 'inherit',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      transition: 'all 0.2s',
+                    }}>
+                    <div style={{ fontSize: '0.9rem' }}>{d.label}</div>
+                    <div style={{ fontSize: '0.8rem', marginTop: 4, fontWeight: 700, color: '#f59e0b' }}>
+                      ₫{getPassPrice(renewModal.vehicleType || 'CAR', d.months).toLocaleString()}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '14px 16px', background: 'rgba(245, 158, 11, 0.08)',
+              borderRadius: 'var(--radius-md)', borderLeft: '3px solid #f59e0b',
+              marginBottom: 20,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Phí gia hạn:</span>
+                <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '1rem' }}>₫{getPassPrice(renewModal.vehicleType || 'CAR', renewDuration).toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Hạn mới đến:</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {(() => {
+                    const currentEnd = renewModal.endDate ? new Date(renewModal.endDate) : new Date();
+                    const base = currentEnd > new Date() ? currentEnd : new Date();
+                    const nd = new Date(base.getFullYear(), base.getMonth() + renewDuration, base.getDate());
+                    return nd.toLocaleDateString('vi-VN');
+                  })()}
+                </span>
+              </div>
+            </div>
+
+            {renewError && (
+              <div className="error-banner" style={{ marginBottom: 16 }}>
+                <span>⚠️ {renewError}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setRenewModal(null)}
+                disabled={renewLoading}
+                style={{
+                  flex: 1, padding: '12px', background: 'var(--bg-input)',
+                  border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-secondary)', cursor: renewLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 500,
+                }}>
+                Hủy
+              </button>
+              <button
+                onClick={handleRenew}
+                disabled={renewLoading}
+                style={{
+                  flex: 2, padding: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  border: 'none', borderRadius: 'var(--radius-md)',
+                  color: '#fff', cursor: renewLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 700,
+                  opacity: renewLoading ? 0.7 : 1,
+                }}>
+                {renewLoading ? '⏳ Đang gia hạn...' : '🔄 Xác nhận gia hạn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

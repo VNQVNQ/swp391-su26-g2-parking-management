@@ -1,6 +1,6 @@
 import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { useParkingStore } from '../../store/parkingStore';
+import { useState, useMemo, useEffect } from 'react';
+import api from '../../services/api';
 
 // Slot component
 function SlotCard({ slot, onSlotClick }) {
@@ -11,7 +11,7 @@ function SlotCard({ slot, onSlotClick }) {
     maintenance: { bg: 'rgba(100, 116, 139, 0.1)', border: 'rgba(100, 116, 139, 0.3)', color: '#94a3b8' }
   };
   
-  const s = statusStyles[slot.status];
+  const s = statusStyles[slot.status] || statusStyles.available;
 
   return (
     <div
@@ -39,14 +39,14 @@ function SlotCard({ slot, onSlotClick }) {
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{slot.id}</span>
+      <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{slot.slotCode}</span>
       {slot.vehicle ? (
         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px' }}>
           {slot.vehicle}
         </span>
       ) : (
         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: s.color, textTransform: 'capitalize' }}>
-          {slot.status}
+          {slot.status === 'available' ? 'Trống' : slot.status === 'occupied' ? 'Có xe' : slot.status === 'maintenance' ? 'Bảo trì' : 'Đã đặt'}
         </span>
       )}
     </div>
@@ -54,18 +54,49 @@ function SlotCard({ slot, onSlotClick }) {
 }
 
 export default function SlotManagement() {
-  const store = useParkingStore();
+  const [zonesData, setZonesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [viewMode, setViewMode] = useState('grid');
   const [search, setSearch] = useState('');
-  const [filterFloor, setFilterFloor] = useState('All Floors');
-  const [filterType, setFilterType] = useState('All Types');
+  const [filterFloor, setFilterFloor] = useState('Tất cả tầng');
+  const [filterType, setFilterType] = useState('Tất cả loại xe');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
 
-  // Status counters from live data
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [zonesRes, slotsRes] = await Promise.all([
+        api.get('/api/v1/zones'),
+        api.get('/api/v1/parking-slots')
+      ]);
+      const zones = zonesRes.data.data || zonesRes.data || [];
+      const slots = slotsRes.data.data || slotsRes.data || [];
+
+      const mappedZones = zones.map(z => {
+        const zoneSlots = slots.filter(s => s.zoneId === z.id).map(s => ({
+          ...s,
+          status: s.maintenanceStatus === 'MAINTENANCE' ? 'maintenance' : (s.currentSessionId ? 'occupied' : 'available'),
+          vehicle: s.licensePlate || null,
+        }));
+        return { ...z, slots: zoneSlots };
+      });
+      setZonesData(mappedZones);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const statusCounts = useMemo(() => {
     let available = 0, occupied = 0, reserved = 0, maintenance = 0;
-    store.zones.forEach(z => {
+    zonesData.forEach(z => {
       z.slots.forEach(s => {
         if (s.status === 'available') available++;
         else if (s.status === 'occupied') occupied++;
@@ -74,54 +105,58 @@ export default function SlotManagement() {
       });
     });
     return { available, occupied, reserved, maintenance };
-  }, [store.zones]);
+  }, [zonesData]);
 
   const stats = [
-    { label: 'Available', value: statusCounts.available, color: '#10b981', icon: CheckCircle2 },
-    { label: 'Occupied', value: statusCounts.occupied, color: '#ef4444', icon: CarFront },
-    { label: 'Reserved', value: statusCounts.reserved, color: '#f59e0b', icon: Clock },
-    { label: 'Maintenance', value: statusCounts.maintenance, color: '#94a3b8', icon: AlertTriangle },
+    { label: 'Trống', value: statusCounts.available, color: '#10b981', icon: CheckCircle2 },
+    { label: 'Đang đỗ', value: statusCounts.occupied, color: '#ef4444', icon: CarFront },
+    { label: 'Đã đặt', value: statusCounts.reserved, color: '#f59e0b', icon: Clock },
+    { label: 'Bảo trì', value: statusCounts.maintenance, color: '#94a3b8', icon: AlertTriangle },
   ];
 
-  // Component local icons for stats
   function CarFront({ size }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m19 17 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v7l2 2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 11h14"/></svg>; }
   function Clock({ size }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>; }
 
-  // Filter logic
   const filteredZones = useMemo(() => {
-    return store.zones.map(z => {
-      // Filter out zones entirely if floor/type don't match
-      if (filterFloor !== 'All Floors' && z.floor !== filterFloor) return null;
-      if (filterType !== 'All Types' && z.vehicleType !== (filterType === 'Cars' ? 'Car' : filterType === 'Motorbikes' ? 'Motorbike' : 'Bicycle')) return null;
+    return zonesData.map(z => {
+      if (filterFloor !== 'Tất cả tầng' && z.floorName !== filterFloor) return null;
+      if (filterType !== 'Tất cả loại xe' && z.vehicleType !== (filterType === 'Ô tô' ? 'CAR' : filterType === 'Xe máy' ? 'MOTORBIKE' : 'BICYCLE')) return null;
 
-      // Filter slots within the zone based on search
       const filteredSlots = z.slots.filter(s => {
         if (search) {
           const q = search.toLowerCase();
-          return s.id.toLowerCase().includes(q) || (s.vehicle && s.vehicle.toLowerCase().includes(q));
+          return s.slotCode.toLowerCase().includes(q) || (s.vehicle && s.vehicle.toLowerCase().includes(q));
         }
         return true;
       });
 
-      if (filteredSlots.length === 0 && search) return null; // Hide zone if no slots match search
-
+      if (filteredSlots.length === 0 && search) return null;
       return { ...z, slots: filteredSlots };
     }).filter(Boolean);
-  }, [store.zones, search, filterFloor, filterType]);
+  }, [zonesData, search, filterFloor, filterType]);
+
+  const uniqueFloors = [...new Set(zonesData.map(z => z.floorName))];
 
   const handleSlotClick = (zone, slot) => {
-    setSelectedSlot({ ...slot, zoneId: zone.id, zoneName: zone.name, floor: zone.floor });
+    setSelectedSlot({ ...slot, zoneId: zone.id, zoneName: zone.name, floor: zone.floorName });
     setShowStatusModal(true);
   };
 
-  const handleStatusChange = (newStatus) => {
+  const handleStatusChange = async (newStatus) => {
     if (selectedSlot.status === 'occupied' && newStatus !== 'occupied') {
-      store.showToast("Cannot manually clear occupied slot. Must process exit.", "error");
+      alert("Không thể chuyển trạng thái chỗ đang có xe. Phải cho xe ra trước.");
       return;
     }
     
-    store.updateSlotStatus(selectedSlot.zoneId, selectedSlot.id, newStatus);
-    setShowStatusModal(false);
+    try {
+      const maintenanceStatus = newStatus === 'maintenance' ? 'MAINTENANCE' : 'AVAILABLE';
+      await api.patch(`/api/v1/parking-slots/${selectedSlot.id}/maintenance-status?maintenanceStatus=${maintenanceStatus}`);
+      setShowStatusModal(false);
+      loadData(); // reload
+    } catch (err) {
+      console.error(err);
+      alert("Cập nhật thất bại");
+    }
   };
 
   const selectStyle = {
@@ -135,14 +170,17 @@ export default function SlotManagement() {
     outline: 'none',
   };
 
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải dữ liệu...</div>;
+  }
+
   return (
     <div className="page-full-width">
       <div className="page-header" style={{ marginBottom: '24px' }}>
-        <h2>Slot Management</h2>
-        <p>Monitor and manage parking slots across all zones</p>
+        <h2>Giám sát Chỗ đỗ</h2>
+        <p>Theo dõi và quản lý chỗ đỗ xe tại các khu vực theo thời gian thực</p>
       </div>
 
-      {/* Stats Overview */}
       <div className="stats-grid" style={{ marginBottom: '24px' }}>
         {stats.map((s, i) => {
           const Icon = s.icon;
@@ -158,7 +196,6 @@ export default function SlotManagement() {
         })}
       </div>
 
-      {/* Controls Bar */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '300px' }}>
           <div className="form-input-wrapper" style={{ flex: 1 }}>
@@ -166,23 +203,22 @@ export default function SlotManagement() {
             <input
               type="text"
               className="form-input"
-              placeholder="Search slot ID or license plate..."
+              placeholder="Tìm chỗ đỗ hoặc biển số..."
               style={{ padding: '10px 14px 10px 40px' }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select style={selectStyle} value={filterFloor} onChange={e => setFilterFloor(e.target.value)}>
-            <option>All Floors</option>
-            <option>Basement 1</option>
-            <option>Basement 2</option>
-            <option>Floor 1</option>
-            <option>Floor 2</option>
+            <option>Tất cả tầng</option>
+            {uniqueFloors.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
           </select>
           <select style={selectStyle} value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option>All Types</option>
-            <option>Cars</option>
-            <option>Motorbikes</option>
+            <option>Tất cả loại xe</option>
+            <option>Ô tô</option>
+            <option>Xe máy</option>
           </select>
         </div>
         
@@ -201,7 +237,7 @@ export default function SlotManagement() {
               gap: '6px',
             }}
           >
-            <LayoutGrid size={16} /> Grid
+            <LayoutGrid size={16} /> Lưới
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -217,12 +253,11 @@ export default function SlotManagement() {
               gap: '6px',
             }}
           >
-            <List size={16} /> List
+            <List size={16} /> Danh sách
           </button>
         </div>
       </div>
 
-      {/* Slots Display */}
       {filteredZones.map(zone => (
         <div key={zone.id} style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -231,7 +266,7 @@ export default function SlotManagement() {
                 {zone.name}
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {zone.floor} • Capacity: {zone.slots.length} / {zone.total}
+                {zone.floorName} • Sức chứa: {zone.slots.length} / {zone.totalSlots}
               </p>
             </div>
           </div>
@@ -251,16 +286,16 @@ export default function SlotManagement() {
               <table className="data-table" style={{ width: '100%' }}>
                 <thead>
                   <tr>
-                    <th>Slot ID</th>
-                    <th>Status</th>
-                    <th>Vehicle</th>
-                    <th>Action</th>
+                    <th>Mã chỗ đỗ</th>
+                    <th>Trạng thái</th>
+                    <th>Biển số xe</th>
+                    <th>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
                   {zone.slots.map(slot => (
                     <tr key={slot.id}>
-                      <td style={{ fontWeight: 600 }}>{slot.id}</td>
+                      <td style={{ fontWeight: 600 }}>{slot.slotCode}</td>
                       <td>
                         <span style={{
                           fontSize: '0.75rem',
@@ -271,13 +306,13 @@ export default function SlotManagement() {
                           background: slot.status === 'available' ? 'rgba(16,185,129,0.15)' : slot.status === 'occupied' ? 'rgba(239,68,68,0.15)' : slot.status === 'reserved' ? 'rgba(245,158,11,0.15)' : 'rgba(100,116,139,0.15)',
                           color: slot.status === 'available' ? '#10b981' : slot.status === 'occupied' ? '#ef4444' : slot.status === 'reserved' ? '#f59e0b' : '#94a3b8',
                         }}>
-                          {slot.status}
+                          {slot.status === 'available' ? 'Trống' : slot.status === 'occupied' ? 'Có xe' : slot.status === 'maintenance' ? 'Bảo trì' : 'Đã đặt'}
                         </span>
                       </td>
                       <td style={{ color: 'var(--text-secondary)' }}>{slot.vehicle || '—'}</td>
                       <td>
                         <button className="btn-sm btn-sm-primary" onClick={() => handleSlotClick(zone, slot)}>
-                          Update
+                          Cập nhật
                         </button>
                       </td>
                     </tr>
@@ -292,17 +327,16 @@ export default function SlotManagement() {
       {filteredZones.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
           <Search size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
-          <h3>No slots found</h3>
-          <p>Try adjusting your search or filters.</p>
+          <h3>Không tìm thấy chỗ đỗ</h3>
+          <p>Thử điều chỉnh lại bộ lọc tìm kiếm.</p>
         </div>
       )}
 
-      {/* Status Update Modal */}
       {showStatusModal && selectedSlot && (
         <div className="modal-overlay" onClick={() => setShowStatusModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Update Slot {selectedSlot.id}</h3>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Cập nhật chỗ {selectedSlot.slotCode}</h3>
               <button onClick={() => setShowStatusModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
@@ -310,26 +344,28 @@ export default function SlotManagement() {
             
             <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Zone</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Khu vực</span>
                 <span style={{ fontWeight: 600 }}>{selectedSlot.zoneName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Floor</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Tầng</span>
                 <span style={{ fontWeight: 600 }}>{selectedSlot.floor}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Current Status</span>
-                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{selectedSlot.status}</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Trạng thái hiện tại</span>
+                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                  {selectedSlot.status === 'available' ? 'Trống' : selectedSlot.status === 'occupied' ? 'Có xe' : selectedSlot.status === 'maintenance' ? 'Bảo trì' : 'Đã đặt'}
+                </span>
               </div>
               {selectedSlot.vehicle && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Vehicle</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Biển số xe</span>
                   <span style={{ fontWeight: 600 }}>{selectedSlot.vehicle}</span>
                 </div>
               )}
             </div>
 
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '12px' }}>Set New Status:</h4>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '12px' }}>Chuyển sang trạng thái:</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
               <button 
                 onClick={() => handleStatusChange('available')}
@@ -338,16 +374,7 @@ export default function SlotManagement() {
                   padding: '12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-md)', color: '#10b981', fontWeight: 600, cursor: selectedSlot.status === 'occupied' ? 'not-allowed' : 'pointer', opacity: selectedSlot.status === 'occupied' ? 0.5 : 1
                 }}
               >
-                Available
-              </button>
-              <button 
-                onClick={() => handleStatusChange('reserved')}
-                disabled={selectedSlot.status === 'occupied'}
-                style={{
-                  padding: '12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-md)', color: '#f59e0b', fontWeight: 600, cursor: selectedSlot.status === 'occupied' ? 'not-allowed' : 'pointer', opacity: selectedSlot.status === 'occupied' ? 0.5 : 1
-                }}
-              >
-                Reserved
+                Trống
               </button>
               <button 
                 onClick={() => handleStatusChange('maintenance')}
@@ -356,14 +383,14 @@ export default function SlotManagement() {
                   padding: '12px', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.3)', borderRadius: 'var(--radius-md)', color: '#94a3b8', fontWeight: 600, cursor: selectedSlot.status === 'occupied' ? 'not-allowed' : 'pointer', opacity: selectedSlot.status === 'occupied' ? 0.5 : 1
                 }}
               >
-                Maintenance
+                Bảo trì
               </button>
             </div>
             
             {selectedSlot.status === 'occupied' && (
               <div style={{ display: 'flex', gap: '8px', color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
                 <Info size={16} />
-                <span>Occupied slots must be cleared via the Vehicle Exit process.</span>
+                <span>Chỗ đang có xe chỉ có thể được làm trống thông qua luồng "Cho xe ra".</span>
               </div>
             )}
           </div>

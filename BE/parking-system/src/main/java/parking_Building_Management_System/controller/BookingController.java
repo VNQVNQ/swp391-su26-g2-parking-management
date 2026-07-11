@@ -129,9 +129,9 @@ public class BookingController {
         log.info("POST /api/v1/bookings/{}/confirm - Confirming booking", id);
         try {
             Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID PARKING_STAFFId = UUID.fromString(principal.toString());
+            Long staffId = Long.parseLong(principal.toString());
             
-            BookingDetailResponse response = bookingService.confirmBooking(id, PARKING_STAFFId);
+            BookingDetailResponse response = bookingService.confirmBooking(id, staffId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking confirmed successfully");
             return ResponseEntity.ok(apiResponse);
         } catch (Exception e) {
@@ -146,7 +146,7 @@ public class BookingController {
         log.info("POST /api/v1/bookings/{}/cancel - Cancelling booking", id);
         try {
             Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            UUID userId = UUID.fromString(principal.toString());
+            Long userId = Long.parseLong(principal.toString());
             
             BookingDetailResponse response = bookingService.cancelBooking(id, userId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking cancelled successfully");

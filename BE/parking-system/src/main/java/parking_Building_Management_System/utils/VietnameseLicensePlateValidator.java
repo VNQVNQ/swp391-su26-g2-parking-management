@@ -9,7 +9,7 @@ public class VietnameseLicensePlateValidator {
     // 30AB-1234 (2 số + 2 chữ + 4 số)
     // 79B1-1234 → dạng này không hỗ trợ vì ít phổ biến
     private static final Pattern VIETNAM_PLATE_PATTERN = Pattern.compile(
-            "^\\d{2}[A-Z]{1,2}-\\d{4,5}$|^\\d{2}[A-Z]{1,2}\\.\\d{4,5}$"
+            "^[0-9]{2}[A-Z0-9]{1,2}-[0-9]{3}\\.?[0-9]{2}$"
     );
 
     // Mã tỉnh/thành phố theo quy định Việt Nam (phần 2 chữ số đầu)

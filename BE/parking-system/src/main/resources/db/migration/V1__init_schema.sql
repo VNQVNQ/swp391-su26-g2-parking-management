@@ -230,9 +230,11 @@ CREATE TABLE parking_sessions (
     booking_id           UUID REFERENCES bookings(id),            -- NULL nếu không đặt trước
     vehicle_id           UUID NOT NULL REFERENCES vehicles(id),
     slot_id              UUID NOT NULL REFERENCES parking_slots(id),
-    PARKING_STAFF_entry_id       BIGINT NOT NULL REFERENCES users(user_id),
-    PARKING_STAFF_exit_id        BIGINT REFERENCES users(user_id),
-    applied_rule_id      UUID REFERENCES pricing_rules(id),       -- rule đã dùng tính phí (audit)
+    staff_entry_id       BIGINT NOT NULL REFERENCES users(user_id),
+    staff_exit_id        BIGINT REFERENCES users(user_id),
+    applied_rule_id      UUID REFERENCES pricing_rules(id),   
+    monthly_pass_id      UUID REFERENCES monthly_passes(id),
+    applied_monthly_pass_fee NUMERIC(15,0),
     -- BR-18: entry_time do server set, không cho PARKING_STAFF nhập
     entry_time           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     exit_time            TIMESTAMP,
@@ -245,7 +247,7 @@ CREATE TABLE parking_sessions (
     ticket_type          ticket_type_enum NOT NULL,
     face_verified_at_exit BOOLEAN DEFAULT FALSE,
     -- BR-02: nếu TRUE thì bắt buộc có ExceptionRecord đi kèm
-    PARKING_STAFF_override_used  BOOLEAN DEFAULT FALSE,
+    staff_override_used  BOOLEAN DEFAULT FALSE,
     -- BR-04: scheduler set khi session > 24h. NULL = chưa flag. Tránh duplicate exception.
     overstay_flagged_at  TIMESTAMP,
     created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -308,7 +310,7 @@ CREATE TABLE exceptions (
 
 CREATE INDEX idx_exceptions_session_type ON exceptions(session_id, exception_type);
 CREATE INDEX idx_exceptions_status       ON exceptions(status);
-CREATE INDEX idx_exceptions_PARKING_STAFF        ON exceptions(created_by);
+CREATE INDEX idx_exceptions_staff        ON exceptions(created_by);
 
 -- ============================================================
 -- NOTIFICATIONS
@@ -381,8 +383,8 @@ CREATE INDEX idx_audit_time    ON audit_logs(created_at);
 
 INSERT INTO roles (role_code, role_name, role_description) VALUES
     ('ADMIN',             'System Admin',     'Quản lý tài khoản và phân quyền hệ thống'),
-    ('PARKING_PARKING_MANAGER',   'Parking PARKING_MANAGER',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
-    ('PARKING_PARKING_STAFF',     'Parking PARKING_STAFF',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
+    ('PARKING_MANAGER',   'Parking Manager',  'Cấu hình slot/pricing, xem báo cáo, quản lý chính sách phí'),
+    ('PARKING_STAFF',     'Parking Staff',    'Xử lý xe vào/ra, tạo session, thu phí, xử lý ngoại lệ'),
     ('DRIVER',            'Driver',           'Vehicle owner');
 
 
@@ -403,16 +405,16 @@ INSERT INTO privileges (privilege_code, privilege_name) VALUES
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r CROSS JOIN privileges p WHERE r.role_code = 'ADMIN';
 
--- Parking PARKING_MANAGER (mapping of previous PARKING_MANAGER)
+-- Parking Manager
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('EXCEPTION_APPROVE','SLOT_MANAGE','PRICING_MANAGE','REPORT_VIEW','DASHBOARD_VIEW','BOOKING_MANAGE')
-WHERE r.role_code = 'PARKING_PARKING_MANAGER';
+WHERE r.role_code = 'PARKING_MANAGER';
 
--- Parking PARKING_STAFF (mapping of previous PARKING_STAFF)
+-- Parking Staff
 INSERT INTO role_privileges (role_id, privilege_id)
 SELECT r.role_id, p.id FROM roles r JOIN privileges p
 ON p.privilege_code IN ('SESSION_CREATE','SESSION_EXIT','EXCEPTION_CREATE','DASHBOARD_VIEW')
-WHERE r.role_code = 'PARKING_PARKING_STAFF';
+WHERE r.role_code = 'PARKING_STAFF';
 
 -- Driver: no backend privileges by default (acts as end-user)

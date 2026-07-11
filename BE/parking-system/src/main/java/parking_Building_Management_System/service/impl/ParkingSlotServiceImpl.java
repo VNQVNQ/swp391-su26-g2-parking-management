@@ -133,10 +133,14 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
     @Override
     public List<ParkingSlotResponse> getSlotsByZone(UUID zoneId) {
-        return parkingSlotRepository.findByZoneId(zoneId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        List<ParkingSlot> slots = parkingSlotRepository.findByZoneId(zoneId);
+        for (ParkingSlot slot : slots) {
+            if (slot.getCurrentSession() != null) {
+                org.hibernate.Hibernate.initialize(slot.getCurrentSession());
+                org.hibernate.Hibernate.initialize(slot.getCurrentSession().getVehicle());
+            }
+        }
+        return slots.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -213,6 +217,13 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     }
 
     private ParkingSlotResponse mapToResponse(ParkingSlot slot) {
+        String licensePlate = null;
+        VehicleType occupyingVehicleType = null;
+        if (slot.getCurrentSession() != null && slot.getCurrentSession().getVehicle() != null) {
+            licensePlate = slot.getCurrentSession().getVehicle().getLicensePlate();
+            occupyingVehicleType = slot.getCurrentSession().getVehicle().getVehicleType();
+        }
+
         return new ParkingSlotResponse(
                 slot.getId(),
                 slot.getSlotCode(),
@@ -223,6 +234,8 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 slot.getVehicleType(),
                 slot.getMaintenanceStatus(),
                 slot.getCurrentSession() != null ? slot.getCurrentSession().getId() : null,
+                licensePlate,
+                occupyingVehicleType,
                 slot.getCreatedAt(),
                 slot.getUpdatedAt()
         );

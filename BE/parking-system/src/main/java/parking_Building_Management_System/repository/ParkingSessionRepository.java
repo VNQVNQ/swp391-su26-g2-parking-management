@@ -40,6 +40,10 @@ public interface ParkingSessionRepository extends JpaRepository<ParkingSession, 
     @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM ParkingSession s WHERE s.vehicle.id = ?1 AND s.finalFee IS NOT NULL AND s.paymentStatus = parking_Building_Management_System.entity.enums.PaymentStatus.UNPAID")
     boolean existsByVehicleIdAndTotalFeeIsNotNullAndIsPaidFalse(UUID vehicleId);
 
+    // Get active session by vehicle license plate
+    @Query("SELECT ps FROM ParkingSession ps WHERE ps.vehicle.licensePlate = :licensePlate AND ps.exitTime IS NULL")
+    List<ParkingSession> findByVehicleLicensePlateAndExitTimeIsNull(@Param("licensePlate") String licensePlate);
+
     // Phase 4: New query methods for monthly passes and bookings
     List<ParkingSession> findByMonthlyPassId(UUID monthlyPassId);
 

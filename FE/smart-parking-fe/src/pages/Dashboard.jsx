@@ -1,13 +1,13 @@
 import { TrendingUp, AlertCircle, Zap, Clock } from 'lucide-react';
-import { useParkingStore } from '../store/parkingStore';
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import api from '../services/api';
 
 // Status badge component
 function StatusBadge({ status }) {
   const statusStyles = {
-    'Parked': { bg: 'rgba(0, 208, 132, 0.12)', color: '#00d084', border: '1px solid rgba(0, 208, 132, 0.3)' },
-    'Monthly Pass': { bg: 'rgba(0, 200, 200, 0.12)', color: '#00c8c8', border: '1px solid rgba(0, 200, 200, 0.3)' },
-    'Overstay': { bg: 'rgba(255, 107, 107, 0.12)', color: '#ff6b6b', border: '1px solid rgba(255, 107, 107, 0.3)' },
+    'Đang đỗ': { bg: 'rgba(0, 208, 132, 0.12)', color: '#00d084', border: '1px solid rgba(0, 208, 132, 0.3)' },
+    'Vé tháng': { bg: 'rgba(0, 200, 200, 0.12)', color: '#00c8c8', border: '1px solid rgba(0, 200, 200, 0.3)' },
+    'Quá giờ': { bg: 'rgba(255, 107, 107, 0.12)', color: '#ff6b6b', border: '1px solid rgba(255, 107, 107, 0.3)' },
   };
 
   const style = statusStyles[status] || { bg: '#2a2a2a', color: '#aaa', border: '1px solid #333' };
@@ -50,77 +50,145 @@ function ProgressBar({ percentage }) {
 }
 
 export default function Dashboard() {
-  const { vehicles, exitedVehicles, slotStats, todayRevenue, getFloorStats, zones } = useParkingStore();
+  const [loading, setLoading] = useState(true);
+  const [zones, setZones] = useState([]);
+  const [slots, setSlots] = useState([]);
+  const [activeSessions, setActiveSessions] = useState([]);
 
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [zonesRes, slotsRes, sessionsRes] = await Promise.all([
+          api.get('/api/v1/zones'),
+          api.get('/api/v1/parking-slots'),
+          api.get('/api/v1/parking-sessions/active/all')
+        ]);
+        
+        setZones(zonesRes.data.data || zonesRes.data || []);
+        setSlots(slotsRes.data.data || slotsRes.data || []);
+        setActiveSessions(sessionsRes.data.data || sessionsRes.data || []);
+      } catch (error) {
+        console.error("Lỗi tải dữ liệu Dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
-  const overstayCount = vehicles.filter(v => v.overstay).length;
+  const slotStats = useMemo(() => {
+    let available = 0, occupied = 0, maintenance = 0;
+    slots.forEach(s => {
+      if (s.maintenanceStatus === 'MAINTENANCE') maintenance++;
+      else if (s.currentSessionId) occupied++;
+      else available++;
+    });
+    return { available, occupied, maintenance, total: available + occupied + maintenance };
+  }, [slots]);
+
+  const parkedVehicles = useMemo(() => {
+    return activeSessions.map(session => {
+      const typeStr = session.vehicleType || session.vehicle?.vehicleType;
+      const typeLabel = typeStr === 'CAR' ? 'Ô tô' : typeStr === 'MOTORBIKE' ? 'Xe máy' : 'Xe tải';
+      
+      let status = 'Đang đỗ';
+      if (session.entryTime) {
+        const ms = Date.now() - new Date(session.entryTime).getTime();
+        if (ms > 24 * 3600 * 1000) status = 'Quá giờ';
+      }
+      if (session.ticketType === 'MONTHLY') status = 'Vé tháng';
+
+      return {
+        plate: session.licensePlate || session.vehicle?.licensePlate || '—',
+        type: typeLabel,
+        slot: session.slotCode || session.slot?.slotCode || '—',
+        entryTime: session.entryTime 
+          ? new Date(session.entryTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) 
+          : '—',
+        status: status,
+      };
+    });
+  }, [activeSessions]);
+
+  const overstayCount = parkedVehicles.filter(v => v.status === 'Quá giờ').length;
   const utilizationRate = slotStats.total > 0 ? ((slotStats.occupied / slotStats.total) * 100).toFixed(1) : '0.0';
 
   const metricsData = useMemo(() => [
     {
-      label: 'Utilization Rate',
+      label: 'Tỷ lệ lấp đầy',
       value: `${utilizationRate}%`,
-      subtitle: `${slotStats.occupied}/${slotStats.total} slots in use`,
+      subtitle: `${slotStats.occupied}/${slotStats.total} vị trí đang đỗ`,
       icon: TrendingUp,
       color: '#00d084'
     },
     {
-      label: 'Available Slots',
+      label: 'Vị trí trống',
       value: String(slotStats.available),
-      subtitle: `${zones.filter(z => z.vehicleType === 'Car').reduce((s, z) => s + z.slots.filter(sl => sl.status === 'available').length, 0)} cars, ${zones.filter(z => z.vehicleType === 'Motorbike').reduce((s, z) => s + z.slots.filter(sl => sl.status === 'available').length, 0)} motorbikes`,
+      subtitle: `Trong tổng số ${slotStats.total} vị trí`,
       icon: Zap,
       color: '#00d084'
     },
     {
-      label: "Today's Revenue",
-      value: `₫${todayRevenue.toLocaleString()}`,
-      subtitle: `${exitedVehicles.length} vehicles exited today`,
+      label: "Xe đang đỗ",
+      value: String(activeSessions.length),
+      subtitle: `${overstayCount > 0 ? `${overstayCount} xe đỗ quá giờ` : 'Tất cả trong thời gian quy định'}`,
       icon: TrendingUp,
       color: '#00d084'
     },
     {
-      label: 'Peak Hour',
-      value: '08:00 - 09:00',
-      subtitle: 'Busiest time of the day',
-      icon: Clock,
+      label: 'Bảo trì',
+      value: String(slotStats.maintenance),
+      subtitle: 'Vị trí đang tạm ngưng',
+      icon: AlertCircle,
       color: '#ffa500'
     },
-  ], [utilizationRate, slotStats, todayRevenue, exitedVehicles.length, zones]);
+  ], [utilizationRate, slotStats, activeSessions.length, overstayCount]);
 
-  // Zone status from live data
+  const getFloorStats = useMemo(() => {
+    const floorsMap = {};
+    zones.forEach(z => {
+      if (!floorsMap[z.floorName]) {
+        floorsMap[z.floorName] = { name: z.floorName, total: 0, available: 0 };
+      }
+    });
+    slots.forEach(s => {
+      if (floorsMap[s.floorName]) {
+        floorsMap[s.floorName].total++;
+        if (s.maintenanceStatus !== 'MAINTENANCE' && !s.currentSessionId) {
+          floorsMap[s.floorName].available++;
+        }
+      }
+    });
+    return Object.values(floorsMap);
+  }, [zones, slots]);
+
   const zoneStatus = useMemo(() => {
-    return zones.map(z => ({
-      zone: z.name,
-      location: z.location,
-      available: z.slots.filter(s => s.status === 'available').length,
-      total: z.total,
-    }));
-  }, [zones]);
+    return zones.map(z => {
+      const zoneSlots = slots.filter(s => s.zoneId === z.id);
+      const available = zoneSlots.filter(s => s.maintenanceStatus !== 'MAINTENANCE' && !s.currentSessionId).length;
+      return {
+        zone: z.name,
+        location: z.floorName,
+        available: available,
+        total: zoneSlots.length || z.totalSlots || 0,
+      };
+    });
+  }, [zones, slots]);
 
-  // Parked vehicles for table
-  const parkedVehicles = useMemo(() => {
-    return vehicles.map(v => ({
-      plate: v.plate,
-      type: v.type,
-      slot: v.slot,
-      entryTime: v.entryTime instanceof Date
-        ? v.entryTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-        : v.entryTime,
-      status: v.overstay ? 'Overstay' : v.hasPass ? 'Monthly Pass' : 'Parked',
-    }));
-  }, [vehicles]);
-
-  // Alerts from live data
   const alerts = useMemo(() => {
     const list = [];
-    if (overstayCount > 0) list.push({ text: `${overstayCount} vehicle overstay`, color: '#ff6b6b' });
+    if (overstayCount > 0) list.push({ text: `${overstayCount} xe đỗ quá 24 giờ`, color: '#ff6b6b' });
     const nearCapFloors = getFloorStats.filter(f => f.total > 0 && (f.total - f.available) / f.total > 0.8);
-    nearCapFloors.forEach(f => list.push({ text: `${f.name} near capacity`, color: '#ffa500' }));
+    nearCapFloors.forEach(f => list.push({ text: `Khu vực ${f.name} sắp đầy`, color: '#ffa500' }));
     const maintenanceSlots = slotStats.maintenance;
-    if (maintenanceSlots > 0) list.push({ text: `${maintenanceSlots} slots in maintenance`, color: '#00c8c8' });
-    if (list.length === 0) list.push({ text: 'All systems normal', color: '#00d084' });
+    if (maintenanceSlots > 0) list.push({ text: `${maintenanceSlots} vị trí đang bảo trì`, color: '#00c8c8' });
+    if (list.length === 0) list.push({ text: 'Mọi hệ thống hoạt động bình thường', color: '#00d084' });
     return list;
   }, [overstayCount, getFloorStats, slotStats.maintenance]);
+
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải dữ liệu tổng quan...</div>;
+  }
 
   return (
     <div className="page-full">
@@ -128,8 +196,8 @@ export default function Dashboard() {
         {/* Main Content */}
         <div>
           <div className="page-header">
-            <h2>Dashboard</h2>
-            <p>Overview of parking lot status</p>
+            <h2>Bảng điều khiển</h2>
+            <p>Tổng quan trạng thái bãi đỗ xe</p>
           </div>
 
           {/* Key Metrics */}
@@ -177,7 +245,7 @@ export default function Dashboard() {
             {/* Status by Floor */}
             <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>
-                Status by Floor
+                Trạng thái theo Tầng
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 {getFloorStats.map((floor, i) => (
@@ -187,12 +255,15 @@ export default function Dashboard() {
                         {floor.name}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: '#00d084', fontWeight: 500 }}>
-                        {floor.available}/{floor.total} available
+                        Còn trống {floor.available}/{floor.total}
                       </span>
                     </div>
-                    <ProgressBar percentage={floor.total > 0 ? (floor.available / floor.total) * 100 : 0} />
+                    <ProgressBar percentage={floor.total > 0 ? ((floor.total - floor.available) / floor.total) * 100 : 0} />
                   </div>
                 ))}
+                {getFloorStats.length === 0 && (
+                   <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Chưa có dữ liệu tầng</div>
+                )}
               </div>
             </div>
 
@@ -200,7 +271,7 @@ export default function Dashboard() {
             <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Parked Vehicles ({parkedVehicles.length})
+                  Xe đang đỗ ({parkedVehicles.length})
                 </h3>
                 {overstayCount > 0 && (
                   <div style={{
@@ -216,24 +287,24 @@ export default function Dashboard() {
                     border: '1px solid rgba(255, 107, 107, 0.3)',
                   }}>
                     <AlertCircle size={14} />
-                    {overstayCount} overstay
+                    {overstayCount} quá giờ
                   </div>
                 )}
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', maxHeight: '300px' }}>
                 <table style={{
                   width: '100%',
                   borderCollapse: 'collapse',
                   fontSize: '0.9rem',
                 }}>
-                  <thead>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-card)' }}>
                     <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
-                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>License Plate</th>
-                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Vehicle Type</th>
-                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Slot</th>
-                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Entry Time</th>
-                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Status</th>
+                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Biển số xe</th>
+                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Loại xe</th>
+                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Vị trí</th>
+                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Thời gian vào</th>
+                      <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Trạng thái</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,6 +327,13 @@ export default function Dashboard() {
                         </td>
                       </tr>
                     ))}
+                    {parkedVehicles.length === 0 && (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          Hiện tại không có xe nào đang đỗ.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -265,7 +343,7 @@ export default function Dashboard() {
           {/* Status by Zone */}
           <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '24px', color: 'var(--text-primary)' }}>
-              Status by Zone
+              Trạng thái theo Khu vực
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               {zoneStatus.map((zone, i) => (
@@ -295,11 +373,16 @@ export default function Dashboard() {
                     {zone.available}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                    available / {zone.total}
+                    còn trống / {zone.total}
                   </div>
-                  <ProgressBar percentage={(zone.available / zone.total) * 100} />
+                  <ProgressBar percentage={zone.total > 0 ? ((zone.total - zone.available) / zone.total) * 100 : 0} />
                 </div>
               ))}
+              {zoneStatus.length === 0 && (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: 'span 4' }}>
+                  Chưa có khu vực nào được cấu hình.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -310,13 +393,13 @@ export default function Dashboard() {
           {/* Statistics */}
           <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>
-              Statistics
+              Thống kê Tổng quát
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
-                { label: 'Total Capacity', value: String(slotStats.total), unit: 'slots' },
-                { label: 'Occupied', value: String(slotStats.occupied), unit: 'vehicles' },
-                { label: 'Revenue Today', value: `₫${(todayRevenue / 1000).toFixed(0)}K`, unit: '' },
+                { label: 'Tổng sức chứa', value: String(slotStats.total), unit: 'vị trí' },
+                { label: 'Đang sử dụng', value: String(slotStats.occupied), unit: 'xe' },
+                { label: 'Vị trí trống', value: String(slotStats.available), unit: 'vị trí' },
               ].map((stat, i) => (
                 <div key={i} style={{ paddingBottom: '14px', borderBottom: i < 2 ? '1px solid #2a2a2a' : 'none' }}>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
@@ -338,7 +421,7 @@ export default function Dashboard() {
           {/* Alerts */}
           <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '14px', color: 'var(--text-primary)' }}>
-              Alerts
+              Cảnh báo
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {alerts.map((alert, i) => (

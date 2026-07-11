@@ -42,8 +42,8 @@ public class ParkingSessionMapper {
      */
     public VehicleEntryResponse toVehicleEntryResponse(
             ParkingSession session,
-            Long PARKING_STAFFId,
-            String PARKING_STAFFName) {
+            Long staffId,
+            String staffName) {
         
         return VehicleEntryResponse.builder()
                 .sessionId(session.getId())
@@ -58,8 +58,8 @@ public class ParkingSessionMapper {
                 .entryTime(session.getEntryTime())
                 .status(session.getStatus())
                 .paymentStatus(session.getPaymentStatus())
-                .PARKING_STAFFId(PARKING_STAFFId)
-                .PARKING_STAFFName(PARKING_STAFFName)
+                .staffId(staffId)
+                .staffName(staffName)
                 .createdAt(session.getCreatedAt())
                 .build();
     }

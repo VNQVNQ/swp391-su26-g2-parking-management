@@ -20,7 +20,7 @@ import java.util.UUID;
 @Table(name = "exceptions", schema = "public", indexes = {
     @Index(name = "idx_exceptions_session_type", columnList = "session_id, exception_type"),
     @Index(name = "idx_exceptions_status", columnList = "status"),
-    @Index(name = "idx_exceptions_PARKING_STAFF", columnList = "created_by")
+    @Index(name = "idx_exceptions_staff", columnList = "created_by")
 })
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ParkingException {

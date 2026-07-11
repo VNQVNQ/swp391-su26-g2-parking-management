@@ -4,6 +4,7 @@ import parking_Building_Management_System.dto.parkingSession.request.VehicleEntr
 import parking_Building_Management_System.dto.parkingSession.response.AvailableSlotsForEntryResponse;
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
 import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
+import parking_Building_Management_System.dto.parkingSession.response.ActiveSessionResponse;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
 import parking_Building_Management_System.dto.parkingSession.response.FeeCalculationResponse;
@@ -39,7 +40,7 @@ public interface ParkingSessionService {
      * BR-31: sessionID phải unique (UUID)
      * Phase 4: Support booking confirmation and monthly pass linking
      */
-    VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long PARKING_STAFFId, String bookingCode);
+    VehicleEntryResponse createParkingSession(VehicleEntryRequest request, Long staffId, String bookingCode);
 
     /**
      * Lấy thông tin session hiện tại của xe
@@ -55,7 +56,7 @@ public interface ParkingSessionService {
     /**
      * Tìm tất cả session active
      */
-    List<ParkingSession> getAllActiveSessions();
+    List<ActiveSessionResponse> getAllActiveSessions();
 
     /**
      * BR-04: Auto-flag overstay (scheduler)
@@ -67,7 +68,7 @@ public interface ParkingSessionService {
      * Cập nhật session khi exit (dành cho exit flow)
      * Phase 4: Calculate fee with monthly pass and pricing rule logic
      */
-    ParkingSession updateSessionOnExit(UUID sessionId, Long PARKING_STAFFId);
+    ParkingSession updateSessionOnExit(UUID sessionId, Long staffId);
 
     /**
      * Kiểm tra xe có nợ phí hay không
@@ -78,7 +79,7 @@ public interface ParkingSessionService {
      * BR-33: Xử lý thanh toán
      * Cập nhật payment status, tạo payment record
      */
-    Long processPayment(PaymentRequest request, Long PARKING_STAFFId);
+    Long processPayment(PaymentRequest request, Long staffId);
 
     /**
      * Cập nhật payment status của session

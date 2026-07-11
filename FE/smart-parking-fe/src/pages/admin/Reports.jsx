@@ -61,9 +61,9 @@ function BarChartComponent({ data }) {
         );
       })}
       <rect x={W-160} y={8} width={10} height={10} rx={2} fill="#3b82f6" />
-      <text x={W-145} y={17} fontSize="10" fill="#94a3b8">Entries</text>
+      <text x={W-145} y={17} fontSize="10" fill="#94a3b8">Lượt vào</text>
       <rect x={W-90} y={8} width={10} height={10} rx={2} fill="#f59e0b" />
-      <text x={W-75} y={17} fontSize="10" fill="#94a3b8">Exits</text>
+      <text x={W-75} y={17} fontSize="10" fill="#94a3b8">Lượt ra</text>
     </svg>
   );
 }
@@ -110,7 +110,7 @@ function DonutChart({ data }) {
           arcs.map((a, i) => a.value > 0 && <path key={i} d={a.path} fill={a.color} stroke="#0b0f19" strokeWidth="2" />)
         )}
         <text x={cx} y={cy-6} textAnchor="middle" fontSize="22" fontWeight="700" fill="#f1f5f9">{total}</text>
-        <text x={cx} y={cy+14} textAnchor="middle" fontSize="11" fill="#64748b">vehicles</text>
+        <text x={cx} y={cy+14} textAnchor="middle" fontSize="11" fill="#64748b">phương tiện</text>
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {arcs.map((a, i) => (
@@ -127,7 +127,7 @@ function DonutChart({ data }) {
 }
 
 function FloorBars({ data }) {
-  if (data.length === 0) return <div style={{ color: 'var(--text-muted)' }}>No floor data available</div>;
+  if (data.length === 0) return <div style={{ color: 'var(--text-muted)' }}>Không có dữ liệu tầng</div>;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -161,6 +161,7 @@ export default function Reports() {
   const { revenueData, peakData, vehicleTypes, floorData, stats } = useMemo(() => {
     // 1. Revenue
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const viDays = { Sun: 'CN', Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7' };
     const revMap = { Sun:0, Mon:0, Tue:0, Wed:0, Thu:0, Fri:0, Sat:0 };
     
     // Add real exited vehicles to revenue map
@@ -173,8 +174,8 @@ export default function Reports() {
     // Default mock data mixed with real data for visual effect (since real data might be sparse)
     const mockRev = { Mon: 8200000, Tue: 9100000, Wed: 7800000, Thu: 11200000, Fri: 12450000, Sat: 10800000, Sun: 6500000 };
     const chartRev = period === 'Today' 
-      ? [{ day: 'Today', value: store.todayRevenue }] 
-      : days.map(day => ({ day, value: Math.max(revMap[day], period === 'This Week' ? mockRev[day] : 0) }));
+      ? [{ day: 'Hôm nay', value: store.todayRevenue }] 
+      : days.map(day => ({ day: viDays[day], value: Math.max(revMap[day], period === 'This Week' ? mockRev[day] : 0) }));
 
     // 2. Peak Hours
     const hoursMap = {};
@@ -224,9 +225,9 @@ export default function Reports() {
       else others++;
     });
     const chartTypes = [
-      { name: 'Car', value: cars, color: '#3b82f6' },
-      { name: 'Motorbike', value: bikes, color: '#8b5cf6' },
-      { name: 'Other', value: others, color: '#10b981' }
+      { name: 'Ô tô', value: cars, color: '#3b82f6' },
+      { name: 'Xe máy', value: bikes, color: '#8b5cf6' },
+      { name: 'Khác', value: others, color: '#10b981' }
     ];
 
     // 4. Floor Data (Real data)
@@ -241,10 +242,10 @@ export default function Reports() {
 
     // Computed summary stats
     const summaryStats = [
-      { label: period === 'Today' ? "Today's Revenue" : "Total Revenue", value: `₫${(period === 'Today' ? store.todayRevenue : store.todayRevenue + 66050000).toLocaleString()}`, icon: DollarSign, color: '#10b981' },
-      { label: 'Vehicles Today', value: todayEntries.toString(), icon: Car, color: '#3b82f6' },
-      { label: 'Utilization Rate', value: `${store.slotStats.total > 0 ? ((store.slotStats.occupied / store.slotStats.total) * 100).toFixed(1) : '0.0'}%`, icon: Activity, color: '#f59e0b' },
-      { label: 'Peak Hour', value: peakHourStr, icon: Clock, color: '#8b5cf6' },
+      { label: period === 'Today' ? "Doanh thu hôm nay" : "Tổng doanh thu", value: `₫${(period === 'Today' ? store.todayRevenue : store.todayRevenue + 66050000).toLocaleString()}`, icon: DollarSign, color: '#10b981' },
+      { label: 'Lượt xe hôm nay', value: todayEntries.toString(), icon: Car, color: '#3b82f6' },
+      { label: 'Tỷ lệ lấp đầy', value: `${store.slotStats.total > 0 ? ((store.slotStats.occupied / store.slotStats.total) * 100).toFixed(1) : '0.0'}%`, icon: Activity, color: '#f59e0b' },
+      { label: 'Giờ cao điểm', value: peakHourStr, icon: Clock, color: '#8b5cf6' },
     ];
 
     return {
@@ -262,13 +263,13 @@ export default function Reports() {
     <div className="page-full-width">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
-          <h2>Reports & Statistics</h2>
-          <p>View revenue reports and activity statistics</p>
+          <h2>Báo cáo & Thống kê</h2>
+          <p>Xem báo cáo doanh thu và thống kê hoạt động</p>
         </div>
         <select value={period} onChange={e => setPeriod(e.target.value)} style={selSt}>
-          <option>Today</option>
-          <option>This Week</option>
-          <option>This Month</option>
+          <option value="Today">Hôm nay</option>
+          <option value="This Week">Tuần này</option>
+          <option value="This Month">Tháng này</option>
         </select>
       </div>
 
@@ -292,7 +293,7 @@ export default function Reports() {
       <div className="tab-nav">
         {['revenue', 'peak', 'vehicles', 'floor'].map(t => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {{ revenue: 'Revenue', peak: 'Peak Hours', vehicles: 'Vehicle Types', floor: 'By Floor' }[t]}
+            {{ revenue: 'Doanh thu', peak: 'Giờ cao điểm', vehicles: 'Loại xe', floor: 'Theo Tầng' }[t]}
           </button>
         ))}
       </div>
@@ -302,7 +303,7 @@ export default function Reports() {
           <>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <BarChart3 size={20} style={{ color: 'var(--accent-primary)' }} /> 
-              {period === 'Today' ? 'Today\'s Revenue' : 'Weekly Revenue'}
+              {period === 'Today' ? 'Doanh thu hôm nay' : 'Doanh thu tuần này'}
             </h3>
             <AreaChart data={revenueData} />
           </>
@@ -311,7 +312,7 @@ export default function Reports() {
           <>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={20} style={{ color: 'var(--accent-primary)' }} /> 
-              Peak Hours Analysis
+              Phân tích giờ cao điểm
             </h3>
             <BarChartComponent data={peakData} />
           </>
@@ -320,7 +321,7 @@ export default function Reports() {
           <>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Car size={20} style={{ color: 'var(--accent-primary)' }} /> 
-              Currently Parked - Vehicle Types
+              Xe đang đỗ - Phân loại xe
             </h3>
             <DonutChart data={vehicleTypes} />
           </>
@@ -329,7 +330,7 @@ export default function Reports() {
           <>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Activity size={20} style={{ color: 'var(--accent-primary)' }} /> 
-              Slot Utilization by Floor
+              Sử dụng vị trí theo Tầng
             </h3>
             <FloorBars data={floorData} />
           </>

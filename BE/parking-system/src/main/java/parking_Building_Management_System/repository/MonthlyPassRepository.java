@@ -25,6 +25,8 @@ public interface MonthlyPassRepository extends JpaRepository<MonthlyPass, UUID> 
     Optional<MonthlyPass> findByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqualOrderByEndDateDesc(
             UUID vehicleId, LocalDate date);
 
+    boolean existsByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqual(UUID vehicleId, LocalDate date);
+
     @Query("SELECT mp FROM MonthlyPass mp WHERE mp.endDate BETWEEN :startDate AND :endDate " +
            "AND mp.isActive = true AND mp.paymentStatus = :status")
     List<MonthlyPass> findByEndDateBetweenAndIsActiveTrueAndPaymentStatus(

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, MapPin, Car, Bike, Truck } from 'lucide-react';
 import api from '../../services/api';
 
 const VEHICLE_TYPES = ['MOTORBIKE', 'CAR', 'TRUCK'];
+const vehicleTypeLabel = (t) => ({ MOTORBIKE: 'Xe máy', CAR: 'Ô tô', TRUCK: 'Xe tải' }[t] || t);
 
 export default function ManageZones() {
   const [zones, setZones] = useState([]);
@@ -94,7 +95,7 @@ export default function ManageZones() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa khu vực này?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa khu vực này? Lưu ý: Chỉ có thể xóa khi khu vực này không chứa bất kỳ Chỗ đỗ (Slot) nào.')) {
       try {
         await api.delete(`/api/v1/zones/${id}`);
         await loadData();
@@ -113,7 +114,7 @@ export default function ManageZones() {
 
   const getFloorName = (floorId) => {
     const floor = floors.find(f => f.id === floorId);
-    return floor ? `Level ${floor.levelNumber}: ${floor.name}` : '—';
+    return floor ? `Tầng ${floor.levelNumber}: ${floor.name}` : '—';
   };
 
   // Filter zones based on search and filters
@@ -124,54 +125,76 @@ export default function ManageZones() {
     return matchSearch && matchFloor && matchVehicleType;
   });
 
+  const stats = [
+    { label: 'Tổng số Khu vực', value: zones.length, icon: MapPin, color: '#3b82f6' },
+    { label: 'Khu vực Ô tô', value: zones.filter(z => z.vehicleType === 'CAR').length, icon: Car, color: '#10b981' },
+    { label: 'Khu vực Xe máy', value: zones.filter(z => z.vehicleType === 'MOTORBIKE').length, icon: Bike, color: '#8b5cf6' },
+    { label: 'Khu vực Xe tải', value: zones.filter(z => z.vehicleType === 'TRUCK').length, icon: Truck, color: '#f59e0b' },
+  ];
+
   return (
-    <div className="page-full">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+    <div className="page-full-width">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <div className="page-header" style={{ marginBottom: 0 }}>
           <h2>📍 Quản lý Khu vực</h2>
-          <p>Tạo, sửa, xóa khu vực đỗ xe</p>
+          <p>Tạo, sửa, xóa các phân khu đỗ xe theo từng tầng</p>
         </div>
         <button
           className="btn-primary"
           onClick={() => setShowForm(true)}
-          style={{ padding: '8px 16px', fontSize: '0.88rem' }}>
-          <Plus size={16} /> Thêm khu vực
+          style={{ padding: '10px 20px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Plus size={16} /> Thêm khu vực mới
         </button>
+      </div>
+
+      <div className="stats-grid" style={{ marginBottom: '24px' }}>
+        {stats.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <div key={i} className="stat-card" style={{ borderLeft: `4px solid ${s.color}` }}>
+              <div className="stat-card-header">
+                <span className="stat-card-label">{s.label}</span>
+                <Icon size={20} className="stat-card-icon" style={{ color: s.color }} />
+              </div>
+              <div className="stat-card-value">{s.value}</div>
+            </div>
+          );
+        })}
       </div>
 
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
 
       {/* Filter Bar */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="form-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
-          <Search size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="form-input-wrapper" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+          <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
             className="form-input"
             placeholder="Tìm tên khu vực..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: 40 }}
+            style={{ paddingLeft: 42, width: '100%' }}
           />
         </div>
         <select
           className="form-select"
           value={filterFloor}
           onChange={e => setFilterFloor(e.target.value)}
-          style={{ minWidth: '150px', padding: '8px 12px' }}>
+          style={{ minWidth: '160px', padding: '10px 14px' }}>
           <option value="">Tất cả tầng</option>
           {floors.map(floor => (
-            <option key={floor.id} value={floor.id}>Level {floor.level}: {floor.name}</option>
+            <option key={floor.id} value={floor.id}>Tầng {floor.levelNumber}: {floor.name}</option>
           ))}
         </select>
         <select
           className="form-select"
           value={filterVehicleType}
           onChange={e => setFilterVehicleType(e.target.value)}
-          style={{ minWidth: '150px', padding: '8px 12px' }}>
+          style={{ minWidth: '160px', padding: '10px 14px' }}>
           <option value="">Tất cả loại xe</option>
           {VEHICLE_TYPES.map(type => (
-            <option key={type} value={type}>{type}</option>
+            <option key={type} value={type}>{vehicleTypeLabel(type)}</option>
           ))}
         </select>
       </div>
@@ -182,9 +205,9 @@ export default function ManageZones() {
         </div>
       ) : zones.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
-          <p style={{ fontSize: '2rem', marginBottom: 12 }}>📋</p>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Chưa có khu vực nào</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
+          <p style={{ fontSize: '3rem', marginBottom: 12, opacity: 0.5 }}>📍</p>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Chưa có khu vực nào</p>
+          <button className="btn-primary" onClick={() => setShowForm(true)} style={{ margin: '0 auto' }}>
             <Plus size={16} /> Tạo khu vực đầu tiên
           </button>
         </div>
@@ -200,41 +223,43 @@ export default function ManageZones() {
                 <th>Tên khu vực</th>
                 <th>Tầng</th>
                 <th>Loại xe</th>
-                <th>Tổng số chỗ</th>
-                <th>Thao tác</th>
+                <th>Tổng số chỗ đỗ</th>
+                <th style={{ width: '120px', textAlign: 'center' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {filteredZones.map(zone => (
                  <tr key={zone.id}>
-                   <td style={{ fontWeight: 600 }}>{zone.name}</td>
+                   <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{zone.name}</td>
                    <td>{getFloorName(zone.floorId)}</td>
                   <td>
                     <span style={{
-                      fontSize: '0.78rem',
-                      background: 'rgba(59,130,246,0.1)',
-                      color: '#3b82f6',
-                      padding: '2px 8px',
-                      borderRadius: '4px'
+                      fontSize: '0.8rem',
+                      background: zone.vehicleType === 'CAR' ? 'rgba(16, 185, 129, 0.1)' : zone.vehicleType === 'MOTORBIKE' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: zone.vehicleType === 'CAR' ? '#10b981' : zone.vehicleType === 'MOTORBIKE' ? '#8b5cf6' : '#f59e0b',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontWeight: 600
                     }}>
-                      {zone.vehicleType}
+                      {vehicleTypeLabel(zone.vehicleType)}
                     </span>
                   </td>
-                  <td>{zone.totalSlots}</td>
+                  <td style={{ fontWeight: 600 }}>{zone.totalSlots}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                       <button
                         className="btn-sm btn-sm-primary"
                         onClick={() => handleEdit(zone)}
+                        style={{ padding: '6px' }}
                         title="Chỉnh sửa">
-                        <Edit2 size={14} />
+                        <Edit2 size={16} />
                       </button>
                       <button
                         className="btn-sm"
                         onClick={() => handleDelete(zone.id)}
-                        style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '6px' }}
                         title="Xóa">
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
@@ -249,36 +274,38 @@ export default function ManageZones() {
       {showForm && (
         <div className="modal-overlay" onClick={handleReset}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>{editingId ? 'Chỉnh sửa khu vực' : 'Thêm khu vực mới'}</h3>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{editingId ? 'Chỉnh sửa khu vực' : 'Thêm khu vực mới'}</h3>
               <button onClick={handleReset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label className="form-label">Tầng <span className="required">*</span></label>
+              <label className="form-label">Thuộc Tầng <span className="required">*</span></label>
               <select
                 className="form-select"
                 value={form.floorId}
-                onChange={e => setForm({ ...form, floorId: e.target.value })}>
+                onChange={e => setForm({ ...form, floorId: e.target.value })}
+                style={{ padding: '12px 14px' }}>
                 <option value="">-- Chọn tầng --</option>
                 {floors.map(floor => (
                   <option key={floor.id} value={floor.id}>
-                    Level {floor.level}: {floor.name}
+                    Tầng {floor.levelNumber}: {floor.name}
                   </option>
                 ))}
               </select>
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label className="form-label">Tên khu vực <span className="required">*</span></label>
+              <label className="form-label">Tên Khu vực <span className="required">*</span></label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="VD: Zone A, zona 1..."
+                placeholder="VD: Zone A, Khu VIP..."
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
+                style={{ padding: '12px 14px' }}
               />
             </div>
 
@@ -287,35 +314,39 @@ export default function ManageZones() {
               <select
                 className="form-select"
                 value={form.vehicleType}
-                onChange={e => setForm({ ...form, vehicleType: e.target.value })}>
+                onChange={e => setForm({ ...form, vehicleType: e.target.value })}
+                style={{ padding: '12px 14px' }}>
                 {VEHICLE_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>{vehicleTypeLabel(type)}</option>
                 ))}
               </select>
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label className="form-label">Tổng số chỗ <span className="required">*</span></label>
+              <label className="form-label">Sức chứa (Tổng số chỗ đỗ) <span className="required">*</span></label>
               <input
                 type="number"
                 className="form-input"
                 placeholder="VD: 20, 50, 100..."
                 value={form.totalSlots}
                 onChange={e => setForm({ ...form, totalSlots: e.target.value })}
+                style={{ padding: '12px 14px' }}
               />
             </div>
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button
-                className="btn-outline"
+                className="btn-sm"
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }}
                 onClick={handleReset}>
                 Hủy
               </button>
               <button
-                className="btn-primary"
+                className="btn-sm btn-sm-primary"
+                style={{ padding: '10px 20px' }}
                 onClick={handleSubmit}
                 disabled={submitting}>
-                {submitting ? 'Đang xử lý...' : editingId ? 'Cập nhật' : 'Thêm mới'}
+                {submitting ? 'Đang xử lý...' : editingId ? 'Cập nhật Khu vực' : 'Thêm Khu vực'}
               </button>
             </div>
           </div>
@@ -324,4 +355,3 @@ export default function ManageZones() {
     </div>
   );
 }
-

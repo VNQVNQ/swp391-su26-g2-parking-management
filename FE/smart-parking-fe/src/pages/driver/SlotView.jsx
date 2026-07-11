@@ -53,17 +53,17 @@ export default function DriverSlotView() {
           { label: 'Còn trống',      value: available, color: 'var(--accent-primary)'  },
           { label: 'Tỉ lệ lấp đầy', value: `${pct}%`, color: '#f59e0b'               },
         ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-card-header"><span className="stat-card-label">{s.label}</span></div>
-            <div className="stat-card-value" style={{ color: s.color }}>{s.value}</div>
+          <div key={s.label} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 32 }}>
         {/* Zone sidebar */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden', alignSelf: 'start' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
+        <div className="card" style={{ padding: 0, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden', alignSelf: 'start' }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Khu vực</span>
           </div>
           {Object.entries(floorMap).map(([floor, floorZones]) => (
@@ -74,12 +74,12 @@ export default function DriverSlotView() {
               {floorZones.map(zone => (
                 <button key={zone.id} onClick={() => setActiveZone(zone)}
                   style={{
-                    width: '100%', textAlign: 'left', padding: '10px 16px',
+                    width: '100%', textAlign: 'left', padding: '16px 24px',
                     background: activeZone?.id === zone.id ? 'var(--accent-primary-glow)' : 'transparent',
-                    border: 'none', borderLeft: activeZone?.id === zone.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                    border: 'none', borderLeft: activeZone?.id === zone.id ? '4px solid var(--accent-primary)' : '4px solid transparent',
                     borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s',
                   }}>
-                  <p style={{ fontWeight: 600, color: activeZone?.id === zone.id ? 'var(--accent-primary)' : 'var(--text-primary)', fontSize: '0.85rem' }}>
+                  <p style={{ fontWeight: 700, color: activeZone?.id === zone.id ? 'var(--accent-primary)' : 'var(--text-primary)', fontSize: '0.95rem' }}>
                     {VEHICLE_ICON[zone.vehicleType]} {zone.name}
                   </p>
                   <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -92,7 +92,7 @@ export default function DriverSlotView() {
         </div>
 
         {/* Slot grid */}
-        <div className="card">
+        <div className="card" style={{ padding: 32, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
           {activeZone && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -125,11 +125,13 @@ export default function DriverSlotView() {
                         style={{
                           background: isOccupied ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
                           border: `1.5px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
-                          borderRadius: 'var(--radius-md)', padding: '10px 4px',
+                          borderRadius: 16, padding: '10px 4px',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          height: 60,
-                        }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isOccupied ? '#ef4444' : 'var(--accent-primary)' }}>
+                          height: 64, transition: 'all 0.2s', cursor: 'default'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isOccupied ? '#ef4444' : 'var(--accent-primary)' }}>
                           {slot.slotCode.split('-')[1] || slot.slotCode}
                         </span>
                       </div>

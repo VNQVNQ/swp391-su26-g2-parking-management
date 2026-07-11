@@ -16,9 +16,14 @@ import java.util.stream.Collectors;
 public class FloorServiceImpl implements FloorService {
 
     private final FloorRepository floorRepository;
+    private final parking_Building_Management_System.repository.ZoneRepository zoneRepository;
 
     @Override
     public FloorResponse createFloor(FloorRequest request) {
+        if (floorRepository.findByLevelNumber(request.getLevelNumber()).isPresent()) {
+            throw new RuntimeException("Tầng với số thứ tự này đã tồn tại");
+        }
+
         Floor floor = new Floor();
         floor.setName(request.getName());
         floor.setLevelNumber(request.getLevelNumber());
@@ -55,6 +60,10 @@ public class FloorServiceImpl implements FloorService {
 
         // Only update level number if it's provided (not null)
         if (request.getLevelNumber() != null) {
+            if (!request.getLevelNumber().equals(floor.getLevelNumber()) && 
+                floorRepository.findByLevelNumber(request.getLevelNumber()).isPresent()) {
+                throw new RuntimeException("Tầng với số thứ tự này đã tồn tại");
+            }
             floor.setLevelNumber(request.getLevelNumber());
         }
 
@@ -70,6 +79,9 @@ public class FloorServiceImpl implements FloorService {
     public void deleteFloor(UUID id) {
         if (!floorRepository.existsById(id)) {
             throw new RuntimeException("Floor not found");
+        }
+        if (!zoneRepository.findByFloorId(id).isEmpty()) {
+            throw new RuntimeException("Không thể xóa tầng này vì đang chứa các khu vực (Zone)");
         }
         floorRepository.deleteById(id);
     }

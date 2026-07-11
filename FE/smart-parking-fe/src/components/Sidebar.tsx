@@ -10,37 +10,37 @@ import {
 // ── Role-based navigation items ──────────────────────────────────────────────
 const navItems = [
   // ADMIN (System Administrator)
-  { to: '/admin/dashboard', label: 'Dashboard',  icon: LayoutDashboard, roles: ['ADMIN'] },
-  { to: '/admin/pricing',   label: 'Pricing',    icon: DollarSign,      roles: ['ADMIN'] },
-  { to: '/admin/reports',   label: 'Reports',    icon: BarChart3,       roles: ['ADMIN'] },
-  { to: '/admin/settings',  label: 'Settings',   icon: SettingsIcon,    roles: ['ADMIN'] },
+  { to: '/admin/dashboard', label: 'Tổng quan',  icon: LayoutDashboard, roles: ['ADMIN'] },
+  { to: '/admin/pricing',   label: 'Bảng giá',    icon: DollarSign,      roles: ['ADMIN'] },
+  { to: '/admin/reports',   label: 'Báo cáo',    icon: BarChart3,       roles: ['ADMIN'] },
+  { to: '/admin/settings',  label: 'Cài đặt',   icon: SettingsIcon,    roles: ['ADMIN'] },
   // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
-  { to: '/PARKING_MANAGER/dashboard',   label: 'Dashboard',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/floors',      label: 'Manage Floors',     icon: Building2,       roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/zones',       label: 'Manage Zones',      icon: MapPin,          roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/parking-slots', label: 'Manage Slots',    icon: Grid3x3,         roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/slots',       label: 'Slot Management',   icon: CircleDot,       roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/passes',      label: 'Passes & Bookings', icon: CalendarCheck,   roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/exceptions',  label: 'Exceptions',        icon: AlertTriangle,   roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/reports',     label: 'Reports',           icon: BarChart3,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: CircleDot,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/passes',      label: 'Vé tháng & Đặt trước', icon: CalendarCheck,   roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/exceptions',  label: 'Xử lý Ngoại lệ',        icon: AlertTriangle,   roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/reports',     label: 'Báo cáo doanh thu',           icon: BarChart3,       roles: ['PARKING_MANAGER'] },
   // PARKING_STAFF
-  { to: '/entry',       label: 'Vehicle Entry',     icon: LogIn,           roles: ['PARKING_STAFF'] },
-  { to: '/exit',        label: 'Vehicle Exit',      icon: LogOut,          roles: ['PARKING_STAFF'] },
-  { to: '/PARKING_STAFF/slots', label: 'Slot View',         icon: MapPin,          roles: ['PARKING_STAFF'] },
+  { to: '/entry',       label: 'Cho xe vào',     icon: LogIn,           roles: ['PARKING_STAFF'] },
+  { to: '/exit',        label: 'Cho xe ra',      icon: LogOut,          roles: ['PARKING_STAFF'] },
+  { to: '/PARKING_STAFF/slots', label: 'Bản đồ chỗ đỗ',         icon: MapPin,          roles: ['PARKING_STAFF'] },
   // DRIVER
-  { to: '/driver/dashboard',        label: 'Dashboard',    icon: LayoutDashboard, roles: ['DRIVER'] },
+  { to: '/driver/dashboard',        label: 'Tổng quan',    icon: LayoutDashboard, roles: ['DRIVER'] },
   { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
   { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
-  { to: '/driver/monthly-pass',     label: 'Pass hàng tháng', icon: Ticket,       roles: ['DRIVER'] },
-  { to: '/driver/slots',            label: 'Xem slot',     icon: MapPin,          roles: ['DRIVER'] },
-  { to: '/driver/booking',          label: 'Đặt chỗ',      icon: Calendar,        roles: ['DRIVER'] },
+  { to: '/driver/monthly-pass',     label: 'Vé tháng',     icon: Ticket,       roles: ['DRIVER'] },
+  { to: '/driver/slots',            label: 'Xem chỗ trống',     icon: MapPin,          roles: ['DRIVER'] },
+  { to: '/driver/booking',          label: 'Đặt chỗ đỗ',      icon: Calendar,        roles: ['DRIVER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN:   'System Admin',
-  PARKING_MANAGER: 'Parking Manager',
-  PARKING_STAFF:   'Parking Staff',
-  DRIVER:  'Driver',
+  ADMIN:   'Quản trị viên',
+  PARKING_MANAGER: 'Quản lý',
+  PARKING_STAFF:   'Nhân viên',
+  DRIVER:  'Lái xe',
 };
 
 export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }: any) {

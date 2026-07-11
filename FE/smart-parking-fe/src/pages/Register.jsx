@@ -31,27 +31,27 @@ export default function Register() {
 
   const validate = () => {
     const errs = {};
-    if (!form.fullName.trim()) errs.fullName = 'Full name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
-    if (!form.phone.trim()) errs.phone = 'Phone number is required';
-    else if (!/^[0-9]{10,11}$/.test(form.phone.replace(/\s|-/g, ''))) errs.phone = 'Invalid phone number';
-    if (!form.gender) errs.gender = 'Please select your gender';
-    if (!form.dateOfBirth) errs.dateOfBirth = 'Date of birth is required';
+    if (!form.fullName.trim()) errs.fullName = 'Họ và tên là bắt buộc';
+    if (!form.email.trim()) errs.email = 'Email là bắt buộc';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Định dạng email không hợp lệ';
+    if (!form.phone.trim()) errs.phone = 'Số điện thoại là bắt buộc';
+    else if (!/^[0-9]{10,11}$/.test(form.phone.replace(/\s|-/g, ''))) errs.phone = 'Số điện thoại không hợp lệ';
+    if (!form.gender) errs.gender = 'Vui lòng chọn giới tính';
+    if (!form.dateOfBirth) errs.dateOfBirth = 'Ngày sinh là bắt buộc';
     else {
       const dob = new Date(form.dateOfBirth);
       const today = new Date();
       const age = today.getFullYear() - dob.getFullYear();
-      if (age < 16) errs.dateOfBirth = 'You must be at least 16 years old';
+      if (age < 16) errs.dateOfBirth = 'Bạn phải từ 16 tuổi trở lên';
     }
-    if (!form.address.trim()) errs.address = 'Address is required';
-    if (!form.identityNumber.trim()) errs.identityNumber = 'Identity number is required';
-    else if (!/^[0-9]{9}$|^[0-9]{12}$/.test(form.identityNumber.replace(/\s/g, ''))) errs.identityNumber = 'Must be 9 or 12 digits';
-    if (!form.password) errs.password = 'Password is required';
-    else if (form.password.length < 6) errs.password = 'Password must be at least 6 characters';
-    if (!form.confirmPassword) errs.confirmPassword = 'Please confirm your password';
-    else if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
-    if (!agreed) errs.agreed = 'You must agree to the terms';
+    if (!form.address.trim()) errs.address = 'Địa chỉ là bắt buộc';
+    if (!form.identityNumber.trim()) errs.identityNumber = 'Số CMND/CCCD là bắt buộc';
+    else if (!/^[0-9]{9}$|^[0-9]{12}$/.test(form.identityNumber.replace(/\s/g, ''))) errs.identityNumber = 'Phải có 9 hoặc 12 chữ số';
+    if (!form.password) errs.password = 'Mật khẩu là bắt buộc';
+    else if (form.password.length < 6) errs.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    if (!form.confirmPassword) errs.confirmPassword = 'Vui lòng xác nhận mật khẩu';
+    else if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu không khớp';
+    if (!agreed) errs.agreed = 'Bạn phải đồng ý với các điều khoản';
     return errs;
   };
 
@@ -65,10 +65,10 @@ export default function Register() {
     if (/[0-9]/.test(p)) score++;
     if (/[^A-Za-z0-9]/.test(p)) score++;
 
-    if (score <= 1) return { level: 1, label: 'Weak', color: '#ef4444' };
-    if (score <= 2) return { level: 2, label: 'Fair', color: '#f59e0b' };
-    if (score <= 3) return { level: 3, label: 'Good', color: '#3b82f6' };
-    return { level: 4, label: 'Strong', color: '#10b981' };
+    if (score <= 1) return { level: 1, label: 'Yếu', color: '#ef4444' };
+    if (score <= 2) return { level: 2, label: 'Trung bình', color: '#f59e0b' };
+    if (score <= 3) return { level: 3, label: 'Tốt', color: '#3b82f6' };
+    return { level: 4, label: 'Mạnh', color: '#10b981' };
   };
 
   const strength = getPasswordStrength();
@@ -123,7 +123,7 @@ export default function Register() {
               </div>
             </div>
             <h1 className="auth-brand-title">ParkingPro</h1>
-            <p className="auth-brand-subtitle">Smart Parking Management System</p>
+            <p className="auth-brand-subtitle">Hệ thống quản lý đỗ xe thông minh</p>
 
             <div className="auth-features">
               <div className="auth-feature-item">
@@ -131,8 +131,8 @@ export default function Register() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                 </div>
                 <div>
-                  <h4>Quick Setup</h4>
-                  <p>Get started in less than 2 minutes</p>
+                  <h4>Thiết lập nhanh chóng</h4>
+                  <p>Bắt đầu trong vòng chưa đầy 2 phút</p>
                 </div>
               </div>
               <div className="auth-feature-item">
@@ -140,8 +140,8 @@ export default function Register() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
                 <div>
-                  <h4>Team Management</h4>
-                  <p>Invite and manage your parking PARKING_STAFF</p>
+                  <h4>Quản lý đội ngũ</h4>
+                  <p>Mời và quản lý nhân viên bãi đỗ xe</p>
                 </div>
               </div>
               <div className="auth-feature-item">
@@ -149,15 +149,15 @@ export default function Register() {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
                 <div>
-                  <h4>Free Trial</h4>
-                  <p>30-day free trial, no credit card required</p>
+                  <h4>Dùng thử miễn phí</h4>
+                  <p>Dùng thử miễn phí 30 ngày, không cần thẻ tín dụng</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="auth-brand-footer">
-            <p>© 2026 ParkingPro. All rights reserved.</p>
+            <p>© 2026 ParkingPro. Bảo lưu mọi quyền.</p>
           </div>
         </div>
 
@@ -167,10 +167,10 @@ export default function Register() {
             <div className="auth-form-header">
               <div className="auth-form-badge">
                 <UserPlus size={16} />
-                <span>New Account</span>
+                <span>Tài khoản mới</span>
               </div>
-              <h2>Create Account</h2>
-              <p>Fill in your details to get started</p>
+              <h2>Tạo tài khoản</h2>
+              <p>Điền thông tin chi tiết của bạn để bắt đầu</p>
             </div>
 
             {/* Server-side error from AuthContext */}
@@ -196,13 +196,13 @@ export default function Register() {
             <form onSubmit={handleSubmit} className="auth-form" id="register-form">
               {/* Full Name */}
               <div className="auth-field">
-                <label htmlFor="register-name">Full Name</label>
+                <label htmlFor="register-name">Họ và tên</label>
                 <div className={`auth-input-wrapper ${errors.fullName ? 'error' : ''}`}>
                   <User size={18} className="auth-input-icon" />
                   <input
                     id="register-name"
                     type="text"
-                    placeholder="John Smith"
+                    placeholder="Nguyễn Văn A"
                     value={form.fullName}
                     onChange={(e) => update('fullName', e.target.value)}
                     autoComplete="name"
@@ -230,7 +230,7 @@ export default function Register() {
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="register-phone">Phone</label>
+                  <label htmlFor="register-phone">Số điện thoại</label>
                   <div className={`auth-input-wrapper ${errors.phone ? 'error' : ''}`}>
                     <Phone size={18} className="auth-input-icon" />
                     <input
@@ -249,7 +249,7 @@ export default function Register() {
               {/* Gender & Date of Birth row */}
               <div className="auth-field-row">
                 <div className="auth-field">
-                  <label htmlFor="register-gender">Gender</label>
+                  <label htmlFor="register-gender">Giới tính</label>
                   <div className={`auth-input-wrapper ${errors.gender ? 'error' : ''}`}>
                     <Users size={18} className="auth-input-icon" />
                     <select
@@ -258,16 +258,17 @@ export default function Register() {
                       onChange={(e) => update('gender', e.target.value)}
                       style={{ color: form.gender ? 'inherit' : 'rgba(255,255,255,0.4)' }}
                     >
-                      <option value="MALE">Male</option>
-                      <option value="FEMALE">Female</option>
-                      <option value="OTHER">Other</option>
+                      <option value="" disabled hidden>Chọn giới tính</option>
+                      <option value="MALE">Nam</option>
+                      <option value="FEMALE">Nữ</option>
+                      <option value="OTHER">Khác</option>
                     </select>
                   </div>
                   {errors.gender && <span className="auth-error">{errors.gender}</span>}
                 </div>
 
                 <div className="auth-field">
-                  <label htmlFor="register-dob">Date of Birth</label>
+                  <label htmlFor="register-dob">Ngày sinh</label>
                   <div className={`auth-input-wrapper ${errors.dateOfBirth ? 'error' : ''}`}>
                     <Calendar size={18} className="auth-input-icon" />
                     <input
@@ -284,13 +285,13 @@ export default function Register() {
 
               {/* Address */}
               <div className="auth-field">
-                <label htmlFor="register-address">Address</label>
+                <label htmlFor="register-address">Địa chỉ</label>
                 <div className={`auth-input-wrapper ${errors.address ? 'error' : ''}`}>
                   <MapPin size={18} className="auth-input-icon" />
                   <input
                     id="register-address"
                     type="text"
-                    placeholder="123 Main Street, District 1, Ho Chi Minh City"
+                    placeholder="123 Đường chính, Quận 1, TP. Hồ Chí Minh"
                     value={form.address}
                     onChange={(e) => update('address', e.target.value)}
                     autoComplete="street-address"
@@ -301,7 +302,7 @@ export default function Register() {
 
               {/* Identity Number */}
               <div className="auth-field">
-                <label htmlFor="register-identity">Identity Number (CMND/CCCD)</label>
+                <label htmlFor="register-identity">Số CMND/CCCD</label>
                 <div className={`auth-input-wrapper ${errors.identityNumber ? 'error' : ''}`}>
                   <CreditCard size={18} className="auth-input-icon" />
                   <input
@@ -318,13 +319,13 @@ export default function Register() {
 
               {/* Password */}
               <div className="auth-field">
-                <label htmlFor="register-password">Password</label>
+                <label htmlFor="register-password">Mật khẩu</label>
                 <div className={`auth-input-wrapper ${errors.password ? 'error' : ''}`}>
                   <Lock size={18} className="auth-input-icon" />
                   <input
                     id="register-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Min. 6 characters"
+                    placeholder="Tối thiểu 6 ký tự"
                     value={form.password}
                     onChange={(e) => update('password', e.target.value)}
                     autoComplete="new-password"
@@ -343,9 +344,9 @@ export default function Register() {
                     <div className="auth-strength-bars">
                       {[1, 2, 3, 4].map((i) => (
                         <div
-                          key={i}
-                          className={`auth-strength-bar ${strength.level >= i ? 'active' : ''}`}
-                          style={strength.level >= i ? { background: strength.color } : {}}
+                           key={i}
+                           className={`auth-strength-bar ${strength.level >= i ? 'active' : ''}`}
+                           style={strength.level >= i ? { background: strength.color } : {}}
                         />
                       ))}
                     </div>
@@ -357,13 +358,13 @@ export default function Register() {
 
               {/* Confirm Password */}
               <div className="auth-field">
-                <label htmlFor="register-confirm">Confirm Password</label>
+                <label htmlFor="register-confirm">Xác nhận mật khẩu</label>
                 <div className={`auth-input-wrapper ${errors.confirmPassword ? 'error' : ''}`}>
                   <Lock size={18} className="auth-input-icon" />
                   <input
                     id="register-confirm"
                     type={showConfirm ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
+                    placeholder="Nhập lại mật khẩu"
                     value={form.confirmPassword}
                     onChange={(e) => update('confirmPassword', e.target.value)}
                     autoComplete="new-password"
@@ -391,8 +392,8 @@ export default function Register() {
                   />
                   <span className="auth-checkmark" />
                   <span>
-                    I agree to the <a href="#" className="auth-link-accent">Terms of Service</a> and{' '}
-                    <a href="#" className="auth-link-accent">Privacy Policy</a>
+                    Tôi đồng ý với <a href="#" className="auth-link-accent">Điều khoản dịch vụ</a> và{' '}
+                    <a href="#" className="auth-link-accent">Chính sách bảo mật</a>
                   </span>
                 </label>
                 {errors.agreed && <span className="auth-error">{errors.agreed}</span>}
@@ -408,7 +409,7 @@ export default function Register() {
                   <div className="auth-spinner" />
                 ) : (
                   <>
-                    <span>Create Account</span>
+                    <span>Tạo tài khoản</span>
                     <ArrowRight size={18} />
                   </>
                 )}
@@ -416,14 +417,14 @@ export default function Register() {
             </form>
 
             <div className="auth-divider">
-              <span>or</span>
+              <span>hoặc</span>
             </div>
 
             <div className="auth-alt-actions">
               <p>
-                Already have an account?{' '}
+                Đã có tài khoản?{' '}
                 <Link to="/login" className="auth-link-accent" id="go-to-login">
-                  Sign In
+                  Đăng nhập
                 </Link>
               </p>
             </div>
@@ -433,3 +434,4 @@ export default function Register() {
     </div>
   );
 }
+

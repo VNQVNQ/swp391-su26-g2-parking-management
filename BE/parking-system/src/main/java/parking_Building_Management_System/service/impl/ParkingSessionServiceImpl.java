@@ -6,10 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import parking_Building_Management_System.dto.parkingSession.request.PaymentRequest;
 import parking_Building_Management_System.dto.parkingSession.request.VehicleEntryRequest;
-import parking_Building_Management_System.dto.parkingSession.response.AvailableSlotsForEntryResponse;
-import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
-import parking_Building_Management_System.dto.parkingSession.response.FeeCalculationResponse;
-import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
+import parking_Building_Management_System.dto.parkingSession.request.VehicleExitRequest;
+import parking_Building_Management_System.dto.parkingSession.response.*;
 import parking_Building_Management_System.entity.AuditLog;
 import parking_Building_Management_System.entity.ParkingSession;
 import parking_Building_Management_System.entity.ParkingSlot;
@@ -91,6 +89,19 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .licensePlate(vehicle.getLicensePlate())
                     .message("Vehicle is inactive")
                     .errorCode("VEHICLE_INACTIVE")
+                    .build();
+        }
+
+        Optional<ParkingSession> activeSession = parkingSessionRepository.findActiveSessionByVehicleId(vehicle.getId());
+        if (activeSession.isPresent()) {
+            log.warn("Vehicle already has an active session: {}", licensePlate);
+            return EntryValidationResponse.builder()
+                    .valid(false)
+                    .foundVehicle(true)
+                    .vehicleId(vehicle.getId())
+                    .licensePlate(vehicle.getLicensePlate())
+                    .message("Xe đã ở trong bãi (đã có Parking Session hoạt động)")
+                    .errorCode("VEHICLE_ALREADY_IN_PARKING")
                     .build();
         }
 
@@ -309,9 +320,29 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     }
 
     @Override
-    public List<ParkingSession> getAllActiveSessions() {
+    @Transactional(readOnly = true)
+    public List<ActiveSessionResponse> getAllActiveSessions() {
         log.info("Getting all active sessions");
-        return parkingSessionRepository.findActiveSessions();
+        List<ParkingSession> sessions = parkingSessionRepository.findActiveSessions();
+        return sessions.stream().map(session -> {
+            String licensePlate = session.getVehicle() != null ? session.getVehicle().getLicensePlate() : null;
+            parking_Building_Management_System.entity.enums.VehicleType type = session.getVehicle() != null ? session.getVehicle().getVehicleType() : null;
+            UUID slotId = session.getSlot() != null ? session.getSlot().getId() : null;
+            String slotCode = session.getSlot() != null ? session.getSlot().getSlotCode() : null;
+            String zoneName = (session.getSlot() != null && session.getSlot().getZone() != null) ? session.getSlot().getZone().getName() : null;
+            String floorName = (session.getSlot() != null && session.getSlot().getFloor() != null) ? session.getSlot().getFloor().getName() : null;
+            
+            return ActiveSessionResponse.builder()
+                    .id(session.getId())
+                    .licensePlate(licensePlate)
+                    .vehicleType(type)
+                    .slotCode(slotCode)
+                    .slotId(slotId)
+                    .zoneName(zoneName)
+                    .floorName(floorName)
+                    .entryTime(session.getEntryTime())
+                    .build();
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     @Override
@@ -411,10 +442,10 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         long durationHours = calculateDurationInHours(session.getEntryTime(), exitTime);
 
         // Phase 4: If monthly pass is active, return 0 or apply overstay logic
-        if (session.getMonthlyPass() != null) {
-            try {
-                Optional<MonthlyPassDetailResponse> passOpt = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId());
-                if (passOpt.isPresent() && durationHours <= 24) {
+        try {
+            Optional<MonthlyPassDetailResponse> passOpt = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId());
+            if (passOpt.isPresent()) {
+                if (durationHours <= 24) {
                     // Monthly pass holder with normal stay
                     session.setFee(BigDecimal.ZERO);
                     session.setFinalFee(BigDecimal.ZERO);
@@ -451,9 +482,9 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                             .message("Overstay fee applied for monthly pass holder")
                             .build();
                 }
-            } catch (Exception e) {
-                log.warn("Monthly pass check failed: {}", e.getMessage());
             }
+        } catch (Exception e) {
+            log.warn("Monthly pass check failed: {}", e.getMessage());
         }
 
         // Phase 4: Get pricing rule (from session or look up)

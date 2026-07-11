@@ -20,6 +20,7 @@ public class ZoneResponse {
     String name;
     VehicleType vehicleType;
     Integer totalSlots;
+    Integer availableSlots;
     Boolean isActive;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

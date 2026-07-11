@@ -36,6 +36,7 @@ public class PricingRule {
 
     @Column(name = "vehicle_type", nullable = false, columnDefinition = "vehicle_type_enum")
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     VehicleType vehicleType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -44,6 +45,7 @@ public class PricingRule {
 
     @Column(name = "ticket_type", nullable = false, columnDefinition = "ticket_type_enum")
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     TicketType ticketType;
 
     @Column(name = "rate_per_hour", precision = 15, scale = 0)

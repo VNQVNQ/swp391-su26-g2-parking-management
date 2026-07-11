@@ -15,6 +15,8 @@ import parking_Building_Management_System.entity.enums.TicketType;
 import parking_Building_Management_System.entity.Booking;
 import parking_Building_Management_System.entity.MonthlyPass;
 import parking_Building_Management_System.entity.PricingRule;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,6 +25,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "parking_sessions", schema = "public", indexes = {
         @Index(name = "idx_sessions_status", columnList = "status"),
         @Index(name = "idx_sessions_entry_time", columnList = "entry_time"),
@@ -53,12 +56,12 @@ public class ParkingSession {
     ParkingSlot slot;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PARKING_STAFF_entry_id", nullable = false)
-    User PARKING_STAFFEntry;
+    @JoinColumn(name = "staff_entry_id", nullable = false)
+    User staffEntry;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PARKING_STAFF_exit_id")
-    User PARKING_STAFFExit;
+    @JoinColumn(name = "staff_exit_id")
+    User staffExit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applied_rule_id")
@@ -86,23 +89,26 @@ public class ParkingSession {
     @Column(name = "final_fee", precision = 15, scale = 0)
     BigDecimal finalFee;
 
-    @Column(name = "payment_status", nullable = false, columnDefinition = "payment_status_enum")
+    @Column(name = "payment_status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     PaymentStatus paymentStatus;
 
-    @Column(name = "status", nullable = false, columnDefinition = "session_status_enum")
+    @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     ParkingSessionStatus status;
 
-    @Column(name = "ticket_type", nullable = false, columnDefinition = "ticket_type_enum")
+    @Column(name = "ticket_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     TicketType ticketType;
 
     @Column(name = "face_verified_at_exit")
     Boolean faceVerifiedAtExit;
 
-    @Column(name = "PARKING_STAFF_override_used")
-    Boolean PARKING_STAFFOverrideUsed;
+    @Column(name = "staff_override_used")
+    Boolean staffOverrideUsed;
 
     @Column(name = "overstay_flagged_at")
     LocalDateTime overstayFlaggedAt;

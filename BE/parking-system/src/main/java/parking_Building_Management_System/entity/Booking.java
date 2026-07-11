@@ -6,8 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
 import parking_Building_Management_System.entity.enums.BookingStatus;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -49,7 +48,6 @@ public class Booking {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM) // Fix lỗi toán tử so sánh (operator does not exist) với Postgres Enum
     BookingStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)

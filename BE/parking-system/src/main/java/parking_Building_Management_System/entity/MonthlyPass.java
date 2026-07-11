@@ -6,8 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
 import parking_Building_Management_System.entity.ParkingSlot;
 import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
@@ -50,7 +49,6 @@ public class MonthlyPass {
 
     @Column(name = "payment_status", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM) // Fix lỗi toán tử so sánh (payment_status_enum = character varying) trên Postgres
     PaymentStatus paymentStatus;
 
     @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")

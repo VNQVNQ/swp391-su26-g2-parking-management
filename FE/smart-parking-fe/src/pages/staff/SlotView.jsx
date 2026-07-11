@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+
+const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
 export default function SlotView() {
   const [zones,       setZones]       = useState([]);
@@ -7,6 +9,7 @@ export default function SlotView() {
   const [activeZone,  setActiveZone]  = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
+  const [hoveredSlot, setHoveredSlot] = useState(null);
 
   // ── Load zones khi mount ───────────────────────────────────────────────────
   useEffect(() => {
@@ -29,28 +32,25 @@ export default function SlotView() {
   }, []);
 
   // ── Load slots khi đổi zone ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!activeZone) return;
-    const loadSlots = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/v1/parking-slots/zone/${activeZone.id}`);
-        const data = res.data.data ?? res.data ?? [];
-        setSlots(data);
-      } catch {
-        setSlots([]);
-      } finally { setLoading(false); }
-    };
-    loadSlots();
-  }, [activeZone]);
+  const loadSlots = useCallback(async (zone) => {
+    if (!zone) return;
+    setLoading(true);
+    try {
+      const res = await api.get(`/api/v1/parking-slots/zone/${zone.id}`);
+      const data = res.data.data ?? res.data ?? [];
+      setSlots(data);
+    } catch {
+      setSlots([]);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadSlots(activeZone); }, [activeZone, loadSlots]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const total     = slots.length;
   const occupied  = slots.filter(s => s.currentSessionId !== null && s.currentSessionId !== undefined).length;
   const available = total - occupied;
   const pct       = total > 0 ? Math.round((occupied / total) * 100) : 0;
-
-  const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
   // ── Group zones by floor ───────────────────────────────────────────────────
   const floorMap = zones.reduce((acc, z) => {
@@ -63,8 +63,16 @@ export default function SlotView() {
   return (
     <div className="page-full">
       <div className="page-header">
-        <h2>🅿️ Slot View</h2>
-        <p>Tình trạng chỗ đỗ xe theo khu vực</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2>🅿️ Slot View</h2>
+            <p>Tình trạng chỗ đỗ xe theo khu vực</p>
+          </div>
+          <button onClick={() => loadSlots(activeZone)}
+            style={{ padding: '8px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.85rem' }}>
+            🔄 Làm mới
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -74,10 +82,10 @@ export default function SlotView() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Tổng slot',    value: total,     color: 'var(--text-primary)'  },
-          { label: 'Đang đỗ',     value: occupied,  color: '#ef4444'              },
-          { label: 'Còn trống',   value: available, color: 'var(--accent-primary)' },
-          { label: 'Tỉ lệ lấp đầy', value: `${pct}%`, color: '#f59e0b'           },
+          { label: 'Tổng slot',      value: total,     color: 'var(--text-primary)'   },
+          { label: 'Đang đỗ',        value: occupied,  color: '#ef4444'               },
+          { label: 'Còn trống',      value: available, color: 'var(--accent-primary)'  },
+          { label: 'Tỉ lệ lấp đầy', value: `${pct}%`, color: '#f59e0b'               },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-card-header">
@@ -108,7 +116,8 @@ export default function SlotView() {
                     style={{
                       width: '100%', textAlign: 'left', padding: '10px 16px',
                       background: activeZone?.id === zone.id ? 'var(--accent-primary-glow)' : 'transparent',
-                      border: 'none', borderLeft: activeZone?.id === zone.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                      border: 'none',
+                      borderLeft: activeZone?.id === zone.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
                       borderBottom: '1px solid var(--border-color)',
                       cursor: 'pointer', transition: 'all 0.2s',
                     }}>
@@ -158,22 +167,69 @@ export default function SlotView() {
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Không có slot nào</p>
               ) : (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 8, marginBottom: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
                     {slots.map(slot => {
                       const isOccupied = slot.currentSessionId !== null && slot.currentSessionId !== undefined;
+                      const isHovered  = hoveredSlot === slot.id;
                       return (
-                        <div key={slot.id} title={`${slot.slotCode} — ${isOccupied ? 'Đang đỗ' : 'Trống'}`}
+                        <div key={slot.id}
+                          onMouseEnter={() => setHoveredSlot(slot.id)}
+                          onMouseLeave={() => setHoveredSlot(null)}
                           style={{
-                            background: isOccupied ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
-                            border: `1.5px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                            position: 'relative',
+                            background: isOccupied
+                              ? (isHovered ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.08)')
+                              : (isHovered ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.08)'),
+                            border: `1.5px solid ${isOccupied
+                              ? (isHovered ? '#ef4444' : 'rgba(239,68,68,0.3)')
+                              : (isHovered ? 'var(--accent-primary)' : 'rgba(16,185,129,0.3)')}`,
                             borderRadius: 'var(--radius-md)',
-                            padding: '10px 4px',
+                            padding: '10px 6px',
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            height: 60, cursor: 'default',
+                            minHeight: isOccupied ? 82 : 60,
+                            cursor: isOccupied ? 'pointer' : 'default',
+                            transition: 'all 0.15s',
                           }}>
+                          {/* Slot code */}
                           <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isOccupied ? '#ef4444' : 'var(--accent-primary)' }}>
-                            {slot.slotCode.split('-')[1] || slot.slotCode}
+                            {slot.slotCode.split('-').slice(-1)[0] || slot.slotCode}
                           </span>
+
+                          {/* Vehicle info nếu đang đỗ */}
+                          {isOccupied && (
+                            <>
+                              <span style={{ fontSize: '1rem', marginTop: 2 }}>
+                                {VEHICLE_ICON[slot.occupyingVehicleType] || '🚗'}
+                              </span>
+                              <span style={{
+                                fontSize: '0.56rem', fontFamily: 'monospace', fontWeight: 700,
+                                color: 'var(--text-primary)', marginTop: 2,
+                                background: 'var(--bg-primary)', borderRadius: 3,
+                                padding: '1px 4px', maxWidth: '98%', overflow: 'hidden',
+                                textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center',
+                              }}>
+                                {slot.licensePlate || '—'}
+                              </span>
+                            </>
+                          )}
+
+                          {/* Tooltip khi hover vào slot đang đỗ */}
+                          {isOccupied && isHovered && (
+                            <div style={{
+                              position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+                              background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                              borderRadius: 'var(--radius-md)', padding: '8px 12px', zIndex: 200,
+                              boxShadow: '0 6px 24px rgba(0,0,0,0.35)', minWidth: 150, pointerEvents: 'none',
+                            }}>
+                              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                                {VEHICLE_ICON[slot.occupyingVehicleType]} {slot.licensePlate || '—'}
+                              </p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Slot: {slot.slotCode}</p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                Loại xe: {slot.occupyingVehicleType === 'MOTORBIKE' ? 'Xe máy' : slot.occupyingVehicleType === 'CAR' ? 'Ô tô' : slot.occupyingVehicleType === 'TRUCK' ? 'Xe tải' : '—'}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

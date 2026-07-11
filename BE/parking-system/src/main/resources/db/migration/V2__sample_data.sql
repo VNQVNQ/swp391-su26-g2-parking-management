@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 -- PARKING BUILDING MANAGEMENT SYSTEM — Sample Data v1.0
 -- SWP391 · SU26SWP07
 -- Sample/Test data for development environment
@@ -34,10 +34,10 @@ VALUES (
     true
 );
 
--- PARKING_MANAGER user (Sửa từ 'PARKING_MANAGER' thành 'PARKING_PARKING_MANAGER')
+-- PARKING_MANAGER user (Sửa từ 'PARKING_MANAGER' thành 'PARKING_MANAGER')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_MANAGER' LIMIT 1),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_MANAGER' LIMIT 1),
     'Trần Thị PARKING_MANAGER',
     'PARKING_MANAGER@parking.com',
     '0901000002',
@@ -49,11 +49,11 @@ VALUES (
     true
 );
 
--- PARKING_STAFF users (Sửa từ 'PARKING_STAFF' thành 'PARKING_PARKING_STAFF')
+-- PARKING_STAFF users (Sửa từ 'PARKING_STAFF' thành 'PARKING_STAFF')
 INSERT INTO users (role_id, full_name, email, phone_number, identify_number, password, address, date_of_birth, gender, user_is_active)
 VALUES
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Nguyễn Văn PARKING_STAFF01',
     'PARKING_STAFF01@parking.com',
     '0901000003',
@@ -65,7 +65,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Lê Thị PARKING_STAFF02',
     'PARKING_STAFF02@parking.com',
     '0901000004',
@@ -77,7 +77,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Hoàng Văn PARKING_STAFF03',
     'PARKING_STAFF03@parking.com',
     '0901000005',
@@ -89,7 +89,7 @@ VALUES
     true
 ),
 (
-    (SELECT role_id FROM roles WHERE role_code = 'PARKING_PARKING_STAFF' LIMIT 1),
+    (SELECT role_id FROM roles WHERE role_code = 'PARKING_STAFF' LIMIT 1),
     'Đỗ Thị PARKING_STAFF04',
     'PARKING_STAFF04@parking.com',
     '0901000006',
@@ -405,7 +405,7 @@ LIMIT 5;
 -- ============================================================
 
 -- Recent completed sessions
-INSERT INTO parking_sessions (vehicle_id, slot_id, PARKING_STAFF_entry_id, PARKING_STAFF_exit_id, applied_rule_id, entry_time, exit_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, PARKING_STAFF_override_used)
+INSERT INTO parking_sessions (vehicle_id, slot_id, staff_entry_id, staff_exit_id, applied_rule_id, entry_time, exit_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, staff_override_used)
 SELECT DISTINCT ON (v.id, ps.id)
     v.id,
     ps.id,
@@ -433,7 +433,7 @@ CROSS JOIN (SELECT id, vehicle_type FROM parking_slots WHERE maintenance_status 
 WHERE ps.vehicle_type = v.vehicle_type;
 
 -- Active sessions (currently parked)
-INSERT INTO parking_sessions (vehicle_id, slot_id, PARKING_STAFF_entry_id, applied_rule_id, entry_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, PARKING_STAFF_override_used)
+INSERT INTO parking_sessions (vehicle_id, slot_id, staff_entry_id, applied_rule_id, entry_time, fee, discount_amount, final_fee, payment_status, status, ticket_type, face_verified_at_exit, staff_override_used)
 SELECT DISTINCT ON (v.id, ps.id)
     v.id,
     ps.id,

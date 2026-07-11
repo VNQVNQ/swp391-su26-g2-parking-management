@@ -9,6 +9,7 @@ import parking_Building_Management_System.entity.Floor;
 import parking_Building_Management_System.entity.Zone;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.repository.FloorRepository;
+import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.service.ZoneService;
 import java.util.List;
@@ -22,6 +23,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     private final ZoneRepository zoneRepository;
     private final FloorRepository floorRepository;
+    private final ParkingSlotRepository parkingSlotRepository;
 
     @Override
     public ZoneResponse createZone(ZoneRequest request) {
@@ -30,6 +32,13 @@ public class ZoneServiceImpl implements ZoneService {
 
         if (request.getVehicleType() == null) {
             throw new RuntimeException("Vehicle type is required");
+        }
+
+        // Prevent duplicate zone names in the same floor
+        boolean nameExists = zoneRepository.findByFloorId(request.getFloorId()).stream()
+                .anyMatch(z -> z.getName().equalsIgnoreCase(request.getName()));
+        if (nameExists) {
+            throw new RuntimeException("Khu vực với tên này đã tồn tại trong tầng");
         }
 
         Zone zone = new Zone();
@@ -89,6 +98,14 @@ public class ZoneServiceImpl implements ZoneService {
                 .orElseThrow(() -> new RuntimeException("Zone not found"));
 
         if (request.getName() != null) {
+            // Prevent duplicate zone names in the same floor
+            if (!request.getName().equalsIgnoreCase(zone.getName())) {
+                boolean nameExists = zoneRepository.findByFloorId(zone.getFloor().getId()).stream()
+                        .anyMatch(z -> z.getName().equalsIgnoreCase(request.getName()));
+                if (nameExists) {
+                    throw new RuntimeException("Khu vực với tên này đã tồn tại trong tầng");
+                }
+            }
             zone.setName(request.getName());
         }
 
@@ -109,10 +126,14 @@ public class ZoneServiceImpl implements ZoneService {
         if (!zoneRepository.existsById(id)) {
             throw new RuntimeException("Zone not found");
         }
+        if (!parkingSlotRepository.findByZoneId(id).isEmpty()) {
+            throw new RuntimeException("Không thể xóa khu vực này vì đang chứa các chỗ đỗ (Slot)");
+        }
         zoneRepository.deleteById(id);
     }
 
     private ZoneResponse mapToResponse(Zone zone) {
+        int availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId()).size();
         return new ZoneResponse(
                 zone.getId(),
                 zone.getFloor().getId(),
@@ -120,6 +141,7 @@ public class ZoneServiceImpl implements ZoneService {
                 zone.getName(),
                 zone.getVehicleType(),
                 zone.getTotalSlots(),
+                availableSlots,
                 zone.getIsActive(),
                 zone.getCreatedAt(),
                 zone.getUpdatedAt()

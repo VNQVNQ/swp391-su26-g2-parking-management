@@ -61,6 +61,12 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
             throw new IllegalArgumentException("End date must be after start date");
         }
 
+        LocalDate today = LocalDate.now();
+        if (monthlyPassRepository.existsByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqual(
+                request.getVehicleId(), today)) {
+            throw new IllegalStateException("Xe này đã có vé tháng còn hiệu lực. Vui lòng chọn xe khác hoặc đợi vé hiện tại hết hạn.");
+        }
+
         MonthlyPass pass = new MonthlyPass();
         pass.setVehicle(vehicle);
         pass.setSlot(slot);

@@ -18,6 +18,7 @@ import parking_Building_Management_System.dto.parkingSession.request.VehicleEntr
 import parking_Building_Management_System.dto.parkingSession.response.AvailableSlotsForEntryResponse;
 import parking_Building_Management_System.dto.parkingSession.response.EntryValidationResponse;
 import parking_Building_Management_System.dto.parkingSession.response.VehicleEntryResponse;
+import parking_Building_Management_System.dto.parkingSession.response.ActiveSessionResponse;
 import parking_Building_Management_System.service.ParkingSessionService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.ApiResponseFactory;
@@ -125,7 +126,11 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/entry - Vehicle: {}, Booking: {}", request.getLicensePlate(), bookingCode);
 
         try {
+<<<<<<< HEAD
             // BR-29: Extract staff ID from authentication
+=======
+            // BR-29: Extract PARKING_STAFF ID from authentication
+>>>>>>> 54ee084 (fix monthlypass, wrong fuction)
             Long staffId = extractStaffIdFromAuth(authentication);
 
             VehicleEntryResponse response = parkingSessionService.createParkingSession(request, staffId, bookingCode);
@@ -202,14 +207,14 @@ public class ParkingSessionController {
      * GET /api/v1/parking-sessions/active/all
      */
     @GetMapping("/active/all")
-    public ResponseEntity<ApiResponse<List<?>>> getAllActiveSessions() {
+    public ResponseEntity<ApiResponse<List<ActiveSessionResponse>>> getAllActiveSessions() {
 
         log.info("GET /api/v1/parking-sessions/active/all - Getting all active sessions");
 
         try {
-            var sessions = parkingSessionService.getAllActiveSessions();
+            List<ActiveSessionResponse> sessions = parkingSessionService.getAllActiveSessions();
 
-            ApiResponse<List<?>> apiResponse = ApiResponseFactory.success(
+            ApiResponse<List<ActiveSessionResponse>> apiResponse = ApiResponseFactory.success(
                     sessions,
                     "Found " + sessions.size() + " active sessions"
             );
@@ -218,7 +223,7 @@ public class ParkingSessionController {
         } catch (Exception e) {
             log.error("Error getting active sessions: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body((ApiResponse<List<?>>) (Object) ApiResponseFactory.internalServerError(e.getMessage()));
+                    .body((ApiResponse<List<ActiveSessionResponse>>) (Object) ApiResponseFactory.internalServerError(e.getMessage()));
         }
     }
 
@@ -239,7 +244,11 @@ public class ParkingSessionController {
         log.info("POST /api/v1/parking-sessions/exit - Session: {}", request.getSessionId());
 
         try {
+<<<<<<< HEAD
             // Extract staff ID from authentication
+=======
+            // Extract PARKING_STAFF ID from authentication
+>>>>>>> 54ee084 (fix monthlypass, wrong fuction)
             Long staffId = extractStaffIdFromAuth(authentication);
 
             var session = parkingSessionService.updateSessionOnExit(request.getSessionId(), staffId);

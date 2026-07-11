@@ -1,26 +1,61 @@
 import { CalendarCheck, CreditCard, Car, Bike } from 'lucide-react';
-import { useState } from 'react';
-import { useParkingStore } from '../../store/parkingStore';
+import { useState, useEffect } from 'react';
+import api from '../../services/api';
 
 export default function PassesBookings() {
-  const store = useParkingStore();
   const [tab, setTab] = useState('passes');
+  const [passes, setPasses] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [passesRes, bookingsRes] = await Promise.all([
+        api.get('/api/v1/monthly-passes').catch(() => ({ data: { data: [] } })),
+        api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } }))
+      ]);
+
+      const passesData = passesRes.data?.data ?? passesRes.data ?? [];
+      const bookingsData = bookingsRes.data?.data ?? bookingsRes.data ?? [];
+
+      setPasses(Array.isArray(passesData) ? passesData : []);
+      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+    } catch (err) {
+      console.error(err);
+      setError('Không thể tải dữ liệu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelBooking = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt chỗ này?')) return;
+    try {
+      await api.delete(`/api/v1/bookings/${id}`);
+      loadData();
+    } catch (err) {
+      alert('Không thể hủy đặt chỗ: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   const stats = [
-    { label: 'Active Passes', value: store.passes.filter(p => p.status === 'Active').length, icon: CreditCard, color: '#10b981' },
-    { label: 'Pending Bookings', value: store.bookings.filter(b => b.status === 'Pending').length, icon: CalendarCheck, color: '#f59e0b' },
-    { label: 'Car Passes', value: store.passes.filter(p => p.type === 'Car').length, icon: Car, color: '#3b82f6' },
-    { label: 'Motorbike Passes', value: store.passes.filter(p => p.type === 'Motorbike').length, icon: Bike, color: '#8b5cf6' },
+    { label: 'Vé tháng đang hoạt động', value: passes.filter(p => p.status === 'ACTIVE' || p.isActive).length, icon: CreditCard, color: '#10b981' },
+    { label: 'Chờ xử lý', value: bookings.filter(b => b.status === 'PENDING').length, icon: CalendarCheck, color: '#f59e0b' },
+    { label: 'Vé ô tô', value: passes.filter(p => p.vehicleType === 'CAR' || p.vehicle?.vehicleType === 'CAR').length, icon: Car, color: '#3b82f6' },
+    { label: 'Vé xe máy', value: passes.filter(p => p.vehicleType === 'MOTORBIKE' || p.vehicle?.vehicleType === 'MOTORBIKE').length, icon: Bike, color: '#8b5cf6' },
   ];
-
-  // Handlers moved to Driver page - Manager can only view
-
 
   return (
     <div className="page-full-width">
       <div className="page-header">
-        <h2>Monthly Passes & Bookings</h2>
-        <p>Manage monthly passes and advance bookings</p>
+        <h2>🎫 Vé tháng & Đặt trước</h2>
+        <p>Quản lý vé tháng và các đơn đặt chỗ trước</p>
       </div>
 
       <div className="stats-grid">
@@ -38,130 +73,169 @@ export default function PassesBookings() {
         })}
       </div>
 
+      {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
+
       {/* Tab Nav */}
       <div className="tab-nav">
-        <button className={`tab-btn ${tab === 'passes' ? 'active' : ''}`} onClick={() => setTab('passes')}>Monthly Passes</button>
-        <button className={`tab-btn ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>Advance Bookings</button>
+        <button className={`tab-btn ${tab === 'passes' ? 'active' : ''}`} onClick={() => setTab('passes')}>Danh sách Vé tháng</button>
+        <button className={`tab-btn ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>Danh sách Đặt chỗ</button>
       </div>
 
-       {/* Monthly Passes Tab - READ ONLY */}
-       {tab === 'passes' && (
-         <>
-           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-             <div>
-               <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Monthly Pass List</h3>
-               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>View only - Drivers register passes from their account</p>
-             </div>
-           </div>
-          <div className="card" style={{ overflowX: 'auto', marginBottom: '24px' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>License Plate</th>
-                  <th>Vehicle Type</th>
-                  <th>Owner</th>
-                  <th>Phone</th>
-                  <th>Start Date</th>
-                  <th>Expiry Date</th>
-                  <th>Fee</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {store.passes.map(p => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600 }}>{p.plate}</td>
-                    <td>{p.type}</td>
-                    <td>{p.owner}</td>
-                    <td>{p.phone}</td>
-                    <td>{p.start}</td>
-                    <td>{p.expiry}</td>
-                    <td style={{ fontWeight: 600 }}>₫{p.fee.toLocaleString()}</td>
-                    <td><span className={`badge ${p.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>{p.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Monthly Pass Pricing */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-            <div className="card" style={{ borderLeft: '4px solid #3b82f6', textAlign: 'center', padding: '28px' }}>
-              <Car size={28} style={{ color: '#3b82f6', marginBottom: '8px' }} />
-              <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Car</h4>
-              <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫2,500,000</p>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/month</span>
-            </div>
-            <div className="card" style={{ borderLeft: '4px solid #8b5cf6', textAlign: 'center', padding: '28px' }}>
-              <Bike size={28} style={{ color: '#8b5cf6', marginBottom: '8px' }} />
-              <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Motorbike</h4>
-              <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫500,000</p>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/month</span>
-            </div>
-          </div>
-        </>
-      )}
-
-       {/* Advance Bookings Tab - READ ONLY */}
-       {tab === 'bookings' && (
-         <>
-           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-             <div>
-               <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Bookings List</h3>
-               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>View only - Drivers make bookings from their account</p>
-             </div>
-           </div>
-          <div className="card" style={{ overflowX: 'auto', marginBottom: '24px' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>License Plate</th>
-                  <th>Vehicle Type</th>
-                  <th>Reserved Slot</th>
-                  <th>Start Time</th>
-                  <th>End Time</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {store.bookings.map(b => (
-                  <tr key={b.id}>
-                    <td style={{ fontWeight: 600 }}>{b.plate}</td>
-                    <td>{b.type}</td>
-                    <td>{b.slot}</td>
-                    <td>{b.startTime}</td>
-                    <td>{b.endTime}</td>
-                    <td><span className={`badge ${b.status === 'Confirmed' ? 'badge-success' : 'badge-warning'}`}>{b.status}</span></td>
-                    <td>
-                      <button className="btn-sm btn-sm-danger" onClick={() => store.cancelBooking(b.id)}>Cancel</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Booking Rules */}
-          <div className="rules-section">
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px' }}>Booking Rules</h4>
-            <div className="rules-grid">
-              {[
-                { code: 'BR-30', title: 'Slot Hold', desc: 'Reserved slots are held for maximum 30 minutes after start time' },
-                { code: 'BR-31', title: 'Cancellation', desc: 'Bookings can be cancelled up to 1 hour before start time' },
-                { code: 'BR-32', title: 'Auto-Release', desc: 'Unredeemed bookings are automatically released after hold period' },
-              ].map((r, i) => (
-                <div key={i} className="rule-card">
-                  <div className="rule-card-title"><span className="rule-code">{r.code}</span>{r.title}</div>
-                  <p>{r.desc}</p>
+      {loading ? (
+        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: 'var(--text-muted)' }}>Đang tải dữ liệu...</p>
+        </div>
+      ) : (
+        <>
+          {/* Monthly Passes Tab */}
+          {tab === 'passes' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Danh sách Vé tháng</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>Chỉ xem - Tài xế đăng ký vé tháng từ tài khoản của họ</p>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+              
+              {passes.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+                  <p style={{ color: 'var(--text-muted)' }}>Chưa có vé tháng nào trong hệ thống</p>
+                </div>
+              ) : (
+                <div className="card" style={{ overflowX: 'auto', marginBottom: '24px' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Biển số xe</th>
+                        <th>Loại xe</th>
+                        <th>Ngày bắt đầu</th>
+                        <th>Ngày hết hạn</th>
+                        <th>Phí</th>
+                        <th>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {passes.map(p => {
+                        const plate = p.licensePlate || p.vehicle?.licensePlate || 'N/A';
+                        const type = p.vehicleType || p.vehicle?.vehicleType || 'N/A';
+                        const status = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
+                        
+                        return (
+                          <tr key={p.id}>
+                            <td style={{ fontWeight: 600 }}>{plate}</td>
+                            <td>{type === 'CAR' ? 'Ô tô' : type === 'MOTORBIKE' ? 'Xe máy' : type}</td>
+                            <td>{p.startDate ? new Date(p.startDate).toLocaleDateString('vi-VN') : '—'}</td>
+                            <td>{p.endDate ? new Date(p.endDate).toLocaleDateString('vi-VN') : '—'}</td>
+                            <td style={{ fontWeight: 600 }}>₫{(p.fee || 0).toLocaleString()}</td>
+                            <td>
+                              <span className={`badge ${status === 'ACTIVE' || status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
+                                {status === 'ACTIVE' || status === 'Active' ? 'Hoạt động' : 'Hết hạn'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Monthly Pass Pricing Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                <div className="card" style={{ borderLeft: '4px solid #3b82f6', textAlign: 'center', padding: '28px' }}>
+                  <Car size={28} style={{ color: '#3b82f6', marginBottom: '8px' }} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Ô tô</h4>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫2,500,000</p>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
+                </div>
+                <div className="card" style={{ borderLeft: '4px solid #8b5cf6', textAlign: 'center', padding: '28px' }}>
+                  <Bike size={28} style={{ color: '#8b5cf6', marginBottom: '8px' }} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Xe máy</h4>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫500,000</p>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Bookings Tab */}
+          {tab === 'bookings' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Danh sách Đặt chỗ</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>Chỉ xem - Tài xế thực hiện đặt chỗ từ tài khoản của họ</p>
+                </div>
+              </div>
+
+              {bookings.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+                  <p style={{ color: 'var(--text-muted)' }}>Chưa có đơn đặt chỗ nào</p>
+                </div>
+              ) : (
+                <div className="card" style={{ overflowX: 'auto', marginBottom: '24px' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Mã đặt chỗ</th>
+                        <th>Biển số xe</th>
+                        <th>Chỗ đỗ</th>
+                        <th>Bắt đầu</th>
+                        <th>Kết thúc</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map(b => {
+                        const plate = b.licensePlate || b.vehicle?.licensePlate || 'N/A';
+                        const slot = b.slotCode || b.slot?.slotCode || 'N/A';
+                        
+                        return (
+                          <tr key={b.id}>
+                            <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.bookingCode || b.id.substring(0,8)}</td>
+                            <td style={{ fontWeight: 600 }}>{plate}</td>
+                            <td>{slot}</td>
+                            <td>{b.startTime ? new Date(b.startTime).toLocaleString('vi-VN') : '—'}</td>
+                            <td>{b.endTime ? new Date(b.endTime).toLocaleString('vi-VN') : '—'}</td>
+                            <td>
+                              <span className={`badge ${b.status === 'CONFIRMED' ? 'badge-success' : b.status === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
+                                {b.status === 'CONFIRMED' ? 'Đã xác nhận' : b.status === 'PENDING' ? 'Đang chờ' : b.status === 'CANCELLED' ? 'Đã hủy' : b.status}
+                              </span>
+                            </td>
+                            <td>
+                              {b.status !== 'CANCELLED' && (
+                                <button className="btn-sm btn-sm-danger" onClick={() => handleCancelBooking(b.id)}>Hủy</button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Booking Rules */}
+              <div className="rules-section">
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '12px' }}>Quy định Đặt chỗ</h4>
+                <div className="rules-grid">
+                  {[
+                    { code: 'BR-30', title: 'Giữ chỗ', desc: 'Chỗ đỗ được giữ tối đa 30 phút sau thời gian bắt đầu' },
+                    { code: 'BR-31', title: 'Hủy chỗ', desc: 'Có thể hủy đặt chỗ trước 1 giờ so với thời gian bắt đầu' },
+                    { code: 'BR-32', title: 'Tự động hủy', desc: 'Đặt chỗ không được sử dụng sẽ tự động hủy sau thời gian giữ chỗ' },
+                  ].map((r, i) => (
+                    <div key={i} className="rule-card">
+                      <div className="rule-card-title"><span className="rule-code">{r.code}</span>{r.title}</div>
+                      <p>{r.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
-
-       {/* Modals removed - Managers cannot create passes/bookings */}
     </div>
   );
 }

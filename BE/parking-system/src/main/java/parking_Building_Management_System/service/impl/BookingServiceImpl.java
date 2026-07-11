@@ -43,6 +43,11 @@ public class BookingServiceImpl implements BookingService {
                     return new RuntimeException("Vehicle not found with ID: " + vehicleId);
                 });
 
+        List<Booking> pendingBookings = bookingRepository.findByVehicleIdAndStatus(vehicleId, BookingStatus.PENDING);
+        if (!pendingBookings.isEmpty()) {
+            throw new IllegalStateException("Xe này đã có lượt đặt chỗ đang chờ (PENDING). Không thể tạo thêm lượt đặt chỗ mới.");
+        }
+
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime minStartTime = now.plusMinutes(5);
         
@@ -166,34 +171,34 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingDetailResponse confirmBooking(UUID bookingId, UUID PARKING_STAFFId) throws BookingExpiredException {
-        log.info("Confirming booking ID: {} by PARKING_STAFF ID: {}", bookingId, PARKING_STAFFId);
+    public BookingDetailResponse confirmBooking(UUID bookingId, Long staffId) throws BookingExpiredException {
+        log.info("Confirming booking ID: {} by PARKING_STAFF ID: {}", bookingId, staffId);
         
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {
-                    log.error("Booking not found with ID: {}", bookingId);
-                    return new RuntimeException("Booking not found with ID: " + bookingId);
-                });
+                     log.error("Booking not found with ID: {}", bookingId);
+                     return new RuntimeException("Booking not found with ID: " + bookingId);
+                 });
 
-        if (booking.getBookingExpiryAt().isBefore(LocalDateTime.now())) {
-            throw new BookingExpiredException("Booking has expired and cannot be confirmed");
-        }
+         if (booking.getBookingExpiryAt().isBefore(LocalDateTime.now())) {
+             throw new BookingExpiredException("Booking has expired and cannot be confirmed");
+         }
 
-        if (!booking.getStatus().equals(BookingStatus.PENDING)) {
-            throw new InvalidBookingStatusException("Booking status must be PENDING to confirm. Current status: " + booking.getStatus());
-        }
+         if (!booking.getStatus().equals(BookingStatus.PENDING)) {
+             throw new InvalidBookingStatusException("Booking status must be PENDING to confirm. Current status: " + booking.getStatus());
+         }
 
-        booking.setStatus(BookingStatus.CONFIRMED);
-        booking = bookingRepository.save(booking);
-        log.info("Booking confirmed successfully with ID: {}", bookingId);
+         booking.setStatus(BookingStatus.CONFIRMED);
+         booking = bookingRepository.save(booking);
+         log.info("Booking confirmed successfully with ID: {}", bookingId);
 
-        return mapToDetailResponse(booking);
-    }
+         return mapToDetailResponse(booking);
+     }
 
-    @Override
-    @Transactional
-    public BookingDetailResponse cancelBooking(UUID bookingId, UUID cancelledByUserId) {
-        log.info("Cancelling booking ID: {} by user ID: {}", bookingId, cancelledByUserId);
+     @Override
+     @Transactional
+     public BookingDetailResponse cancelBooking(UUID bookingId, Long cancelledByUserId) {
+         log.info("Cancelling booking ID: {} by user ID: {}", bookingId, cancelledByUserId);
         
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> {
