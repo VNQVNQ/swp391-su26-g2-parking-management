@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save, Edit2, Check, X, RefreshCw, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Monitor, Users, Server, Lock, Save, Edit2, Check, X, RefreshCw, UserPlus, Eye, EyeOff, ClipboardList, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useParkingStore } from '../../store/parkingStore';
 import api from '../../services/api';
@@ -56,6 +56,14 @@ export default function Settings() {
   // Kiểm tra chế độ demo
   const isDemoMode = localStorage.getItem('accessToken') === 'demo-token';
 
+  // ── Trạng thái Audit Log ──
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState(null);
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditFilterAction, setAuditFilterAction] = useState('');
+  const [auditExpanded, setAuditExpanded] = useState(true);
+
   // Đồng bộ với store
   useEffect(() => {
     setNotifications(store.settings.notifications);
@@ -93,6 +101,37 @@ export default function Settings() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // ── Lấy danh sách Audit Log ──
+  const fetchAuditLogs = useCallback(async () => {
+    if (isDemoMode) {
+      setAuditLogs([
+        { id: '1', action: 'USER_SELF_REGISTER', userName: 'Nguyễn Văn A', userEmail: 'a@mail.com', entityName: 'users', entityId: '5', createdAt: '2026-07-12T10:30:00', newValues: null },
+        { id: '2', action: 'ADMIN_CREATE_USER', userName: 'Admin', userEmail: 'admin@parking.com', entityName: 'users', entityId: '6', createdAt: '2026-07-12T09:15:00', newValues: '{"role":"PARKING_STAFF"}' },
+        { id: '3', action: 'SESSION_CREATE', userName: 'Staff 01', userEmail: 'staff@parking.com', entityName: 'parking_sessions', entityId: '100', createdAt: '2026-07-11T14:20:00', newValues: null },
+        { id: '4', action: 'PAYMENT_PROCESS', userName: 'Staff 01', userEmail: 'staff@parking.com', entityName: 'parking_sessions', entityId: '100', createdAt: '2026-07-11T16:45:00', newValues: null },
+        { id: '5', action: 'ADMIN_UPDATE_USER_ROLE', userName: 'Admin', userEmail: 'admin@parking.com', entityName: 'users', entityId: '3', createdAt: '2026-07-10T08:00:00', newValues: '{"oldRole":"DRIVER","newRole":"PARKING_STAFF"}' },
+      ]);
+      return;
+    }
+
+    setAuditLoading(true);
+    setAuditError(null);
+    try {
+      const res = await api.get('/api/v1/audit-logs');
+      const data = res.data || [];
+      setAuditLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+      setAuditError(err.response?.data?.message || err.message || 'Không thể tải lịch sử hoạt động');
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [isDemoMode]);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [fetchAuditLogs]);
 
   // ── Cập nhật vai trò người dùng ──
   const handleRoleUpdate = async (userId) => {
@@ -640,6 +679,198 @@ export default function Settings() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ═══════════════════════ Lịch sử Hoạt động (Audit Log) ═══════════════════════ */}
+      <div className="settings-card" id="audit-log-section">
+        <div className="settings-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setAuditExpanded(!auditExpanded)}>
+            <ClipboardList size={20} /> Lịch sử Hoạt động (Audit Log)
+            {isDemoMode && <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Chế độ Demo</span>}
+            {auditExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+          </span>
+          <button
+            className="btn-sm btn-sm-secondary"
+            onClick={fetchAuditLogs}
+            disabled={auditLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', fontSize: '0.8rem' }}
+            title="Tải lại"
+          >
+            <RefreshCw size={14} className={auditLoading ? 'spin-animation' : ''} />
+            Tải lại
+          </button>
+        </div>
+
+        {auditExpanded && (
+          <>
+            {/* Filter Bar */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input
+                  type="text"
+                  placeholder="Tìm theo người dùng, hành động..."
+                  value={auditSearch}
+                  onChange={e => setAuditSearch(e.target.value)}
+                  style={{
+                    ...inputSt,
+                    paddingLeft: '36px',
+                  }}
+                />
+              </div>
+              <select
+                value={auditFilterAction}
+                onChange={e => setAuditFilterAction(e.target.value)}
+                style={{ ...inputSt, minWidth: '180px', fontWeight: 600 }}
+              >
+                <option value="">Tất cả hành động</option>
+                <option value="USER_SELF_REGISTER">Đăng ký</option>
+                <option value="ADMIN_CREATE_USER">Admin tạo TK</option>
+                <option value="ADMIN_UPDATE_USER_ROLE">Đổi quyền</option>
+                <option value="SESSION_CREATE">Tạo phiên gửi</option>
+                <option value="PAYMENT_PROCESS">Thanh toán</option>
+                <option value="GET_ALL_USERS">Xem DS người dùng</option>
+                <option value="DELETE_USER">Xóa tài khoản</option>
+                <option value="UPDATE_USER">Cập nhật TK</option>
+                <option value="FORGOT_PASSWORD">Quên mật khẩu</option>
+                <option value="RESET_PASSWORD">Đặt lại MK</option>
+                <option value="CHANGE_PASSWORD">Đổi mật khẩu</option>
+              </select>
+            </div>
+
+            {auditError && (
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                fontSize: '0.85rem',
+              }}>
+                ⚠️ {auditError}
+              </div>
+            )}
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table" id="audit-log-table">
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Người thực hiện</th>
+                    <th>Hành động</th>
+                    <th>Đối tượng</th>
+                    <th>Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLoading ? (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                          <RefreshCw size={18} className="spin-animation" />
+                          Đang tải lịch sử hoạt động...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (() => {
+                    const filtered = auditLogs.filter(log => {
+                      const matchSearch = !auditSearch ||
+                        (log.userName || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                        (log.action || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                        (log.userEmail || '').toLowerCase().includes(auditSearch.toLowerCase());
+                      const matchAction = !auditFilterAction || log.action === auditFilterAction;
+                      return matchSearch && matchAction;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                            Không tìm thấy bản ghi nào
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const actionBadge = (action) => {
+                      const map = {
+                        'USER_SELF_REGISTER': { label: 'Đăng ký', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+                        'ADMIN_CREATE_USER': { label: 'Admin tạo TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
+                        'ADMIN_UPDATE_USER_ROLE': { label: 'Đổi quyền', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                        'SESSION_CREATE': { label: 'Tạo phiên gửi', bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
+                        'PAYMENT_PROCESS': { label: 'Thanh toán', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+                        'GET_ALL_USERS': { label: 'Xem DS', bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' },
+                        'GET_USER_BY_ID': { label: 'Xem user', bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' },
+                        'DELETE_USER': { label: 'Xóa TK', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
+                        'UPDATE_USER': { label: 'Cập nhật TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
+                        'FORGOT_PASSWORD': { label: 'Quên MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                        'RESET_PASSWORD': { label: 'Đặt lại MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                        'CHANGE_PASSWORD': { label: 'Đổi MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                      };
+                      const info = map[action] || { label: action, bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' };
+                      return (
+                        <span style={{
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          padding: '3px 10px',
+                          borderRadius: '8px',
+                          background: info.bg,
+                          color: info.color,
+                          whiteSpace: 'nowrap',
+                        }}>{info.label}</span>
+                      );
+                    };
+
+                    const formatTime = (dt) => {
+                      if (!dt) return '—';
+                      try {
+                        const d = new Date(dt);
+                        return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                      } catch { return dt; }
+                    };
+
+                    return filtered.slice(0, 100).map(log => (
+                      <tr key={log.id}>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{formatTime(log.createdAt)}</td>
+                        <td>
+                          <div>
+                            <span style={{ fontWeight: 500 }}>{log.userName || '—'}</span>
+                            {log.userEmail && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>{log.userEmail}</p>}
+                          </div>
+                        </td>
+                        <td>{actionBadge(log.action)}</td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {log.entityName && <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{log.entityName}{log.entityId ? ` #${log.entityId}` : ''}</span>}
+                          {!log.entityName && '—'}
+                        </td>
+                        <td style={{ maxWidth: '200px' }}>
+                          {log.newValues ? (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              color: 'var(--text-muted)',
+                              fontFamily: 'monospace',
+                              display: 'block',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '200px',
+                            }} title={log.newValues}>{log.newValues}</span>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            {!auditLoading && auditLogs.length > 100 && (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '12px' }}>
+                Hiển thị 100 / {auditLogs.length} bản ghi gần nhất
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Kiểm soát Truy cập */}
