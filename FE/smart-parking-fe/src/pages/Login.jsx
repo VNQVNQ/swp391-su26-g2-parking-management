@@ -104,7 +104,7 @@ export default function Login() {
 
         {/* Right - Login Form */}
         <div className="auth-form-section">
-          <div className="auth-form-card">
+          <div className="auth-form-card glass-card animate-fade-in-up" style={{ padding: '2rem' }}>
             <div className="auth-form-header">
               <div className="auth-form-badge">
                 <Shield size={16} />

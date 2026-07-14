@@ -17,7 +17,6 @@
   <img src="https://img.shields.io/badge/React-Vite-61dafb?style=flat-square&logo=react&logoColor=white"/>
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white"/>
   <img src="https://img.shields.io/badge/Redis-Cache-dc382d?style=flat-square&logo=redis&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ed?style=flat-square&logo=docker&logoColor=white"/>
   <img src="https://img.shields.io/badge/JWT-Security-000000?style=flat-square&logo=jsonwebtokens&logoColor=white"/>
 </p>
 
@@ -53,11 +52,11 @@
 
 | # | Họ và tên | MSSV | Vai trò | Branch phụ trách |
 |:-:|-----------|:----:|---------|-----------------|
-| 1 | **Võ Nhật Quang** | SE196584 | 🔱 Team Leader · Backend Dev | `feature/BE-floor-zone-slot`|
-| 2 | **Nguyễn Phước Sanh** | SE181668 | ⚙️ Backend Dev |  `feature/BE-auth` · `feature/BE-session` |
-| 3 | **Trần Hữu Trọng Nhân** | SE196231 | ⚙️ Backend Dev | `feature/BE-payment-report` |
-| 4 | **Nguyễn Lê Nhật Vinh** | SE193661 | 🎨 Frontend Dev | `feature/FE-PARKING_STAFF-ui` |
-| 5 | **Nguyễn Quốc Hưng** | SE180315 | 🎨 Frontend Dev | `feature/FE-PARKING_MANAGER-ui` |
+| 1 | **Võ Nhật Quang** | SE196584 | 🔱 Team Leader · Backend Dev |
+| 2 | **Nguyễn Phước Sanh** | SE181668 | ⚙️ Backend Dev |
+| 3 | **Trần Hữu Trọng Nhân** | SE196231 | ⚙️ Backend Dev |
+| 4 | **Nguyễn Lê Nhật Vinh** | SE193661 | 🎨 Frontend Dev |
+| 5 | **Nguyễn Quốc Hưng** | SE180315 | 🎨 Frontend Dev |
 
 ---
 
@@ -116,7 +115,6 @@
 | Mục | Công cụ |
 |-----|---------|
 | Version Control | Git + GitHub |
-| Containerization | Docker + Docker Compose |
 | API Test | Postman |
 | Prototype | v0.dev / Lovable.dev |
 | Task Tracking | GitHub Projects |
@@ -142,7 +140,6 @@
 ### Yêu cầu môi trường
 - Java 17+
 - Node.js 18+
-- Docker & Docker Compose
 
 ### Backend
 
@@ -151,8 +148,7 @@
 git clone https://github.com/VNQVNQ/swp391-su26-g2-parking-management.git
 cd swp391-su26-g2-parking-management/BE/parking-system
 
-# 2. Khởi động PostgreSQL + Redis
-docker-compose up -d
+# 2. Khởi động PostgreSQL + Redis (Yêu cầu cài đặt và cấu hình PostgreSQL, Redis cục bộ)
 
 # 3. Cấu hình DB trong application-dev.yml
 # spring.datasource.url=jdbc:postgresql://localhost:5432/parking_bms

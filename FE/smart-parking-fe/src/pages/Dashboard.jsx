@@ -205,11 +205,9 @@ export default function Dashboard() {
             {metricsData.map((metric, i) => {
               const Icon = metric.icon;
               return (
-                <div className="card animate-slide-up" key={i} style={{
+                <div className="glass-card hover-lift animate-fade-in-up" key={i} style={{
                   animationDelay: `${i * 0.08}s`,
-                  padding: '20px',
-                  border: '1px solid #2a2a2a',
-                  background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)',
+                  padding: '24px',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                     <div>
@@ -243,7 +241,7 @@ export default function Dashboard() {
           {/* Main content grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '20px', marginBottom: '32px' }}>
             {/* Status by Floor */}
-            <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
+            <div className="glass-card" style={{ padding: '24px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>
                 Trạng thái theo Tầng
               </h3>
@@ -268,7 +266,7 @@ export default function Dashboard() {
             </div>
 
             {/* Parked Vehicles Table */}
-            <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
+            <div className="glass-card" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   Xe đang đỗ ({parkedVehicles.length})
@@ -341,18 +339,14 @@ export default function Dashboard() {
           </div>
 
           {/* Status by Zone */}
-          <div className="card" style={{ padding: '24px', border: '1px solid #2a2a2a' }}>
+          <div className="glass-card" style={{ padding: '24px' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '24px', color: 'var(--text-primary)' }}>
               Trạng thái theo Khu vực
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               {zoneStatus.map((zone, i) => (
-                <div key={i} style={{
-                  background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)',
+                <div key={i} className="glass-card hover-lift" style={{
                   padding: '18px',
-                  borderRadius: '10px',
-                  border: '1px solid #2a2a2a',
-                  transition: 'all 0.3s ease',
                 }}>
                   <div style={{
                     display: 'flex',

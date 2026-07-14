@@ -92,18 +92,18 @@ function AuthLoading() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'var(--bg-primary, #0b0f19)'
+            background: 'var(--bg-primary, #000000)'
         }}>
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16}}>
                 <div style={{
                     width: 40,
                     height: 40,
-                    border: '3px solid rgba(16,185,129,0.15)',
-                    borderTopColor: '#10b981',
+                    border: '3px solid rgba(10,132,255,0.15)',
+                    borderTopColor: 'var(--accent-primary)',
                     borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite'
+                    animation: 'spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite'
                 }}/>
-                <span style={{color: 'var(--text-secondary)', fontSize: '0.9rem'}}>Loading...</span>
+                <span style={{color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500}}>Loading...</span>
             </div>
         </div>
     );
