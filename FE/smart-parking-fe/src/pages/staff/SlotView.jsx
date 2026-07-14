@@ -112,24 +112,44 @@ export default function SlotView() {
                 <div style={{ padding: '8px 16px', background: 'var(--bg-secondary)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                   {floor}
                 </div>
-                {floorZones.map(zone => (
-                  <button key={zone.id} onClick={() => setActiveZone(zone)}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '10px 16px',
-                      background: activeZone?.id === zone.id ? 'var(--accent-primary-glow)' : 'transparent',
-                      border: 'none',
-                      borderLeft: activeZone?.id === zone.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
-                      borderBottom: '1px solid var(--border-color)',
-                      cursor: 'pointer', transition: 'all 0.2s',
-                    }}>
-                    <p style={{ fontWeight: 600, color: activeZone?.id === zone.id ? 'var(--accent-primary)' : 'var(--text-primary)', fontSize: '0.85rem' }}>
-                      {VEHICLE_ICON[zone.vehicleType]} {zone.name}
-                    </p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                      {zone.vehicleType} · {zone.totalSlots} slots
-                    </p>
-                  </button>
-                ))}
+                {floorZones.map(zone => {
+                  const isActive = activeZone?.id === zone.id;
+                  // Nếu là zone đang active thì tính từ slots thực tế
+                  const zoneTotal       = isActive ? total       : (zone.totalSlots ?? 0);
+                  const zoneAvailable   = isActive ? available   : null;
+                  const zoneOccupied    = isActive ? occupied    : null;
+                  const zoneMaintenance = isActive ? maintenance : null;
+                  return (
+                    <button key={zone.id} onClick={() => setActiveZone(zone)}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '10px 16px',
+                        background: isActive ? 'var(--accent-primary-glow)' : 'transparent',
+                        border: 'none',
+                        borderLeft: isActive ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                        borderBottom: '1px solid var(--border-color)',
+                        cursor: 'pointer', transition: 'all 0.2s',
+                      }}>
+                      <p style={{ fontWeight: 600, color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)', fontSize: '0.85rem' }}>
+                        {VEHICLE_ICON[zone.vehicleType]} {zone.name}
+                      </p>
+                      {isActive ? (
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{zoneAvailable} trống</span>
+                          {' · '}
+                          <span style={{ color: '#ef4444' }}>{zoneOccupied} đỗ</span>
+                          {zoneMaintenance > 0 && (
+                            <span style={{ color: '#f59e0b' }}> · {zoneMaintenance} BT</span>
+                          )}
+                          {' / '}{zoneTotal}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {zone.vehicleType} · {zoneTotal} slots
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             ))
           )}

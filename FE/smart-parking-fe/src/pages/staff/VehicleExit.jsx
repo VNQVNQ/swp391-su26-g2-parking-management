@@ -1,16 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getActiveSessions, calculateFee, exitSession, processPayment } from '../../services/sessionApi';
+import useFaceApi, { loadFaceDescriptor, clearFaceDescriptor } from '../../hooks/useFaceApi';
 import {
   Search, RefreshCw, Clock, MapPin, CheckCircle, AlertCircle,
-  ArrowRight, ArrowLeft, CreditCard, Banknote, AlertTriangle, X,
+  ArrowRight, ArrowLeft, CreditCard, Banknote, AlertTriangle, X, Camera,
 } from 'lucide-react';
 
-/* ─── Constants ─────────────────────────────────────────────────────────────── */
+/* ─── Constants ──────────────────────────────────────────────────────────── */
 const VEHICLE_ICON  = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 const VEHICLE_LABEL = { MOTORBIKE: 'Xe máy', CAR: 'Ô tô', TRUCK: 'Xe tải' };
-const STEPS = ['search', 'info', 'payment', 'done'];
+const STEPS = ['search', 'info', 'face', 'payment', 'done'];
+const MAX_RETRY = 3;
 
-/* ─── Helpers ────────────────────────────────────────────────────────────────── */
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
 function calcDuration(entryTime) {
   const ms = Date.now() - new Date(entryTime).getTime();
   const h = Math.floor(ms / 3600000);
@@ -26,11 +28,12 @@ function formatDateShort(dt) {
   return new Date(dt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
-/* ─── Step Indicator ─────────────────────────────────────────────────────────── */
+/* ─── Step Indicator ─────────────────────────────────────────────────────── */
 function StepIndicator({ step }) {
   const steps = [
     { key: 'search',  label: 'Tìm xe',    icon: '🔍' },
     { key: 'info',    label: 'Thông tin',  icon: '📋' },
+    { key: 'face',    label: 'Khuôn mặt', icon: '👤' },
     { key: 'payment', label: 'Thanh toán', icon: '💳' },
     { key: 'done',    label: 'Hoàn tất',   icon: '✅' },
   ];
@@ -50,8 +53,7 @@ function StepIndicator({ step }) {
                                    : 'var(--bg-secondary)',
                 border: `2px solid ${done || active ? 'var(--accent-primary)' : 'var(--border-color)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
-                boxShadow: active ? '0 0 0 4px rgba(16,185,129,0.15)' : 'none',
-                transition: 'all 0.3s',
+                boxShadow: active ? '0 0 0 4px rgba(16,185,129,0.15)' : 'none', transition: 'all 0.3s',
               }}>
                 {done ? <CheckCircle size={20} color="#fff" /> : <span>{s.icon}</span>}
               </div>
@@ -62,9 +64,8 @@ function StepIndicator({ step }) {
             </div>
             {i < steps.length - 1 && (
               <div style={{
-                width: 60, height: 2, marginBottom: 20,
-                background: done ? 'var(--accent-primary)' : 'var(--border-color)',
-                transition: 'background 0.3s',
+                width: 52, height: 2, marginBottom: 20,
+                background: done ? 'var(--accent-primary)' : 'var(--border-color)', transition: 'background 0.3s',
               }} />
             )}
           </div>
@@ -74,19 +75,17 @@ function StepIndicator({ step }) {
   );
 }
 
-/* ─── Exception Modal ────────────────────────────────────────────────────────── */
+/* ─── Exception Modal ────────────────────────────────────────────────────── */
 function ExceptionPanel({ session, onClose }) {
   const [type, setType]        = useState('LOST_TICKET');
   const [notes, setNotes]      = useState('');
   const [submitted, setSubmit] = useState(false);
-
   const TYPES = [
-    { value: 'LOST_TICKET', label: '🎫 Mất vé',        color: '#f59e0b' },
-    { value: 'OVERSTAY',    label: '⏰ Quá giờ',        color: '#ef4444' },
-    { value: 'WRONG_ZONE',  label: '🗺️ Sai khu vực',   color: '#8b5cf6' },
-    { value: 'UNPAID_EXIT', label: '💸 Ra không trả',   color: '#ec4899' },
+    { value: 'LOST_TICKET', label: '🎫 Mất vé',       color: '#f59e0b' },
+    { value: 'OVERSTAY',    label: '⏰ Quá giờ',       color: '#ef4444' },
+    { value: 'WRONG_ZONE',  label: '🗺️ Sai khu vực',  color: '#8b5cf6' },
+    { value: 'UNPAID_EXIT', label: '💸 Ra không trả',  color: '#ec4899' },
   ];
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 25px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border-color)' }}>
@@ -102,7 +101,6 @@ function ExceptionPanel({ session, onClose }) {
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6, display: 'flex' }}><X size={20} /></button>
         </div>
-
         {submitted ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '3rem', marginBottom: 12 }}>✅</div>
@@ -140,7 +138,264 @@ function ExceptionPanel({ session, onClose }) {
   );
 }
 
-/* ─── Main Component ─────────────────────────────────────────────────────────── */
+/* ─── FaceVerify Step ────────────────────────────────────────────────────── */
+function FaceVerifyStep({ session, onVerified, onBypass, onBack }) {
+  const [scanStatus,  setScanStatus]  = useState('idle'); // idle | scanning | matched | failed | nodata
+  const [retryCount,  setRetryCount]  = useState(0);
+  const [distance,    setDistance]    = useState(null);
+  const [detectFace,  setDetectFace]  = useState(false);
+  const [camError,    setCamError]    = useState('');
+
+  const videoRef   = useRef(null);
+  const canvasRef  = useRef(null);
+  const streamRef  = useRef(null);
+  const detectLoop = useRef(null);
+
+  const { modelsLoaded, loadingModels, modelError, loadModels, captureDescriptor, compareDescriptors, detectAndDraw } = useFaceApi();
+
+  const sessionId = session?.id;
+
+  // Load models
+  useEffect(() => { loadModels(); }, [loadModels]);
+
+  // Camera
+  const startCamera = async () => {
+    if (streamRef.current) return;
+    try {
+      setCamError('');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+    } catch (err) {
+      setCamError(err.name === 'NotAllowedError' ? 'Quyền truy cập camera bị từ chối.' : 'Không tìm thấy camera.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (detectLoop.current) { clearInterval(detectLoop.current); detectLoop.current = null; }
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+  };
+
+  useEffect(() => {
+    // Kiểm tra có descriptor không
+    const saved = loadFaceDescriptor(sessionId);
+    if (!saved) { setScanStatus('nodata'); return; }
+
+    let timeoutId;
+    startCamera().then(() => {
+      if (!modelsLoaded) return;
+      if (detectLoop.current) clearInterval(detectLoop.current);
+      timeoutId = setTimeout(() => {
+        detectLoop.current = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+          const result = await detectAndDraw(videoRef, canvasRef);
+          setDetectFace(!!result);
+        }, 200);
+      }, 800);
+    });
+    return () => {
+      clearTimeout(timeoutId);
+      stopCamera();
+    };
+  }, [sessionId, modelsLoaded]); // eslint-disable-line
+
+  const handleScan = async () => {
+    if (!modelsLoaded || !detectFace) return;
+    setScanStatus('scanning');
+    try {
+      const current = await captureDescriptor(videoRef);
+      if (!current) {
+        setScanStatus('failed');
+        setRetryCount(r => r + 1);
+        return;
+      }
+      const saved = loadFaceDescriptor(sessionId);
+      const { match, distance: dist } = compareDescriptors(saved, current);
+      setDistance(dist);
+      if (match) {
+        setScanStatus('matched');
+        stopCamera();
+        setTimeout(() => {
+          clearFaceDescriptor(sessionId);
+          onVerified();
+        }, 1200);
+      } else {
+        setScanStatus('failed');
+        setRetryCount(r => r + 1);
+      }
+    } catch {
+      setScanStatus('failed');
+      setRetryCount(r => r + 1);
+    }
+  };
+
+  const handleRetry = () => { setScanStatus('idle'); setDistance(null); };
+
+  // ── No face data → bypass mode ──────────────────────────────────────────
+  if (scanStatus === 'nodata') {
+    return (
+      <div style={{ maxWidth: 520, margin: '0 auto' }}>
+        <div className="card" style={{ padding: 32, borderRadius: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: 16 }}>⚠️</div>
+          <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Không có dữ liệu khuôn mặt</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 24 }}>
+            Xe này chưa đăng ký khuôn mặt khi vào hoặc dữ liệu đã hết hạn (đăng ký từ thiết bị khác).
+          </p>
+          <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '14px 18px', marginBottom: 28, fontSize: '0.85rem', color: '#f59e0b', textAlign: 'left' }}>
+            ⚠️ Vui lòng kiểm tra giấy tờ xe thủ công trước khi cho phép ra.
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+            <button onClick={onBypass}
+              style={{ padding: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.92rem' }}>
+              ✅ Đã kiểm tra — Cho phép ra (Bypass)
+            </button>
+            <button onClick={onBack}
+              style={{ padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <ArrowLeft size={15} /> Quay lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="card" style={{ padding: 28, borderRadius: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
+        <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, fontSize: '1.1rem' }}>
+          👤 Xác thực khuôn mặt
+        </h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
+          Quét khuôn mặt tài xế để xác nhận đúng chủ xe trước khi ra
+        </p>
+
+        {(camError || modelError) && (
+          <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: '0.85rem', marginBottom: 14, display: 'flex', gap: 8 }}>
+            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} /> {camError || modelError}
+          </div>
+        )}
+
+        {/* Camera */}
+        <div style={{
+          background: '#000', borderRadius: 16, overflow: 'hidden', height: 300,
+          position: 'relative', marginBottom: 16,
+          border: `2px solid ${
+            scanStatus === 'matched' ? '#10b981'
+            : scanStatus === 'failed' ? '#ef4444'
+            : detectFace ? 'rgba(16,185,129,0.5)'
+            : 'var(--border-color)'}`,
+          transition: 'border-color 0.3s',
+          boxShadow: scanStatus === 'matched' ? '0 0 20px rgba(16,185,129,0.4)' : scanStatus === 'failed' ? '0 0 20px rgba(239,68,68,0.3)' : 'none',
+        }}>
+          <video ref={videoRef} autoPlay playsInline muted
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+          <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none' }} />
+
+          {/* Oval guide */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{
+              width: 180, height: 220,
+              border: `3px dashed ${
+                scanStatus === 'matched' ? '#10b981'
+                : scanStatus === 'failed' ? '#ef4444'
+                : detectFace ? '#10b981' : 'rgba(255,255,255,0.4)'}`,
+              borderRadius: '50%', transition: 'all 0.3s',
+            }} />
+          </div>
+
+          {/* Result overlay */}
+          {(scanStatus === 'matched' || scanStatus === 'failed') && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              background: scanStatus === 'matched' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)',
+              backdropFilter: 'blur(2px)',
+            }}>
+              <div style={{ fontSize: '3.5rem', marginBottom: 8 }}>{scanStatus === 'matched' ? '✅' : '❌'}</div>
+              <p style={{ color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>
+                {scanStatus === 'matched' ? 'Khớp!' : 'Không khớp'}
+              </p>
+              {distance !== null && (
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem', marginTop: 4 }}>
+                  Khoảng cách: {distance} {scanStatus === 'matched' ? '(≤ 0.6 ✅)' : '(> 0.6 ❌)'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Status badge */}
+          {scanStatus !== 'matched' && scanStatus !== 'failed' && (
+            <div style={{
+              position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+              padding: '4px 14px', borderRadius: 20,
+              color: detectFace ? '#10b981' : '#f59e0b',
+              fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap',
+            }}>
+              {loadingModels ? '⏳ Đang tải model AI...' : detectFace ? '👤 Phát hiện khuôn mặt' : '🔍 Đang tìm khuôn mặt...'}
+            </div>
+          )}
+        </div>
+
+        {/* Retry info */}
+        {retryCount > 0 && scanStatus !== 'matched' && (
+          <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, marginBottom: 12, fontSize: '0.82rem', color: '#ef4444' }}>
+            Đã thử {retryCount}/{MAX_RETRY} lần. {retryCount >= MAX_RETRY ? 'Đã hết lượt — dùng chức năng Ngoại lệ.' : ''}
+          </div>
+        )}
+
+        {/* Buttons */}
+        {scanStatus === 'matched' ? (
+          <div style={{ textAlign: 'center', padding: '10px', color: '#10b981', fontWeight: 700, fontSize: '1rem' }}>
+            ✅ Xác thực thành công! Đang chuyển...
+          </div>
+        ) : scanStatus === 'failed' && retryCount >= MAX_RETRY ? (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onBack} style={{ flex: 0.4, padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <ArrowLeft size={15} /> Quay lại
+            </button>
+            <button onClick={onBypass} style={{ flex: 1, padding: '12px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 12, color: '#f59e0b', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <AlertTriangle size={15} /> Bypass — Xử lý ngoại lệ
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={onBack} style={{ padding: '13px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <ArrowLeft size={15} /> Quay lại
+            </button>
+            {scanStatus === 'failed' ? (
+              <button onClick={handleRetry} style={{ padding: '13px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <RefreshCw size={15} /> Thử lại ({MAX_RETRY - retryCount} lần)
+              </button>
+            ) : (
+              <button onClick={handleScan}
+                disabled={!modelsLoaded || !detectFace || scanStatus === 'scanning'}
+                style={{
+                  padding: '13px', borderRadius: 12, fontWeight: 700, fontSize: '0.88rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  cursor: (modelsLoaded && detectFace) ? 'pointer' : 'not-allowed',
+                  background: detectFace && modelsLoaded ? 'linear-gradient(135deg, var(--accent-primary), #059669)' : 'var(--bg-secondary)',
+                  border: `1px solid ${detectFace && modelsLoaded ? 'transparent' : 'var(--border-color)'}`,
+                  color: detectFace && modelsLoaded ? '#fff' : 'var(--text-muted)',
+                  transition: 'all 0.2s',
+                }}>
+                {scanStatus === 'scanning'
+                  ? <><RefreshCw size={15} className="spin-animation" /> Đang xử lý...</>
+                  : <><Camera size={15} /> {detectFace ? 'Quét khuôn mặt' : 'Chờ nhận diện...'}</>}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Component ─────────────────────────────────────────────────────── */
 export default function VehicleExit() {
   const [step,            setStep]           = useState('search');
   const [searchQuery,     setSearchQuery]    = useState('');
@@ -164,24 +419,18 @@ export default function VehicleExit() {
       const arr = Array.isArray(data) ? data : [];
       setSessions(arr);
       setSearchResults(arr);
-    } catch { 
-      setSessions([]); 
-      setSearchResults([]);
-    }
-    finally { setLoading(false); }
+    } catch {
+      setSessions([]); setSearchResults([]);
+    } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+  useEffect(() => { loadSessions(); }, [loadSessions]);
 
-  /* ── Bước 1: Tìm xe (Realtime filter) ── */
   const handleSearchChange = (e) => {
     const val = e.target.value.toUpperCase();
     setSearchQuery(val);
-    if (!val.trim()) {
-      setSearchResults(sessions);
-    } else {
+    if (!val.trim()) setSearchResults(sessions);
+    else {
       const q = val.trim();
       setSearchResults(sessions.filter(s => {
         const plate = (s.licensePlate || s.vehicle?.licensePlate || '').toUpperCase();
@@ -190,7 +439,6 @@ export default function VehicleExit() {
     }
   };
 
-  /* ── Chọn xe → info ── */
   const handleSelectSession = async (session) => {
     setSelectedSession(session);
     setError('');
@@ -203,7 +451,6 @@ export default function VehicleExit() {
     setStep('info');
   };
 
-  /* ── Bước 3: Xác nhận thanh toán ── */
   const handleConfirmPayment = async () => {
     setError(''); setProcessing(true);
     try {
@@ -234,7 +481,7 @@ export default function VehicleExit() {
     <div className="page-full">
       <div className="page-header">
         <h2>🚪 Xe Ra Bãi</h2>
-        <p>Xử lý xe ra theo từng bước: Tìm xe → Thông tin → Thanh toán</p>
+        <p>Xử lý xe ra theo từng bước: Tìm xe → Thông tin → Xác thực mặt → Thanh toán</p>
       </div>
 
       <StepIndicator step={step} />
@@ -246,18 +493,13 @@ export default function VehicleExit() {
             <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, fontSize: '1.1rem' }}>🔍 Nhập biển số xe cần tìm</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>Nhập biển số (một phần hoặc toàn bộ) để tìm xe đang đỗ trong bãi</p>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 24, zIndex: 10, position: 'relative' }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
               <div className="form-input-wrapper" style={{ flex: 1 }}>
                 <Search className="input-icon" size={18} style={{ pointerEvents: 'none', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  className="form-input"
+                <input type="text" className="form-input"
                   style={{ width: '100%', fontSize: '1.2rem', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '1px', padding: '14px 14px 14px 44px' }}
                   placeholder="Nhập biển số xe (VD: 51A-12345)..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  autoFocus
-                />
+                  value={searchQuery} onChange={handleSearchChange} autoFocus />
               </div>
               <button className="btn-primary" onClick={loadSessions} disabled={loading}
                 style={{ padding: '0 24px', fontSize: '0.95rem', fontWeight: 700, borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', width: 'auto' }}>
@@ -287,24 +529,27 @@ export default function VehicleExit() {
                     {searchResults.map(session => {
                       const p    = session.licensePlate || session.vehicle?.licensePlate || '—';
                       const slot = session.slotCode     || session.slot?.slotCode        || '—';
-                      const zone = session.zoneName     || session.slot?.zone?.name      || '—';
                       const type = session.vehicleType  || session.vehicle?.vehicleType  || 'CAR';
+                      const hasFace = !!loadFaceDescriptor(session.id);
                       return (
                         <button key={session.id} onClick={() => handleSelectSession(session)}
                           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px', borderRadius: 14, cursor: 'pointer', background: 'var(--bg-secondary)', border: '2px solid var(--border-color)', textAlign: 'left', transition: 'all 0.15s', width: '100%' }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.05)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-                        >
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}>
                           <span style={{ fontSize: 28, flexShrink: 0 }}>{VEHICLE_ICON[type] || '🚗'}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '1px', textOverflow: 'ellipsis', overflow: 'hidden' }}>{p}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            <p style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '1px' }}>{p}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                               <MapPin size={10} />{slot}
                               <span style={{ marginLeft: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <Clock size={10} />{session.entryTime ? calcDuration(session.entryTime) : '—'}
                               </span>
                             </p>
                           </div>
+                          {/* Face indicator */}
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600, background: hasFace ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: hasFace ? '#10b981' : '#f59e0b', flexShrink: 0 }}>
+                            {hasFace ? '🔐 Face' : '⚠️ No face'}
+                          </span>
                         </button>
                       );
                     })}
@@ -339,23 +584,12 @@ export default function VehicleExit() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, fontWeight: 700 }}>🤳 Khuôn mặt đăng ký khi vào</p>
-                <div style={{ width: '100%', height: 200, borderRadius: 16, background: 'var(--bg-input)', border: '1px solid var(--border-color)', overflow: 'hidden', position: 'relative' }}>
-                  <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${plate}&backgroundColor=transparent`} alt="Khuôn mặt"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#f8fafc' }} />
-                  <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.9)', padding: '3px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, color: '#1e293b' }}>
-                    Mô phỏng Camera
-                  </div>
-                </div>
-              </div>
-
               {[
-                { icon: '📍', label: 'Vị trí ô đỗ', value: selectedSession.slotCode || selectedSession.slot?.slotCode || '—' },
-                { icon: '🗺️', label: 'Khu vực',    value: selectedSession.zoneName  || selectedSession.slot?.zone?.name  || '—' },
-                { icon: '🏢', label: 'Tầng',        value: selectedSession.floorName || selectedSession.slot?.floor?.name || '—' },
-                { icon: '🕐', label: 'Giờ vào',    value: selectedSession.entryTime ? `${formatDateShort(selectedSession.entryTime)} ${formatTime(selectedSession.entryTime)}` : '—' },
-                { icon: '⏱️', label: 'Thời gian đỗ', value: selectedSession.entryTime ? calcDuration(selectedSession.entryTime) : '—', span: 2 },
+                { icon: '📍', label: 'Vị trí ô đỗ',  value: selectedSession.slotCode || selectedSession.slot?.slotCode || '—' },
+                { icon: '🗺️', label: 'Khu vực',       value: selectedSession.zoneName  || selectedSession.slot?.zone?.name  || '—' },
+                { icon: '🏢', label: 'Tầng',           value: selectedSession.floorName || selectedSession.slot?.floor?.name || '—' },
+                { icon: '🕐', label: 'Giờ vào',       value: selectedSession.entryTime ? `${formatDateShort(selectedSession.entryTime)} ${formatTime(selectedSession.entryTime)}` : '—' },
+                { icon: '⏱️', label: 'Thời gian đỗ',  value: selectedSession.entryTime ? calcDuration(selectedSession.entryTime) : '—', span: 2 },
               ].map(r => (
                 <div key={r.label} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px', gridColumn: r.span ? `span ${r.span}` : undefined }}>
                   <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{r.icon} {r.label}</p>
@@ -386,15 +620,25 @@ export default function VehicleExit() {
               style={{ flex: 0.4, padding: '14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, color: '#f59e0b', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <AlertTriangle size={15} /> Ngoại lệ
             </button>
-            <button className="btn-primary" onClick={() => setStep('payment')} disabled={feeLoading}
+            <button className="btn-primary" onClick={() => setStep('face')} disabled={feeLoading}
               style={{ flex: 1, padding: '14px', fontSize: '0.95rem', fontWeight: 700, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              Tiếp tục Thanh toán <ArrowRight size={16} />
+              Xác thực khuôn mặt <ArrowRight size={16} />
             </button>
           </div>
         </div>
       )}
 
-      {/* ── BƯỚC 3: THANH TOÁN ── */}
+      {/* ── BƯỚC 3: KHUÔN MẶT ── */}
+      {step === 'face' && selectedSession && (
+        <FaceVerifyStep
+          session={selectedSession}
+          onVerified={() => setStep('payment')}
+          onBypass={() => { setShowException(false); setStep('payment'); }}
+          onBack={() => setStep('info')}
+        />
+      )}
+
+      {/* ── BƯỚC 4: THANH TOÁN ── */}
       {step === 'payment' && selectedSession && (
         <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 28, borderRadius: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
@@ -402,10 +646,9 @@ export default function VehicleExit() {
               <span style={{ fontSize: 28 }}>{VEHICLE_ICON[vtype] || '🚗'}</span>
               <div>
                 <p style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '1px' }}>{plate}</p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {VEHICLE_LABEL[vtype]} · {selectedSession.entryTime ? calcDuration(selectedSession.entryTime) : '—'}
-                </p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{VEHICLE_LABEL[vtype]} · {selectedSession.entryTime ? calcDuration(selectedSession.entryTime) : '—'}</p>
               </div>
+              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', padding: '3px 8px', background: 'rgba(16,185,129,0.15)', color: '#10b981', borderRadius: 12, fontWeight: 600 }}>🔐 Đã xác thực</span>
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: 28, padding: '20px', background: 'var(--bg-secondary)', borderRadius: 16 }}>
@@ -431,8 +674,7 @@ export default function VehicleExit() {
                   color: payMethod === m.key ? m.color : 'var(--text-secondary)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s',
                 }}>
-                  {m.icon}
-                  {m.label}
+                  {m.icon}{m.label}
                   {payMethod === m.key && <CheckCircle size={14} color={m.color} />}
                 </button>
               ))}
@@ -445,7 +687,7 @@ export default function VehicleExit() {
             )}
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setStep('info')}
+              <button onClick={() => setStep('face')}
                 style={{ flex: 0.35, padding: '14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <ArrowLeft size={15} /> Quay lại
               </button>
@@ -467,7 +709,7 @@ export default function VehicleExit() {
         </div>
       )}
 
-      {/* ── BƯỚC 4: HOÀN TẤT ── */}
+      {/* ── BƯỚC 5: HOÀN TẤT ── */}
       {step === 'done' && exitResult && (
         <div style={{ maxWidth: 520, margin: '0 auto' }}>
           <div className="card" style={{ padding: 40, borderRadius: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.08)', textAlign: 'center' }}>
@@ -479,11 +721,11 @@ export default function VehicleExit() {
 
             <div style={{ background: 'var(--bg-secondary)', borderRadius: 16, padding: '20px', textAlign: 'left', marginBottom: 28 }}>
               {[
-                { label: 'Biển số',       value: exitResult.session?.licensePlate || exitResult.session?.vehicle?.licensePlate },
-                { label: 'Loại xe',       value: VEHICLE_LABEL[exitResult.session?.vehicleType || exitResult.session?.vehicle?.vehicleType] || '—' },
-                { label: 'Thời gian đỗ', value: exitResult.fee?.durationMinutes ? `${exitResult.fee.durationMinutes} phút` : '—' },
-                { label: 'Tổng phí',      value: `₫${(exitResult.fee?.totalFee || 0).toLocaleString('vi-VN')}`, highlight: true },
-                { label: 'Thanh toán',    value: exitResult.payMethod === 'CASH' ? 'Tiền mặt' : 'Thẻ / QR' },
+                { label: 'Biển số',      value: exitResult.session?.licensePlate || exitResult.session?.vehicle?.licensePlate },
+                { label: 'Loại xe',      value: VEHICLE_LABEL[exitResult.session?.vehicleType || exitResult.session?.vehicle?.vehicleType] || '—' },
+                { label: 'Thời gian đỗ',value: exitResult.fee?.durationMinutes ? `${exitResult.fee.durationMinutes} phút` : '—' },
+                { label: 'Tổng phí',     value: `₫${(exitResult.fee?.totalFee || 0).toLocaleString('vi-VN')}`, highlight: true },
+                { label: 'Thanh toán',   value: exitResult.payMethod === 'CASH' ? 'Tiền mặt' : 'Thẻ / QR' },
               ].map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                   <span style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{r.label}</span>
