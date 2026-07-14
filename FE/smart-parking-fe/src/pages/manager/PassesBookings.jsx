@@ -1,4 +1,4 @@
-import { CalendarCheck, CreditCard, Car, Bike } from 'lucide-react';
+import { CalendarCheck, CreditCard, Car, Bike, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 
@@ -37,7 +37,7 @@ export default function PassesBookings() {
   const handleCancelBooking = async (id) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đặt chỗ này?')) return;
     try {
-      await api.delete(`/api/v1/bookings/${id}`);
+      await api.post(`/api/v1/bookings/${id}/cancel`);
       loadData();
     } catch (err) {
       alert('Không thể hủy đặt chỗ: ' + (err.response?.data?.message || err.message));
@@ -123,7 +123,7 @@ export default function PassesBookings() {
                         return (
                           <tr key={p.id}>
                             <td style={{ fontWeight: 600 }}>{plate}</td>
-                            <td>{type === 'CAR' ? 'Ô tô' : type === 'MOTORBIKE' ? 'Xe máy' : type}</td>
+                            <td>{type === 'CAR' ? 'Ô tô' : type === 'MOTORBIKE' ? 'Xe máy' : type === 'TRUCK' ? 'Xe tải' : type}</td>
                             <td>{p.startDate ? new Date(p.startDate).toLocaleDateString('vi-VN') : '—'}</td>
                             <td>{p.endDate ? new Date(p.endDate).toLocaleDateString('vi-VN') : '—'}</td>
                             <td style={{ fontWeight: 600 }}>₫{(p.fee || 0).toLocaleString()}</td>
@@ -141,7 +141,7 @@ export default function PassesBookings() {
               )}
 
               {/* Monthly Pass Pricing Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <div className="card" style={{ borderLeft: '4px solid #3b82f6', textAlign: 'center', padding: '28px' }}>
                   <Car size={28} style={{ color: '#3b82f6', marginBottom: '8px' }} />
                   <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Ô tô</h4>
@@ -154,6 +154,12 @@ export default function PassesBookings() {
                   <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫500,000</p>
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
                 </div>
+                <div className="card" style={{ borderLeft: '4px solid #f59e0b', textAlign: 'center', padding: '28px' }}>
+                  <Truck size={28} style={{ color: '#f59e0b', marginBottom: '8px' }} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Xe tải</h4>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫4,000,000</p>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
+                </div>
               </div>
             </>
           )}
@@ -164,7 +170,7 @@ export default function PassesBookings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
                   <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Danh sách Đặt chỗ</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>Chỉ xem - Tài xế thực hiện đặt chỗ từ tài khoản của họ</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>Quản lý đơn đặt chỗ - Hủy các đơn đặt chỗ của tài xế khi cần</p>
                 </div>
               </div>
 
@@ -190,6 +196,7 @@ export default function PassesBookings() {
                       {bookings.map(b => {
                         const plate = b.licensePlate || b.vehicle?.licensePlate || 'N/A';
                         const slot = b.slotCode || b.slot?.slotCode || 'N/A';
+                        const canCancel = b.status === 'PENDING' || b.status === 'CONFIRMED';
                         
                         return (
                           <tr key={b.id}>
@@ -200,12 +207,14 @@ export default function PassesBookings() {
                             <td>{b.endTime ? new Date(b.endTime).toLocaleString('vi-VN') : '—'}</td>
                             <td>
                               <span className={`badge ${b.status === 'CONFIRMED' ? 'badge-success' : b.status === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
-                                {b.status === 'CONFIRMED' ? 'Đã xác nhận' : b.status === 'PENDING' ? 'Đang chờ' : b.status === 'CANCELLED' ? 'Đã hủy' : b.status}
+                                {b.status === 'CONFIRMED' ? 'Đã xác nhận' : b.status === 'PENDING' ? 'Đang chờ' : b.status === 'CANCELLED' ? 'Đã hủy' : b.status === 'EXPIRED' ? 'Hết hạn' : b.status}
                               </span>
                             </td>
                             <td>
-                              {b.status !== 'CANCELLED' && (
+                              {canCancel ? (
                                 <button className="btn-sm btn-sm-danger" onClick={() => handleCancelBooking(b.id)}>Hủy</button>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
                               )}
                             </td>
                           </tr>

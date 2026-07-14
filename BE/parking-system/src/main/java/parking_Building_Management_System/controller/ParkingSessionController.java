@@ -224,6 +224,27 @@ public class ParkingSessionController {
     }
 
     /**
+     * Get all completed sessions
+     * GET /api/v1/parking-sessions/completed/all
+     */
+    @GetMapping("/completed/all")
+    public ResponseEntity<ApiResponse<List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse>>> getAllCompletedSessions() {
+        log.info("GET /api/v1/parking-sessions/completed/all - Getting all completed sessions");
+        try {
+            List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse> sessions = parkingSessionService.getAllCompletedSessions();
+            ApiResponse<List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse>> apiResponse = ApiResponseFactory.success(
+                    sessions,
+                    "Found " + sessions.size() + " completed sessions"
+            );
+            return ResponseEntity.ok(apiResponse);
+        } catch (Exception e) {
+            log.error("Error getting completed sessions: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body((ApiResponse<List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse>>) (Object) ApiResponseFactory.internalServerError(e.getMessage()));
+        }
+    }
+
+    /**
      * Step 4: Vehicle exit (Check-out)
      * BR-32: Update session status to COMPLETED, release slot
      *

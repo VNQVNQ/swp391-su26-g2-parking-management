@@ -59,6 +59,12 @@ public interface ParkingSessionService {
     List<ActiveSessionResponse> getAllActiveSessions();
 
     /**
+     * Tìm tất cả session completed
+     */
+    List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse> getAllCompletedSessions();
+
+
+    /**
      * BR-04: Auto-flag overstay (scheduler)
      * Tìm tất cả session quá 24h
      */

@@ -67,19 +67,35 @@ export default function SlotManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [zonesRes, slotsRes] = await Promise.all([
+      const [zonesRes, slotsRes, bookingsRes] = await Promise.all([
         api.get('/api/v1/zones'),
-        api.get('/api/v1/parking-slots')
+        api.get('/api/v1/parking-slots'),
+        api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } }))
       ]);
       const zones = zonesRes.data.data || zonesRes.data || [];
       const slots = slotsRes.data.data || slotsRes.data || [];
+      const bookings = bookingsRes.data?.data ?? bookingsRes.data ?? [];
+
+      // Lấy danh sách slotCode có đặt chỗ active (PENDING hoặc CONFIRMED)
+      const bookedSlotCodes = new Set(
+        bookings
+          .filter(b => b.status === 'PENDING' || b.status === 'CONFIRMED')
+          .map(b => b.slotCode)
+          .filter(Boolean)
+      );
 
       const mappedZones = zones.map(z => {
-        const zoneSlots = slots.filter(s => s.zoneId === z.id).map(s => ({
-          ...s,
-          status: s.maintenanceStatus === 'MAINTENANCE' ? 'maintenance' : (s.currentSessionId ? 'occupied' : 'available'),
-          vehicle: s.licensePlate || null,
-        }));
+        const zoneSlots = slots.filter(s => s.zoneId === z.id).map(s => {
+          const isOccupied = !!s.currentSessionId;
+          const isMaintenance = s.maintenanceStatus === 'MAINTENANCE';
+          const isReserved = !isOccupied && !isMaintenance && bookedSlotCodes.has(s.slotCode);
+          
+          return {
+            ...s,
+            status: isMaintenance ? 'maintenance' : (isOccupied ? 'occupied' : (isReserved ? 'reserved' : 'available')),
+            vehicle: s.licensePlate || null,
+          };
+        });
         return { ...z, slots: zoneSlots };
       });
       setZonesData(mappedZones);
@@ -110,7 +126,7 @@ export default function SlotManagement() {
   const stats = [
     { label: 'Trống', value: statusCounts.available, color: '#10b981', icon: CheckCircle2 },
     { label: 'Đang đỗ', value: statusCounts.occupied, color: '#ef4444', icon: CarFront },
-    { label: 'Đã đặt', value: statusCounts.reserved, color: '#f59e0b', icon: Clock },
+    { label: 'Đã đặt', value: statusCounts.reserved, color: '#8b5cf6', icon: Clock },
     { label: 'Bảo trì', value: statusCounts.maintenance, color: '#94a3b8', icon: AlertTriangle },
   ];
 
@@ -120,7 +136,13 @@ export default function SlotManagement() {
   const filteredZones = useMemo(() => {
     return zonesData.map(z => {
       if (filterFloor !== 'Tất cả tầng' && z.floorName !== filterFloor) return null;
-      if (filterType !== 'Tất cả loại xe' && z.vehicleType !== (filterType === 'Ô tô' ? 'CAR' : filterType === 'Xe máy' ? 'MOTORBIKE' : 'BICYCLE')) return null;
+      
+      const typeMap = {
+        'Ô tô': 'CAR',
+        'Xe máy': 'MOTORBIKE',
+        'Xe tải': 'TRUCK'
+      };
+      if (filterType !== 'Tất cả loại xe' && z.vehicleType !== typeMap[filterType]) return null;
 
       const filteredSlots = z.slots.filter(s => {
         if (search) {
@@ -219,6 +241,7 @@ export default function SlotManagement() {
             <option>Tất cả loại xe</option>
             <option>Ô tô</option>
             <option>Xe máy</option>
+            <option>Xe tải</option>
           </select>
         </div>
         
@@ -258,25 +281,41 @@ export default function SlotManagement() {
         </div>
       </div>
 
-      {filteredZones.map(zone => (
-        <div key={zone.id} style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                {zone.name}
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {zone.floorName} • Sức chứa: {zone.slots.length} / {zone.totalSlots}
-              </p>
-            </div>
-          </div>
+      {filteredZones.map(zone => {
+        const zoneStats = {
+          available: zone.slots.filter(s => s.status === 'available').length,
+          occupied: zone.slots.filter(s => s.status === 'occupied').length,
+          reserved: zone.slots.filter(s => s.status === 'reserved').length,
+          maintenance: zone.slots.filter(s => s.status === 'maintenance').length,
+        };
 
-          {viewMode === 'grid' ? (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-              gap: '12px',
-            }}>
+        return (
+          <div key={zone.id} style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  {zone.name}
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {zone.floorName} • Sức chứa: {zone.slots.length} slots
+                  {' • '}<span style={{ color: '#10b981', fontWeight: 600 }}>{zoneStats.available} trống</span>
+                  {' • '}<span style={{ color: '#ef4444', fontWeight: 600 }}>{zoneStats.occupied} đang đỗ</span>
+                  {' • '}<span style={{ color: '#8b5cf6', fontWeight: 600 }}>{zoneStats.reserved} đã đặt</span>
+                  {zoneStats.maintenance > 0 && (
+                    <>
+                      {' • '}<span style={{ color: '#94a3b8', fontWeight: 600 }}>{zoneStats.maintenance} bảo trì</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                gap: '12px',
+              }}>
               {zone.slots.map(slot => (
                 <SlotCard key={slot.id} slot={slot} onSlotClick={(s) => handleSlotClick(zone, s)} />
               ))}
@@ -320,9 +359,10 @@ export default function SlotManagement() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        );
+      })}
       
       {filteredZones.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>

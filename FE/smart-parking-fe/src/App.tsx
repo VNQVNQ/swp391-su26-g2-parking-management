@@ -40,6 +40,8 @@ import DriverSlotView from './pages/driver/SlotView';
 // @ts-ignore
 import Booking from './pages/driver/Booking';
 // @ts-ignore
+import BookingHistory from './pages/driver/BookingHistory';
+// @ts-ignore
 import MonthlyPass from './pages/driver/MonthlyPass';
 // @ts-ignore
 import ManageFloors from './pages/manager/ManageFloors';
@@ -185,6 +187,8 @@ function AppShell() {
                                element={<RoleRoute allowedRoles={['DRIVER']}><DriverSlotView/></RoleRoute>}/>
                         <Route path="/driver/booking"
                                element={<RoleRoute allowedRoles={['DRIVER']}><Booking/></RoleRoute>}/>
+                        <Route path="/driver/booking-history"
+                               element={<RoleRoute allowedRoles={['DRIVER']}><BookingHistory/></RoleRoute>}/>
                         <Route path="/driver/monthly-pass"
                                element={<RoleRoute allowedRoles={['DRIVER']}><MonthlyPass/></RoleRoute>}/>
 

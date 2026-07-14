@@ -327,6 +327,44 @@ public class BookingServiceImpl implements BookingService {
         return bookingRepository.countByStatusAndBookingExpiryAtBefore(BookingStatus.PENDING, now);
     }
 
+    @Override
+    public List<BookingResponse> getMyBookings(Long userId) {
+        log.info("Getting bookings for user ID: {}", userId);
+        return bookingRepository.findByVehicleOwnerUserId(userId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long countBookedSlotsByZone(UUID zoneId) {
+        log.info("Counting booked slots for zone ID: {}", zoneId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime lookahead = now.plusHours(24);
+        return bookingRepository.countBookedSlotsByZone(
+                zoneId,
+                Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED),
+                now,
+                lookahead
+        );
+    }
+
+    @Override
+    public List<UUID> getBookedSlotIdsByZone(UUID zoneId, LocalDateTime startTime, LocalDateTime endTime) {
+        log.info("Getting booked slot IDs for zone ID: {} between {} and {}", zoneId, startTime, endTime);
+        LocalDateTime start = startTime;
+        LocalDateTime end = endTime;
+        if (start == null || end == null) {
+            start = LocalDateTime.now();
+            end = start.plusHours(24);
+        }
+        return bookingRepository.findBookedSlotIdsByZone(
+                zoneId,
+                Arrays.asList(BookingStatus.PENDING, BookingStatus.CONFIRMED),
+                start,
+                end
+        );
+    }
+
     private ParkingSlot findAvailableSlot(Vehicle vehicle, LocalDateTime startTime, LocalDateTime endTime) {
         log.debug("Finding available slot for vehicle type: {}", vehicle.getVehicleType());
         

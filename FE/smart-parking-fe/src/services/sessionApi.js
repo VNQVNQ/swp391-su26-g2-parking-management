@@ -52,6 +52,11 @@ export const getActiveSessions = async () => {
   return res.data.data ?? res.data ?? [];
 };
 
+export const getCompletedSessions = async () => {
+  const res = await api.get(`${BASE}/completed/all`);
+  return res.data.data ?? res.data ?? [];
+};
+
 // ── 6. Lấy session theo ID ───────────────────────────────────────────────────
 // GET /api/v1/parking-sessions/{sessionId}
 export const getSessionById = async (sessionId) => {

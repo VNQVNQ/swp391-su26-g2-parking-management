@@ -33,10 +33,11 @@ export default function VehicleEntry() {
   const [faceMsg,       setFaceMsg]       = useState('');
   const [detectFace,    setDetectFace]    = useState(false); // khuôn mặt đang thấy?
 
-  const videoRef   = useRef(null);
-  const canvasRef  = useRef(null);
-  const streamRef  = useRef(null);
-  const detectLoop = useRef(null);
+  const videoRef     = useRef(null);
+  const canvasRef    = useRef(null);
+  const streamRef    = useRef(null);
+  const detectLoop   = useRef(null);
+  const isProcessing = useRef(false);
 
   const { modelsLoaded, loadingModels, modelError, loadModels, captureDescriptor, detectAndDraw } = useFaceApi();
 
@@ -81,8 +82,14 @@ export default function VehicleEntry() {
         timeoutId = setTimeout(() => {
           detectLoop.current = setInterval(async () => {
             if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
-            const result = await detectAndDraw(videoRef, canvasRef);
-            setDetectFace(!!result);
+            if (isProcessing.current) return;
+            isProcessing.current = true;
+            try {
+              const result = await detectAndDraw(videoRef, canvasRef);
+              setDetectFace(!!result);
+            } finally {
+              isProcessing.current = false;
+            }
           }, 200);
         }, 800);
       });

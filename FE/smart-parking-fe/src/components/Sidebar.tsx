@@ -4,7 +4,7 @@ import {
   DollarSign, CalendarCheck, AlertTriangle,
   BarChart3, Settings as SettingsIcon,
   ChevronLeft, ChevronRight, Car, Power,
-  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket,
+  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket, History,
 } from 'lucide-react';
 
 // ── Role-based navigation items ──────────────────────────────────────────────
@@ -28,12 +28,13 @@ const navItems = [
   { to: '/exit',        label: 'Cho xe ra',      icon: LogOut,          roles: ['PARKING_STAFF'] },
   { to: '/PARKING_STAFF/slots', label: 'Bản đồ chỗ đỗ',         icon: MapPin,          roles: ['PARKING_STAFF'] },
   // DRIVER
-  { to: '/driver/dashboard',        label: 'Tổng quan',    icon: LayoutDashboard, roles: ['DRIVER'] },
-  { to: '/driver/register-vehicle', label: 'Đăng ký xe',   icon: Car,             roles: ['DRIVER'] },
-  { to: '/driver/my-vehicles',      label: 'Xe của tôi',   icon: BookOpen,        roles: ['DRIVER'] },
-  { to: '/driver/monthly-pass',     label: 'Vé tháng',     icon: Ticket,       roles: ['DRIVER'] },
+  { to: '/driver/dashboard',        label: 'Tổng quan',         icon: LayoutDashboard, roles: ['DRIVER'] },
+  { to: '/driver/register-vehicle', label: 'Đăng ký xe',        icon: Car,             roles: ['DRIVER'] },
+  { to: '/driver/my-vehicles',      label: 'Xe của tôi',        icon: BookOpen,        roles: ['DRIVER'] },
+  { to: '/driver/monthly-pass',     label: 'Vé tháng',          icon: Ticket,          roles: ['DRIVER'] },
   { to: '/driver/slots',            label: 'Xem chỗ trống',     icon: MapPin,          roles: ['DRIVER'] },
-  { to: '/driver/booking',          label: 'Đặt chỗ đỗ',      icon: Calendar,        roles: ['DRIVER'] },
+  { to: '/driver/booking',          label: 'Đặt chỗ đỗ',        icon: Calendar,        roles: ['DRIVER'] },
+  { to: '/driver/booking-history',  label: 'Lịch sử đặt chỗ',  icon: History,         roles: ['DRIVER'] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

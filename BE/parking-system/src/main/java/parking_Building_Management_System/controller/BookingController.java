@@ -13,6 +13,7 @@ import parking_Building_Management_System.dto.booking.request.BookingRequest;
 import parking_Building_Management_System.dto.booking.request.UpdateBookingRequest;
 import parking_Building_Management_System.dto.booking.response.BookingResponse;
 import parking_Building_Management_System.dto.booking.response.BookingDetailResponse;
+import parking_Building_Management_System.entity.user.ParkingUserDetails;
 import parking_Building_Management_System.service.BookingService;
 import parking_Building_Management_System.utils.ApiResponse;
 import parking_Building_Management_System.utils.ApiResponseFactory;
@@ -128,8 +129,13 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> confirmBooking(@PathVariable UUID id) {
         log.info("POST /api/v1/bookings/{}/confirm - Confirming booking", id);
         try {
-            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            Long staffId = Long.parseLong(principal.toString());
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body((ApiResponse) ApiResponseFactory.error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Người dùng chưa xác thực"));
+            }
+            ParkingUserDetails userDetails = (ParkingUserDetails) auth.getPrincipal();
+            Long staffId = userDetails.getUserId();
             
             BookingDetailResponse response = bookingService.confirmBooking(id, staffId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking confirmed successfully");
@@ -145,8 +151,13 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> cancelBooking(@PathVariable UUID id) {
         log.info("POST /api/v1/bookings/{}/cancel - Cancelling booking", id);
         try {
-            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            Long userId = Long.parseLong(principal.toString());
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body((ApiResponse) ApiResponseFactory.error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Người dùng chưa xác thực"));
+            }
+            ParkingUserDetails userDetails = (ParkingUserDetails) auth.getPrincipal();
+            Long userId = userDetails.getUserId();
             
             BookingDetailResponse response = bookingService.cancelBooking(id, userId);
             ApiResponse<BookingDetailResponse> apiResponse = ApiResponseFactory.success(response, "Booking cancelled successfully");
@@ -172,6 +183,44 @@ public class BookingController {
         log.info("GET /api/v1/bookings/stats/expiring-count - Getting expiring bookings count");
         long count = bookingService.getExpiringBookingsCount();
         ApiResponse<Long> apiResponse = ApiResponseFactory.success(count, "Expiring bookings count: " + count);
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    @GetMapping("/my-bookings")
+    @PreAuthorize("hasAnyRole('DRIVER', 'PARKING_STAFF', 'PARKING_MANAGER')")
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getMyBookings() {
+        log.info("GET /api/v1/bookings/my-bookings - Getting bookings for current user");
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body((ApiResponse) ApiResponseFactory.error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Người dùng chưa xác thực"));
+        }
+        ParkingUserDetails userDetails = (ParkingUserDetails) auth.getPrincipal();
+        Long userId = userDetails.getUserId();
+        List<BookingResponse> responses = bookingService.getMyBookings(userId);
+        ApiResponse<List<BookingResponse>> apiResponse = ApiResponseFactory.success(responses,
+                "Retrieved " + responses.size() + " bookings");
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    @GetMapping("/zone/{zoneId}/booked-count")
+    @PreAuthorize("hasAnyRole('PARKING_STAFF', 'PARKING_MANAGER', 'DRIVER')")
+    public ResponseEntity<ApiResponse<Long>> getBookedSlotCountByZone(@PathVariable UUID zoneId) {
+        log.info("GET /api/v1/bookings/zone/{}/booked-count - Getting booked slot count for zone", zoneId);
+        long count = bookingService.countBookedSlotsByZone(zoneId);
+        ApiResponse<Long> apiResponse = ApiResponseFactory.success(count, "Booked slots count: " + count);
+        return ResponseEntity.ok(apiResponse);
+    }
+
+    @GetMapping("/zone/{zoneId}/booked-slots")
+    @PreAuthorize("hasAnyRole('PARKING_STAFF', 'PARKING_MANAGER', 'DRIVER')")
+    public ResponseEntity<ApiResponse<List<UUID>>> getBookedSlotIdsByZone(
+            @PathVariable UUID zoneId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
+        log.info("GET /api/v1/bookings/zone/{}/booked-slots - Getting booked slot IDs for zone between {} and {}", zoneId, startTime, endTime);
+        List<UUID> slots = bookingService.getBookedSlotIdsByZone(zoneId, startTime, endTime);
+        ApiResponse<List<UUID>> apiResponse = ApiResponseFactory.success(slots, "Booked slot IDs retrieved");
         return ResponseEntity.ok(apiResponse);
     }
 }

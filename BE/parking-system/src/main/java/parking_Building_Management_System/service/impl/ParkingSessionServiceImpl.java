@@ -361,6 +361,22 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse> getAllCompletedSessions() {
+        log.info("Getting all completed sessions");
+        List<ParkingSession> sessions = parkingSessionRepository.findByStatus(ParkingSessionStatus.COMPLETED);
+        return sessions.stream().map(session -> parking_Building_Management_System.dto.parkingSession.response.CompletedSessionResponse.builder()
+                .id(session.getId())
+                .licensePlate(session.getVehicle() != null ? session.getVehicle().getLicensePlate() : null)
+                .vehicleType(session.getVehicle() != null ? session.getVehicle().getVehicleType() : null)
+                .entryTime(session.getEntryTime())
+                .exitTime(session.getExitTime())
+                .totalFee(session.getFinalFee())
+                .build()
+        ).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
     public List<ParkingSession> findSessionsOverstay24Hours() {
         log.info("Finding sessions overestaying 24+ hours");
         return parkingSessionRepository.findByStatus(ParkingSessionStatus.ACTIVE)

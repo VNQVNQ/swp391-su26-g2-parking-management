@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const MODEL_URL      = '/models';
-const MATCH_THRESHOLD = 0.6;
+export const MATCH_THRESHOLD = 0.6;
 
 // ── Lazy faceapi singleton (dynamic import để không block page load) ──────────
 let faceapiModule = null;

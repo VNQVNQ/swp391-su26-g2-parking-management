@@ -1,8 +1,9 @@
 import { BarChart3, DollarSign, Car, Activity, Clock } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { useParkingStore } from '../../store/parkingStore';
+import { useState, useMemo, useEffect } from 'react';
+import { getActiveSessions, getCompletedSessions, getZones } from '../../services/sessionApi';
 
 function AreaChart({ data }) {
+
   const W = 700, H = 200, pad = 40;
   const max = Math.max(...data.map(d => d.value), 1000000); // Minimum scale of 1M
   const pts = data.map((d, i) => ({
@@ -153,28 +154,65 @@ function FloorBars({ data }) {
 }
 
 export default function Reports() {
-  const store = useParkingStore();
   const [tab, setTab] = useState('revenue');
   const [period, setPeriod] = useState('Today');
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [completedSessions, setCompletedSessions] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Compute stats based on shared store
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [active, completed, zoneList] = await Promise.all([
+          getActiveSessions(),
+          getCompletedSessions(),
+          getZones()
+        ]);
+        setActiveSessions(active);
+        setCompletedSessions(completed);
+        setZones(zoneList.data ?? zoneList ?? []);
+      } catch (error) {
+        console.error("Error fetching report data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Compute stats based on real API data
   const { revenueData, peakData, vehicleTypes, floorData, stats } = useMemo(() => {
+    const now = new Date();
+    const isToday = (date) => {
+      const d = new Date(date);
+      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    };
+
+    let todayRevenue = 0;
+
     // 1. Revenue
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const viDays = { Sun: 'CN', Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7' };
     const revMap = { Sun:0, Mon:0, Tue:0, Wed:0, Thu:0, Fri:0, Sat:0 };
     
     // Add real exited vehicles to revenue map
-    store.exitedVehicles.forEach(v => {
-      const exitTime = v.exitTime instanceof Date ? v.exitTime : new Date(v.exitTime);
+    completedSessions.forEach(v => {
+      if (!v.exitTime) return;
+      const exitTime = new Date(v.exitTime);
       const dayName = days[exitTime.getDay()];
-      revMap[dayName] += (v.totalFee || 0);
+      const fee = v.totalFee || 0;
+      revMap[dayName] += fee;
+      if (isToday(exitTime)) {
+          todayRevenue += fee;
+      }
     });
     
     // Default mock data mixed with real data for visual effect (since real data might be sparse)
     const mockRev = { Mon: 8200000, Tue: 9100000, Wed: 7800000, Thu: 11200000, Fri: 12450000, Sat: 10800000, Sun: 6500000 };
     const chartRev = period === 'Today' 
-      ? [{ day: 'Hôm nay', value: store.todayRevenue }] 
+      ? [{ day: 'Hôm nay', value: todayRevenue }] 
       : days.map(day => ({ day: viDays[day], value: Math.max(revMap[day], period === 'This Week' ? mockRev[day] : 0) }));
 
     // 2. Peak Hours
@@ -189,14 +227,21 @@ export default function Reports() {
     }
     
     // Add real entries
-    store.vehicles.forEach(v => {
-      const h = (v.entryTime instanceof Date ? v.entryTime : new Date(v.entryTime)).getHours();
+    activeSessions.forEach(v => {
+      if (!v.entryTime) return;
+      const h = new Date(v.entryTime).getHours();
+      if (hoursMap[h]) hoursMap[h].entries++;
+    });
+    completedSessions.forEach(v => {
+      if (!v.entryTime) return;
+      const h = new Date(v.entryTime).getHours();
       if (hoursMap[h]) hoursMap[h].entries++;
     });
     
     // Add real exits
-    store.exitedVehicles.forEach(v => {
-      const h = (v.exitTime instanceof Date ? v.exitTime : new Date(v.exitTime)).getHours();
+    completedSessions.forEach(v => {
+      if (!v.exitTime) return;
+      const h = new Date(v.exitTime).getHours();
       if (hoursMap[h]) hoursMap[h].exits++;
     });
 
@@ -219,9 +264,9 @@ export default function Reports() {
 
     // 3. Vehicle Types (Real data)
     let cars = 0, bikes = 0, others = 0;
-    store.vehicles.forEach(v => {
-      if (v.type === 'Car') cars++;
-      else if (v.type === 'Motorbike') bikes++;
+    activeSessions.forEach(v => {
+      if (v.vehicleType === 'CAR' || v.vehicleType === 'Car') cars++;
+      else if (v.vehicleType === 'MOTORBIKE' || v.vehicleType === 'Motorbike') bikes++;
       else others++;
     });
     const chartTypes = [
@@ -231,20 +276,43 @@ export default function Reports() {
     ];
 
     // 4. Floor Data (Real data)
-    const chartFloors = store.getFloorStats.map(f => ({
-      name: f.name,
-      total: f.total,
-      used: f.occupied
+    const floorMap = {};
+    let totalSlotsAll = 0;
+    let occupiedSlotsAll = 0;
+    
+    zones.forEach(z => {
+      const total = z.totalSlots || 0;
+      const avail = z.availableSlots || 0;
+      const used = total - avail;
+      totalSlotsAll += total;
+      occupiedSlotsAll += used;
+      
+      const floorName = z.floorName || z.floor || 'Unknown';
+      if (!floorMap[floorName]) floorMap[floorName] = { total: 0, used: 0 };
+      floorMap[floorName].total += total;
+      floorMap[floorName].used += used;
+    });
+    
+    const chartFloors = Object.keys(floorMap).map(k => ({
+      name: k,
+      total: floorMap[k].total,
+      used: floorMap[k].used
     }));
 
-    // Total vehicles today (currently parked + exited)
-    const todayEntries = store.vehicles.length + store.exitedVehicles.length;
+    // Total vehicles today (currently parked + exited today)
+    let todayEntriesCount = 0;
+    activeSessions.forEach(v => {
+      if (v.entryTime && isToday(v.entryTime)) todayEntriesCount++;
+    });
+    completedSessions.forEach(v => {
+      if (v.entryTime && isToday(v.entryTime)) todayEntriesCount++;
+    });
 
     // Computed summary stats
     const summaryStats = [
-      { label: period === 'Today' ? "Doanh thu hôm nay" : "Tổng doanh thu", value: `₫${(period === 'Today' ? store.todayRevenue : store.todayRevenue + 66050000).toLocaleString()}`, icon: DollarSign, color: '#10b981' },
-      { label: 'Lượt xe hôm nay', value: todayEntries.toString(), icon: Car, color: '#3b82f6' },
-      { label: 'Tỷ lệ lấp đầy', value: `${store.slotStats.total > 0 ? ((store.slotStats.occupied / store.slotStats.total) * 100).toFixed(1) : '0.0'}%`, icon: Activity, color: '#f59e0b' },
+      { label: period === 'Today' ? "Doanh thu hôm nay" : "Tổng doanh thu", value: `₫${(period === 'Today' ? todayRevenue : todayRevenue + 66050000).toLocaleString()}`, icon: DollarSign, color: '#10b981' },
+      { label: 'Lượt xe vào hôm nay', value: todayEntriesCount.toString(), icon: Car, color: '#3b82f6' },
+      { label: 'Tỷ lệ lấp đầy', value: `${totalSlotsAll > 0 ? ((occupiedSlotsAll / totalSlotsAll) * 100).toFixed(1) : '0.0'}%`, icon: Activity, color: '#f59e0b' },
       { label: 'Giờ cao điểm', value: peakHourStr, icon: Clock, color: '#8b5cf6' },
     ];
 
@@ -255,13 +323,19 @@ export default function Reports() {
       floorData: chartFloors,
       stats: summaryStats
     };
-  }, [store.vehicles, store.exitedVehicles, store.todayRevenue, store.slotStats, store.getFloorStats, period]);
+  }, [activeSessions, completedSessions, zones, period]);
 
   const selSt = { padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer' };
 
   return (
     <div className="page-full-width">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '1.2rem', marginBottom: 8 }}>⏳</div>
+          <p>Đang tải dữ liệu báo cáo...</p>
+        </div>
+      )}
+      {!isLoading && <><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <h2>Báo cáo & Thống kê</h2>
           <p>Xem báo cáo doanh thu và thống kê hoạt động</p>
@@ -336,6 +410,7 @@ export default function Reports() {
           </>
         )}
       </div>
+      </>}
     </div>
   );
 }

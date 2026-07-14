@@ -43,4 +43,10 @@ public interface BookingService {
     long getActiveBookingsCount();
     
     long getExpiringBookingsCount();
+
+    List<BookingResponse> getMyBookings(Long userId);
+
+    long countBookedSlotsByZone(UUID zoneId);
+
+    List<UUID> getBookedSlotIdsByZone(UUID zoneId, LocalDateTime startTime, LocalDateTime endTime);
 }

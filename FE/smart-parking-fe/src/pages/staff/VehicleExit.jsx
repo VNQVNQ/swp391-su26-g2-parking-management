@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getActiveSessions, calculateFee, exitSession, processPayment } from '../../services/sessionApi';
-import useFaceApi, { loadFaceDescriptor, clearFaceDescriptor } from '../../hooks/useFaceApi';
+import useFaceApi, { loadFaceDescriptor, clearFaceDescriptor, MATCH_THRESHOLD } from '../../hooks/useFaceApi';
 import {
   Search, RefreshCw, Clock, MapPin, CheckCircle, AlertCircle,
   ArrowRight, ArrowLeft, CreditCard, Banknote, AlertTriangle, X, Camera,
@@ -146,10 +146,11 @@ function FaceVerifyStep({ session, onVerified, onBypass, onBack }) {
   const [detectFace,  setDetectFace]  = useState(false);
   const [camError,    setCamError]    = useState('');
 
-  const videoRef   = useRef(null);
-  const canvasRef  = useRef(null);
-  const streamRef  = useRef(null);
-  const detectLoop = useRef(null);
+  const videoRef     = useRef(null);
+  const canvasRef    = useRef(null);
+  const streamRef    = useRef(null);
+  const detectLoop   = useRef(null);
+  const isProcessing = useRef(false);
 
   const { modelsLoaded, loadingModels, modelError, loadModels, captureDescriptor, compareDescriptors, detectAndDraw } = useFaceApi();
 
@@ -192,8 +193,14 @@ function FaceVerifyStep({ session, onVerified, onBypass, onBack }) {
       timeoutId = setTimeout(() => {
         detectLoop.current = setInterval(async () => {
           if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
-          const result = await detectAndDraw(videoRef, canvasRef);
-          setDetectFace(!!result);
+          if (isProcessing.current) return;
+          isProcessing.current = true;
+          try {
+            const result = await detectAndDraw(videoRef, canvasRef);
+            setDetectFace(!!result);
+          } finally {
+            isProcessing.current = false;
+          }
         }, 200);
       }, 800);
     });
@@ -214,7 +221,7 @@ function FaceVerifyStep({ session, onVerified, onBypass, onBack }) {
         return;
       }
       const saved = loadFaceDescriptor(sessionId);
-      const { match, distance: dist } = compareDescriptors(saved, current);
+      const { match, distance: dist } = await compareDescriptors(saved, current);
       setDistance(dist);
       if (match) {
         setScanStatus('matched');
@@ -321,7 +328,7 @@ function FaceVerifyStep({ session, onVerified, onBypass, onBack }) {
               </p>
               {distance !== null && (
                 <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem', marginTop: 4 }}>
-                  Khoảng cách: {distance} {scanStatus === 'matched' ? '(≤ 0.6 ✅)' : '(> 0.6 ❌)'}
+                  Khoảng cách: {distance} {scanStatus === 'matched' ? `(≤ ${MATCH_THRESHOLD} ✅)` : `(> ${MATCH_THRESHOLD} ❌)`}
                 </p>
               )}
             </div>
