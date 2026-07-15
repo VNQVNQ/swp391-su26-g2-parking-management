@@ -230,9 +230,9 @@ const saasStyles = `
 
   .saas-page {
     font-family: 'Inter', sans-serif;
-    background-color: #0F172A;
+    background-color: var(--bg-primary);
     min-height: calc(100vh - 80px);
-    color: #F8FAFC;
+    color: var(--text-primary);
     padding: 40px 20px;
     display: flex;
     justify-content: center;
@@ -259,7 +259,7 @@ const saasStyles = `
     align-items: flex-end;
     margin-bottom: 40px;
     padding-bottom: 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .header-title {
@@ -267,14 +267,12 @@ const saasStyles = `
     font-weight: 800;
     margin: 0 0 12px 0;
     letter-spacing: -0.5px;
-    background: linear-gradient(to right, #ffffff, #94A3B8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-primary);
   }
 
   .header-subtitle {
     font-size: 16px;
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin: 0;
   }
 
@@ -282,11 +280,11 @@ const saasStyles = `
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     padding: 8px 16px;
     border-radius: 100px;
-    color: #94A3B8;
+    color: var(--text-secondary);
     font-size: 14px;
     font-weight: 500;
   }
@@ -306,11 +304,11 @@ const saasStyles = `
 
   /* ── Cards ── */
   .saas-card {
-    background: #1E293B;
-    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 32px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: var(--shadow-md);
   }
 
   .form-section {
@@ -323,7 +321,7 @@ const saasStyles = `
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #F8FAFC;
+    color: var(--text-primary);
   }
 
   /* ── Input ── */
@@ -331,33 +329,33 @@ const saasStyles = `
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.25s ease;
   }
 
   .saas-input-wrapper:focus-within {
-    border-color: #10B981;
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 4px var(--accent-primary-glow);
   }
 
   .saas-input-wrapper.valid {
-    border-color: #10B981;
-    background: rgba(16, 185, 129, 0.03);
+    border-color: var(--accent-green);
+    background: rgba(16, 185, 129, 0.05);
   }
 
   .saas-input-wrapper.invalid {
-    border-color: #EF4444;
-    background: rgba(239, 68, 68, 0.03);
+    border-color: var(--accent-red);
+    background: rgba(239, 68, 68, 0.05);
   }
 
   .input-prefix {
     padding: 0 16px;
     font-size: 20px;
-    border-right: 1px solid rgba(255,255,255,0.1);
-    color: #94A3B8;
+    border-right: 1px solid var(--border-color);
+    color: var(--text-muted);
   }
 
   .saas-input {
@@ -367,13 +365,13 @@ const saasStyles = `
     padding: 16px;
     font-size: 16px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--text-primary);
     outline: none;
     letter-spacing: 1px;
   }
 
   .saas-input::placeholder {
-    color: #475569;
+    color: var(--text-muted);
     font-weight: 400;
     letter-spacing: normal;
   }
@@ -421,8 +419,8 @@ const saasStyles = `
 
   .saas-vehicle-card {
     position: relative;
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 24px 16px;
     text-align: center;
@@ -433,15 +431,15 @@ const saasStyles = `
 
   .saas-vehicle-card:hover {
     transform: translateY(-4px);
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(255,255,255,0.2);
-    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.5);
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
   }
 
   .saas-vehicle-card.selected {
-    background: linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.02) 100%);
-    border-color: #10B981;
-    box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.2);
+    background: var(--accent-primary-glow);
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
   }
 
   .tick-corner {
@@ -450,35 +448,35 @@ const saasStyles = `
     right: 12px;
     width: 24px;
     height: 24px;
-    background: #10B981;
+    background: var(--accent-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 8px var(--accent-primary-glow);
   }
 
   .vehicle-icon {
-    color: #F8FAFC;
+    color: var(--text-secondary);
     margin-bottom: 12px;
     display: inline-flex;
   }
 
   .saas-vehicle-card.selected .vehicle-icon {
-    color: #10B981;
+    color: var(--accent-primary);
   }
 
   .vehicle-label {
     font-size: 16px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--text-primary);
     margin-bottom: 8px;
   }
 
   .vehicle-price {
     font-size: 13px;
-    color: #94A3B8;
+    color: var(--text-muted);
     line-height: 1.4;
   }
 
@@ -490,15 +488,15 @@ const saasStyles = `
   }
 
   .saas-btn-primary {
-    background: linear-gradient(180deg, #00C853 0%, #00A152 100%);
-    border: 1px solid #00964b;
+    background: var(--accent-gradient);
+    border: none;
     border-radius: 12px;
     color: #ffffff;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 161, 82, 0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+    box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -507,9 +505,9 @@ const saasStyles = `
   }
 
   .saas-btn-primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, #34D399 0%, #10B981 100%);
+    background: var(--accent-gradient-hover);
     transform: scale(1.02);
-    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+    box-shadow: var(--shadow-lg);
   }
 
   .saas-btn-primary:active:not(:disabled) {
@@ -536,23 +534,24 @@ const saasStyles = `
   }
 
   .preview-card {
-    background: linear-gradient(145deg, #1E293B 0%, #0F172A 100%);
+    background: var(--bg-card);
     padding: 24px;
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--border-color);
   }
   
   .preview-card::before {
     content: '';
     position: absolute;
     top: 0; left: 0; width: 100%; height: 4px;
-    background: linear-gradient(90deg, #10B981, #3B82F6);
+    background: var(--accent-gradient);
   }
 
   .preview-title {
     font-size: 15px;
     font-weight: 600;
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin: 0 0 20px 0;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -571,13 +570,13 @@ const saasStyles = `
   }
 
   .preview-label {
-    color: #64748B;
+    color: var(--text-secondary);
     font-size: 14px;
   }
 
   .preview-value {
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -586,14 +585,14 @@ const saasStyles = `
   .preview-value.plate {
     font-size: 18px;
     letter-spacing: 1px;
-    background: rgba(255,255,255,0.05);
+    background: var(--bg-secondary);
     padding: 6px 12px;
     border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--border-color);
   }
 
   .preview-value.plate.empty {
-    color: #475569;
+    color: var(--text-muted);
     font-style: italic;
     letter-spacing: normal;
   }
@@ -611,14 +610,14 @@ const saasStyles = `
   .info-heading {
     font-size: 15px;
     font-weight: 600;
-    color: #F8FAFC;
+    color: var(--text-primary);
     margin: 0;
   }
 
   .info-list {
     margin: 0;
     padding-left: 20px;
-    color: #94A3B8;
+    color: var(--text-secondary);
     font-size: 14px;
     line-height: 1.7;
   }
@@ -635,30 +634,30 @@ const saasStyles = `
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #cbd5e1;
+    color: var(--text-secondary);
   }
   
   .info-list.no-bullets li svg {
-    color: #10B981;
+    color: var(--accent-green);
     flex-shrink: 0;
   }
 
   .info-divider {
     height: 1px;
-    background: rgba(255,255,255,0.06);
+    background: var(--border-color);
     margin: 24px 0;
   }
 
   /* ── Success Screen ── */
   .saas-success-card {
-    background: #1E293B;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: var(--bg-card);
+    border: 1px solid var(--accent-green);
     border-radius: 24px;
     padding: 48px;
     max-width: 520px;
     margin: 80px auto;
     text-align: center;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(16, 185, 129, 0.1);
+    box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
   }
@@ -698,7 +697,7 @@ const saasStyles = `
   .success-title {
     font-size: 28px;
     font-weight: 800;
-    color: #F8FAFC;
+    color: var(--text-primary);
     margin: 0 0 12px 0;
     position: relative;
     z-index: 1;
@@ -706,15 +705,15 @@ const saasStyles = `
 
   .success-subtitle {
     font-size: 15px;
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin: 0 0 32px 0;
     position: relative;
     z-index: 1;
   }
 
   .success-details {
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 32px;
@@ -728,7 +727,7 @@ const saasStyles = `
     justify-content: space-between;
     align-items: center;
     padding: 12px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid var(--border-color);
   }
   .detail-row:last-child {
     border-bottom: none;
@@ -736,12 +735,12 @@ const saasStyles = `
   }
 
   .detail-row span {
-    color: #94A3B8;
+    color: var(--text-secondary);
     font-size: 14px;
   }
 
   .detail-row strong {
-    color: #F8FAFC;
+    color: var(--text-primary);
     font-size: 15px;
   }
 

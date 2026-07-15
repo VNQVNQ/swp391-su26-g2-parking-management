@@ -50,6 +50,15 @@ public class ParkingException {
     @Column(name = "resolved_at")
     LocalDateTime resolvedAt;
 
+    @Column(name = "evidence_note", columnDefinition = "TEXT")
+    String evidenceNote;
+
+    @Column(name = "sub_type", length = 50)
+    String subType;
+
+    @Column(name = "penalty_fee", precision = 15, scale = 0)
+    java.math.BigDecimal penaltyFee;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     User createdBy;

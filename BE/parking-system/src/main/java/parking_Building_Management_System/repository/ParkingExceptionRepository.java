@@ -1,6 +1,8 @@
 package parking_Building_Management_System.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import parking_Building_Management_System.entity.ParkingException;
 import parking_Building_Management_System.entity.enums.ExceptionStatus;
@@ -17,7 +19,14 @@ public interface ParkingExceptionRepository extends JpaRepository<ParkingExcepti
     List<ParkingException> findByStatus(ExceptionStatus status);
 
     List<ParkingException> findByExceptionTypeAndStatus(ExceptionType exceptionType, ExceptionStatus status);
+
+    @Query("SELECT e FROM ParkingException e WHERE e.session.vehicle.licensePlate = :licensePlate ORDER BY e.createdAt DESC")
+    List<ParkingException> findByVehicleLicensePlate(@Param("licensePlate") String licensePlate);
+
+    @Query("SELECT e FROM ParkingException e WHERE e.session.vehicle.id = :vehicleId ORDER BY e.createdAt DESC")
+    List<ParkingException> findByVehicleId(@Param("vehicleId") UUID vehicleId);
 }
+
 
 
 

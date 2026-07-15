@@ -17,11 +17,14 @@ import parking_Building_Management_System.entity.enums.ParkingSessionStatus;
 import parking_Building_Management_System.entity.enums.PaymentStatus;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import parking_Building_Management_System.repository.AuditLogRepository;
+import parking_Building_Management_System.repository.ParkingExceptionRepository;
 import parking_Building_Management_System.repository.ParkingSessionRepository;
 import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.repository.UserRepository;
+import parking_Building_Management_System.entity.ParkingException;
+import parking_Building_Management_System.entity.enums.ExceptionStatus;
 import parking_Building_Management_System.service.ParkingSessionService;
 import parking_Building_Management_System.service.PricingRuleService;
 import parking_Building_Management_System.service.MonthlyPassService;
@@ -56,6 +59,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final VehicleRepository vehicleRepository;
     private final ZoneRepository zoneRepository;
     private final AuditLogRepository auditLogRepository;
+    private final ParkingExceptionRepository parkingExceptionRepository;
     private final UserRepository userRepository;
     private final ParkingSessionMapper parkingSessionMapper;
     private final PricingRuleService pricingRuleService;
@@ -468,6 +472,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         ParkingSession session = getParkingSessionById(sessionId);
 
+        List<ParkingException> exceptions = parkingExceptionRepository.findBySessionId(sessionId);
+        BigDecimal totalPenaltyFee = exceptions.stream()
+                .filter(e -> (e.getStatus() == ExceptionStatus.RESOLVED || e.getStatus() == ExceptionStatus.APPROVED) && e.getPenaltyFee() != null)
+                .map(ParkingException::getPenaltyFee)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         LocalDateTime exitTime = session.getExitTime() != null ? session.getExitTime() : LocalDateTime.now();
         long durationMinutes = ChronoUnit.MINUTES.between(session.getEntryTime(), exitTime);
         long durationHours = calculateDurationInHours(session.getEntryTime(), exitTime);
@@ -478,17 +488,17 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             if (passOpt.isPresent()) {
                 if (durationHours <= 24) {
                     // Monthly pass holder with normal stay
-                    session.setFee(BigDecimal.ZERO);
-                    session.setFinalFee(BigDecimal.ZERO);
+                    session.setFee(totalPenaltyFee);
+                    session.setFinalFee(totalPenaltyFee);
                     session.setAppliedMonthlyPassFee(BigDecimal.ZERO);
                     parkingSessionRepository.save(session);
                     
-                    log.info("Monthly pass holder: No fee charged for {} minutes", durationMinutes);
+                    log.info("Monthly pass holder: base fee 0, penalty fee: {} for {} minutes", totalPenaltyFee, durationMinutes);
                     return FeeCalculationResponse.builder()
                             .sessionId(sessionId)
                             .durationMinutes(durationMinutes)
-                            .totalFee(BigDecimal.ZERO)
-                            .message("No charge - Monthly pass active")
+                            .totalFee(totalPenaltyFee)
+                            .message("No base charge - Monthly pass active" + (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0 ? " (Penalty applied)" : ""))
                             .build();
                 } else if (durationHours > 24) {
                     // Overstay for monthly pass holder
@@ -500,16 +510,17 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     BigDecimal overstayFee = ratePerHour
                             .multiply(BigDecimal.valueOf(overstayHours))
                             .multiply(overstayMultiplier);
+                    BigDecimal totalFee = overstayFee.add(totalPenaltyFee);
                     
-                    session.setFee(overstayFee);
-                    session.setFinalFee(overstayFee);
+                    session.setFee(totalFee);
+                    session.setFinalFee(totalFee);
                     parkingSessionRepository.save(session);
                     
-                    log.info("Monthly pass holder overstay: {} hours, fee: {}", overstayHours, overstayFee);
+                    log.info("Monthly pass holder overstay: {} hours, fee: {}, penalty: {}", overstayHours, overstayFee, totalPenaltyFee);
                     return FeeCalculationResponse.builder()
                             .sessionId(sessionId)
                             .durationMinutes(durationMinutes)
-                            .totalFee(overstayFee)
+                            .totalFee(totalFee)
                             .message("Overstay fee applied for monthly pass holder")
                             .build();
                 }
@@ -525,10 +536,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             // Fallback: use default pricing
             log.warn("No pricing rule found, using default rate");
             BigDecimal defaultRate = BigDecimal.valueOf(50000);
-            BigDecimal baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours)));
+            BigDecimal baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours))).add(totalPenaltyFee);
+            BigDecimal finalFee = baseFee.subtract(session.getDiscountAmount());
+            if (finalFee.compareTo(BigDecimal.ZERO) < 0) finalFee = BigDecimal.ZERO;
             
             session.setFee(baseFee);
-            session.setFinalFee(baseFee.subtract(session.getDiscountAmount()));
+            session.setFinalFee(finalFee);
             parkingSessionRepository.save(session);
             
             return FeeCalculationResponse.builder()
@@ -569,6 +582,11 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .multiply(rule.getOverstayRateMultiplier());
             baseFee = baseFee.add(overstayFee);
             log.info("Overstay multiplier applied: {} hours, fee: {}", overstayHours, overstayFee);
+        }
+
+        if (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0) {
+            baseFee = baseFee.add(totalPenaltyFee);
+            log.info("Applied total penalty fee {} to session {}", totalPenaltyFee, sessionId);
         }
 
         BigDecimal finalFee = baseFee.subtract(session.getDiscountAmount());

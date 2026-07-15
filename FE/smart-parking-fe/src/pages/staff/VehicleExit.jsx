@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getActiveSessions, calculateFee, exitSession, processPayment } from '../../services/sessionApi';
+import api from '../../services/api';
 import useFaceApi, { loadFaceDescriptor, clearFaceDescriptor, MATCH_THRESHOLD } from '../../hooks/useFaceApi';
 import {
   Search, RefreshCw, Clock, MapPin, CheckCircle, AlertCircle,
@@ -76,19 +77,132 @@ function StepIndicator({ step }) {
 }
 
 /* ─── Exception Modal ────────────────────────────────────────────────────── */
-function ExceptionPanel({ session, onClose }) {
-  const [type, setType]        = useState('LOST_TICKET');
-  const [notes, setNotes]      = useState('');
-  const [submitted, setSubmit] = useState(false);
+function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
+  const [type, setType]               = useState('LOST_TICKET');
+  const [notes, setNotes]             = useState('');
+  const [penaltyFee, setPenaltyFee]   = useState('');
+  const [penaltySource, setPenaltySrc]= useState('none'); // 'admin' | 'manual' | 'none'
+  const [loadingFee, setLoadingFee]   = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [submitted, setSubmitted]     = useState(false);
+  const [error, setError]             = useState('');
+  const [resultFee, setResultFee]     = useState(null);
+  const [appliedTypes, setAppliedTypes] = useState([]);
+
   const TYPES = [
-    { value: 'LOST_TICKET', label: '🎫 Mất vé',       color: '#f59e0b' },
-    { value: 'OVERSTAY',    label: '⏰ Quá giờ',       color: '#ef4444' },
+    { value: 'LOST_TICKET', label: '🎫 Mất vé',        color: '#f59e0b' },
     { value: 'WRONG_ZONE',  label: '🗺️ Sai khu vực',  color: '#8b5cf6' },
-    { value: 'UNPAID_EXIT', label: '💸 Ra không trả',  color: '#ec4899' },
+    { value: 'WRONG_SPOT',  label: '🅿️ Sai vị trí',   color: '#ec4899' },
   ];
+
+  // Normalize vehicleType sang UPPERCASE enum value
+  const rawVehicleType = session?.vehicleType
+    || session?.vehicle?.vehicleType
+    || session?.vehicle?.type
+    || '';
+  const vehicleType = rawVehicleType.toUpperCase() || 'CAR';
+
+  const fetchAppliedExceptions = async () => {
+    if (!session?.id) return [];
+    try {
+      const res = await api.get('/api/v1/exceptions', { params: { sessionId: session.id } });
+      const list = res.data?.data || [];
+      const types = list
+        .filter(ex => ex.status === 'RESOLVED' || ex.status === 'APPROVED')
+        .map(ex => ex.exceptionType);
+      setAppliedTypes(types);
+      return types;
+    } catch {
+      return [];
+    }
+  };
+
+  // Auto-fetch penalty fee từ bảng admin khi chọn loại ngoại lệ
+  const fetchPenaltyFee = async (exceptionType) => {
+    if (!vehicleType) return;
+    setLoadingFee(true);
+    setPenaltyFee('');
+    setPenaltySrc('none');
+    try {
+      const res = await api.get('/api/v1/penalty-configs/lookup', {
+        params: { vehicleType, exceptionType }
+      });
+      if (res.data?.found && res.data?.data?.penaltyAmount != null) {
+        const amount = Number(res.data.data.penaltyAmount);
+        setPenaltyFee(String(amount));
+        setPenaltySrc(amount > 0 ? 'admin' : 'none');
+      } else {
+        setPenaltyFee('');
+        setPenaltySrc('none');
+      }
+    } catch {
+      setPenaltyFee('');
+      setPenaltySrc('none');
+    } finally {
+      setLoadingFee(false);
+    }
+  };
+
+  // Fetch khi component mount
+  useEffect(() => {
+    const init = async () => {
+      const types = await fetchAppliedExceptions();
+      const firstAvailable = TYPES.find(t => !types.includes(t.value))?.value || 'LOST_TICKET';
+      setType(firstAvailable);
+      fetchPenaltyFee(firstAvailable);
+    };
+    init();
+  }, [session?.id]); // eslint-disable-line
+
+  const handleTypeChange = (newType) => {
+    if (appliedTypes.includes(newType)) return;
+    setType(newType);
+    fetchPenaltyFee(newType);
+  };
+
+  const handleSubmit = async () => {
+    if (!notes.trim()) { setError('Vui lòng nhập ghi chú mô tả tình huống.'); return; }
+    if (appliedTypes.includes(type)) { setError('Ngoại lệ này đã được xử lý cho xe trước đó.'); return; }
+    setError('');
+    setSubmitting(true);
+    try {
+      const payload = {
+        exceptionType: type,
+        reason: notes,
+        resolution: `Nhân viên xử lý: ${notes}`,
+        evidenceNote: notes,
+      };
+      if (session?.id) payload.sessionId = session.id;
+      if (penaltyFee && Number(penaltyFee) > 0) payload.penaltyFee = String(penaltyFee);
+
+      const res = await api.post('/api/v1/exceptions/staff-handle', payload);
+      const fee = res.data?.data?.penaltyFee;
+      setResultFee(fee ? Number(fee) : 0);
+      const newAppliedTypes = [...appliedTypes, type];
+      setAppliedTypes(newAppliedTypes);
+      setSubmitted(true);
+      if (fee && Number(fee) > 0 && onPenaltyApplied) {
+        onPenaltyApplied(Number(fee));
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không thể xử lý ngoại lệ. Thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Label loại xe hiển thị
+  const vehicleLabel = vehicleType === 'CAR' ? '🚗 Ô tô'
+    : vehicleType === 'MOTORBIKE' ? '🏍️ Xe máy'
+    : vehicleType === 'TRUCK' ? '🚛 Xe tải'
+    : vehicleType || '—';
+
+  const hasMoreTypes = TYPES.some(t => !appliedTypes.includes(t.value));
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 25px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border-color)' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 25px 60px rgba(0,0,0,0.3)', border: '1px solid var(--border-color)' }}>
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
@@ -96,39 +210,125 @@ function ExceptionPanel({ session, onClose }) {
             </div>
             <div>
               <p style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>Xử lý Ngoại lệ</p>
-              {session && <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 1 }}>{session.licensePlate || session.vehicle?.licensePlate}</p>}
+              {session && (
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                  {session.licensePlate || session.vehicle?.licensePlate}
+                  {vehicleLabel && <span style={{ marginLeft: 6, padding: '1px 6px', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: '0.7rem' }}>
+                    {vehicleLabel}
+                  </span>}
+                </p>
+              )}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, borderRadius: 6, display: 'flex' }}><X size={20} /></button>
         </div>
+
         {submitted ? (
+          /* ── Kết quả ── */
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '3rem', marginBottom: 12 }}>✅</div>
-            <p style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Đã ghi nhận ngoại lệ</p>
-            <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)', marginBottom: 20 }}>Quản lý sẽ xem xét và phê duyệt</p>
-            <button onClick={onClose} style={{ padding: '10px 24px', background: 'var(--accent-primary)', border: 'none', borderRadius: 8, color: '#000', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}>Đóng</button>
+            <p style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Đã xử lý ngoại lệ thành công!</p>
+            {resultFee > 0 ? (
+              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: '12px 16px', margin: '12px 0 20px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phí phạt đã áp dụng</p>
+                <p style={{ fontWeight: 800, fontSize: '1.4rem', color: '#f59e0b' }}>₫{resultFee.toLocaleString('vi-VN')}</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>✅ Đã cộng vào tổng phí thanh toán</p>
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)', marginBottom: 20 }}>Không có phí phạt thêm.</p>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={onClose} style={{ flex: 1, padding: '10px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}>Đóng &amp; Hoàn tất</button>
+              {hasMoreTypes && (
+                <button
+                  onClick={() => {
+                    const nextAvailable = TYPES.find(t => !appliedTypes.includes(t.value))?.value || 'LOST_TICKET';
+                    setType(nextAvailable);
+                    fetchPenaltyFee(nextAvailable);
+                    setNotes('');
+                    setResultFee(0);
+                    setSubmitted(false);
+                  }}
+                  style={{ flex: 1.2, padding: '10px 16px', background: 'var(--accent-primary)', border: 'none', borderRadius: 8, color: '#000', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}>
+                  + Xử lý thêm ngoại lệ
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
+            {/* Loại ngoại lệ */}
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Loại ngoại lệ</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-              {TYPES.map(t => (
-                <button key={t.value} onClick={() => setType(t.value)} style={{
-                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem',
-                  textAlign: 'left', border: `2px solid ${type === t.value ? t.color : 'var(--border-color)'}`,
-                  background: type === t.value ? `${t.color}18` : 'var(--bg-secondary)',
-                  color: type === t.value ? t.color : 'var(--text-secondary)', transition: 'all 0.15s',
-                }}>{t.label}</button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+              {TYPES.map(t => {
+                const isApplied = appliedTypes.includes(t.value);
+                const isSelected = type === t.value && !isApplied;
+                return (
+                  <button
+                    key={t.value}
+                    disabled={isApplied}
+                    onClick={() => !isApplied && handleTypeChange(t.value)}
+                    style={{
+                      padding: '10px 8px', borderRadius: 10, cursor: isApplied ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.78rem',
+                      textAlign: 'center', border: `2px solid ${isSelected ? t.color : 'var(--border-color)'}`,
+                      background: isSelected ? `${t.color}18` : 'var(--bg-secondary)',
+                      color: isSelected ? t.color : isApplied ? 'var(--text-muted)' : 'var(--text-secondary)',
+                      opacity: isApplied ? 0.55 : 1, transition: 'all 0.15s',
+                    }}>
+                    {t.label}
+                    {isApplied && <div style={{ fontSize: '0.66rem', color: '#10b981', marginTop: 2, fontWeight: 700 }}>✓ Đã áp dụng</div>}
+                  </button>
+                );
+              })}
             </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ghi chú</p>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Mô tả tình huống ngoại lệ..." rows={3}
+
+            {/* Phí phạt */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Phí phạt áp dụng (VNĐ)
+                </p>
+                {loadingFee ? (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>⏳ Đang tra cứu...</span>
+                ) : penaltyFee && Number(penaltyFee) > 0 ? (
+                  <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(16,185,129,0.12)', color: '#10b981', fontWeight: 600 }}>
+                    ✓ Tự động theo Admin
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Chưa có cấu hình (0 VNĐ)</span>
+                )}
+              </div>
+              <input
+                type="text"
+                readOnly
+                disabled
+                value={loadingFee ? 'Đang tải...' : penaltyFee && Number(penaltyFee) > 0 ? `${Number(penaltyFee).toLocaleString('vi-VN')} VNĐ` : '0 VNĐ (Chưa cấu hình)'}
+                style={{ width: '100%', padding: '11px 14px', borderRadius: 10,
+                  border: penaltyFee && Number(penaltyFee) > 0 ? '1.5px solid rgba(16,185,129,0.5)' : '1px solid var(--border-color)',
+                  background: penaltyFee && Number(penaltyFee) > 0 ? 'rgba(16,185,129,0.06)' : 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem',
+                  fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box', outline: 'none', cursor: 'not-allowed' }}
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 5 }}>
+                💡 Mức phí phạt được tra cứu và áp dụng tự động theo bảng cấu hình của Admin (không nhập thủ công)
+              </p>
+            </div>
+
+            {/* Ghi chú */}
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ghi chú / Mô tả</p>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Mô tả tình huống ngoại lệ và cách xử lý..." rows={3}
               style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: '0.88rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
+
+            {error && (
+              <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontSize: '0.82rem', marginTop: 8 }}>
+                {error}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <button onClick={onClose} style={{ flex: 0.4, padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 10, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem' }}>Hủy</button>
-              <button onClick={() => setSubmit(true)} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <AlertTriangle size={15} /> Gửi báo cáo ngoại lệ
+              <button onClick={handleSubmit} disabled={submitting} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: submitting ? 0.7 : 1 }}>
+                {submitting ? <><RefreshCw size={14} className="spin-animation" /> Đang xử lý...</> : <><AlertTriangle size={15} /> Xác nhận xử lý ngoại lệ</>}
               </button>
             </div>
           </>
@@ -751,7 +951,26 @@ export default function VehicleExit() {
 
       {/* ── MODAL: NGOẠI LỆ ── */}
       {showException && (
-        <ExceptionPanel session={selectedSession} onClose={() => setShowException(false)} />
+        <ExceptionPanel 
+          session={selectedSession} 
+          onClose={async () => {
+            setShowException(false);
+            if (selectedSession) {
+              try {
+                const fee = await calculateFee(selectedSession.id);
+                setFeeInfo(fee);
+              } catch (err) {}
+            }
+          }}
+          onPenaltyApplied={async (penaltyFee) => {
+            if (selectedSession) {
+              try {
+                const fee = await calculateFee(selectedSession.id);
+                setFeeInfo(fee);
+              } catch (err) {}
+            }
+          }}
+        />
       )}
     </div>
   );

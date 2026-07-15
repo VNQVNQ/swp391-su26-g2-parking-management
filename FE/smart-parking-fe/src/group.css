@@ -2,39 +2,39 @@
 
 /* ===== CSS CUSTOM PROPERTIES ===== */
 :root {
-  /* Colors - Dark Theme */
-  --bg-primary: #0b0f19;
-  --bg-secondary: #111827;
-  --bg-card: #162032;
-  --bg-card-hover: #1a2740;
-  --bg-sidebar: #0f1729;
-  --bg-input: #1a2332;
-  --bg-input-focus: #1e2a3d;
+  /* Colors - Modern Light Theme (Slate-Indigo) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-sidebar: #1e293b;
+  --bg-input: #f1f5f9;
+  --bg-input-focus: #e8eef7;
 
-  /* Green Accent */
-  --accent-primary: #10b981;
-  --accent-primary-hover: #34d399;
-  --accent-primary-glow: rgba(16, 185, 129, 0.15);
-  --accent-primary-border: rgba(16, 185, 129, 0.4);
-  --accent-gradient: linear-gradient(135deg, #10b981, #059669);
-  --accent-gradient-hover: linear-gradient(135deg, #34d399, #10b981);
+  /* Indigo Accent */
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #6366f1;
+  --accent-primary-glow: rgba(79, 70, 229, 0.12);
+  --accent-primary-border: rgba(79, 70, 229, 0.3);
+  --accent-gradient: linear-gradient(135deg, #4f46e5, #7c3aed);
+  --accent-gradient-hover: linear-gradient(135deg, #6366f1, #4f46e5);
 
   /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-accent: #10b981;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-accent: #4f46e5;
 
   /* Borders */
-  --border-color: #1e293b;
-  --border-hover: #334155;
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
   --border-active: var(--accent-primary);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.15);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --shadow-glow: 0 0 20px rgba(79, 70, 229, 0.18);
 
   /* Spacing */
   --sidebar-width: 260px;

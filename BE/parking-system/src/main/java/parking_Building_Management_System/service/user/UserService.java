@@ -375,6 +375,7 @@ public class UserService {
         }
         String tokenResetPassword = jwtService.generateTokenResetPassword(user).get("TokenResetPassword");
         user.setTokenResetPassword(tokenResetPassword);
+        userRepository.save(user); // Lưu token vào DB trước khi gửi mail
         emailService.sendMail(email, "Your password reset token (valid for 10 min)", "http://localhost:5173/reset-password/" + tokenResetPassword);
 
         auditLogService.createAuditLog(user, "FORGOT_PASSWORD", LocalDateTime.now());

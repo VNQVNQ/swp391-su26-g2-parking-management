@@ -256,7 +256,7 @@ export default function Register() {
                       id="register-gender"
                       value={form.gender}
                       onChange={(e) => update('gender', e.target.value)}
-                      style={{ color: form.gender ? 'inherit' : 'rgba(255,255,255,0.4)' }}
+                      style={{ color: form.gender ? 'inherit' : '#94a3b8' }}
                     >
                       <option value="" disabled hidden>Chọn giới tính</option>
                       <option value="MALE">Nam</option>
@@ -276,7 +276,7 @@ export default function Register() {
                       type="date"
                       value={form.dateOfBirth}
                       onChange={(e) => update('dateOfBirth', e.target.value)}
-                      style={{ colorScheme: 'dark' }}
+                      style={{ colorScheme: 'light' }}
                     />
                   </div>
                   {errors.dateOfBirth && <span className="auth-error">{errors.dateOfBirth}</span>}
@@ -383,7 +383,7 @@ export default function Register() {
 
               {/* Terms */}
               <div className="auth-field">
-                <label className="auth-checkbox-label" htmlFor="agree-terms">
+                <label className="auth-checkbox-label register-terms-label" htmlFor="agree-terms">
                   <input
                     type="checkbox"
                     id="agree-terms"
@@ -392,8 +392,7 @@ export default function Register() {
                   />
                   <span className="auth-checkmark" />
                   <span>
-                    Tôi đồng ý với <a href="#" className="auth-link-accent">Điều khoản dịch vụ</a> và{' '}
-                    <a href="#" className="auth-link-accent">Chính sách bảo mật</a>
+                    Tôi đồng ý với điều khoản dịch vụ và chính sách bảo mật
                   </span>
                 </label>
                 {errors.agreed && <span className="auth-error">{errors.agreed}</span>}
