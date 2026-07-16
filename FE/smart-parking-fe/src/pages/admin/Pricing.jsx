@@ -7,11 +7,12 @@ import api from '../../services/api';
 const VEHICLE_TYPE_LABELS = { CAR: 'Ô tô', MOTORBIKE: 'Xe máy', TRUCK: 'Xe tải' };
 const EXCEPTION_TYPE_LABELS = {
   LOST_TICKET: '🎫 Mất vé',
-  WRONG_ZONE:  '🗺️ Sai khu vực',
-  WRONG_SPOT:  '🅿️ Đỗ sai vị trí',
+  WRONG_ZONE:  '📍 Sai vị trí',
+  OVERSTAY:    '⏰ Quá giờ',
+  WRONG_SPOT:  '🅿️ Đỗ sai vị trí (cũ)',
 };
 const VEHICLE_TYPES   = ['CAR', 'MOTORBIKE', 'TRUCK'];
-const EXCEPTION_TYPES = ['LOST_TICKET', 'WRONG_ZONE', 'WRONG_SPOT'];
+const EXCEPTION_TYPES = ['LOST_TICKET', 'WRONG_ZONE', 'OVERSTAY'];
 
 /* ── Section: Phí Phạt Ngoại Lệ ────────────────────────────────────── */
 function PenaltySection() {
@@ -145,8 +146,8 @@ function PenaltySection() {
                 <tr key={p.id}>
                   <td>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700,
-                      background: p.exceptionType === 'WRONG_SPOT' ? 'rgba(139,92,246,0.12)' : (p.vehicleType === 'CAR' ? 'rgba(59,130,246,0.12)' : p.vehicleType === 'MOTORBIKE' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'),
-                      color: p.exceptionType === 'WRONG_SPOT' ? '#8b5cf6' : (p.vehicleType === 'CAR' ? '#3b82f6' : p.vehicleType === 'MOTORBIKE' ? '#10b981' : '#f59e0b'),
+                      background: p.exceptionType === 'WRONG_SPOT' || p.exceptionType === 'OVERSTAY' ? 'rgba(139,92,246,0.12)' : (p.vehicleType === 'CAR' ? 'rgba(59,130,246,0.12)' : p.vehicleType === 'MOTORBIKE' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'),
+                      color: p.exceptionType === 'WRONG_SPOT' || p.exceptionType === 'OVERSTAY' ? '#8b5cf6' : (p.vehicleType === 'CAR' ? '#3b82f6' : p.vehicleType === 'MOTORBIKE' ? '#10b981' : '#f59e0b'),
                     }}>
                       {VEHICLE_TYPE_LABELS[p.vehicleType] || p.vehicleType}
                     </span>

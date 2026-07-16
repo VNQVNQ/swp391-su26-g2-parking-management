@@ -119,6 +119,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     public List<ParkingSlotResponse> getAllSlots() {
         return parkingSlotRepository.findAll()
                 .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -127,6 +128,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     public List<ParkingSlotResponse> getSlotsByFloor(UUID floorId) {
         return parkingSlotRepository.findByFloorId(floorId)
                 .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -140,13 +142,17 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 org.hibernate.Hibernate.initialize(slot.getCurrentSession().getVehicle());
             }
         }
-        return slots.stream().map(this::mapToResponse).collect(Collectors.toList());
+        return slots.stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<ParkingSlotResponse> getSlotsByMaintenanceStatus(SlotMaintenanceStatus maintenanceStatus) {
         return parkingSlotRepository.findByMaintenanceStatus(maintenanceStatus)
                 .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -155,6 +161,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     public List<AvailableSlotResponse> getAvailableSlotsByFloorAndVehicleType(UUID floorId, VehicleType vehicleType) {
         return parkingSlotRepository.findAvailableSlotsByFloorAndVehicleType(floorId, vehicleType)
                 .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToAvailableResponse)
                 .collect(Collectors.toList());
     }
@@ -163,6 +170,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
     public List<AvailableSlotResponse> getAvailableSlotsByZone(UUID zoneId) {
         return parkingSlotRepository.findAvailableSlotsByZone(zoneId)
                 .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToAvailableResponse)
                 .collect(Collectors.toList());
     }
@@ -251,6 +259,26 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 slot.getZone().getName(),
                 slot.getVehicleType()
         );
+    }
+
+    private int compareSlotCodeNatural(String s1, String s2) {
+        if (s1 == null && s2 == null) return 0;
+        if (s1 == null) return -1;
+        if (s2 == null) return 1;
+        String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+        String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+        for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+            String p1 = parts1[i];
+            String p2 = parts2[i];
+            if (p1.matches("\\d+") && p2.matches("\\d+")) {
+                int cmp = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
+                if (cmp != 0) return cmp;
+            } else {
+                int cmp = p1.compareToIgnoreCase(p2);
+                if (cmp != 0) return cmp;
+            }
+        }
+        return Integer.compare(parts1.length, parts2.length);
     }
 }
 

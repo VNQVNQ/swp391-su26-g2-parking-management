@@ -15,8 +15,11 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BookingRequest {
     
-    @NotNull(message = "Vehicle ID is required")
     UUID vehicleId;
+    
+    String licensePlate;
+    
+    String vehicleType;
     
     UUID slotId;
     

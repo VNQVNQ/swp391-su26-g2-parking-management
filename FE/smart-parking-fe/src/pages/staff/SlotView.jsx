@@ -44,7 +44,8 @@ export default function SlotView() {
         api.get(`/api/v1/bookings/zone/${zone.id}/booked-slots`).catch(() => ({ data: { data: [] } })),
       ]);
       const data = slotsRes.data.data ?? slotsRes.data ?? [];
-      setSlots(data);
+      const sorted = Array.isArray(data) ? [...data].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      setSlots(sorted);
       const bc = bookingRes.data?.data ?? bookingRes.data ?? 0;
       setBookedCount(typeof bc === 'number' ? bc : 0);
       const bs = bookedSlotsRes.data?.data ?? bookedSlotsRes.data ?? [];

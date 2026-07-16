@@ -17,4 +17,6 @@ public class FeeCalculationResponse {
     private BigDecimal totalFee;
     private Long durationMinutes;
     private String message;
+    private Boolean hasMonthlyPass;
+    private String ticketType;
 }

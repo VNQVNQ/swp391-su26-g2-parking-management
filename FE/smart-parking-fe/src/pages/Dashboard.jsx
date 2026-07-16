@@ -65,7 +65,8 @@ export default function Dashboard() {
         ]);
         
         setZones(zonesRes.data.data || zonesRes.data || []);
-        setSlots(slotsRes.data.data || slotsRes.data || []);
+        const sData = slotsRes.data.data || slotsRes.data || [];
+        setSlots(Array.isArray(sData) ? [...sData].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : []);
         setActiveSessions(sessionsRes.data.data || sessionsRes.data || []);
       } catch (error) {
         console.error("Lỗi tải dữ liệu Dashboard:", error);

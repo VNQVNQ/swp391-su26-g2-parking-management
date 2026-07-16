@@ -23,8 +23,11 @@ import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.repository.UserRepository;
+import parking_Building_Management_System.repository.PenaltyConfigRepository;
 import parking_Building_Management_System.entity.ParkingException;
+import parking_Building_Management_System.entity.PenaltyConfig;
 import parking_Building_Management_System.entity.enums.ExceptionStatus;
+import parking_Building_Management_System.entity.enums.ExceptionType;
 import parking_Building_Management_System.service.ParkingSessionService;
 import parking_Building_Management_System.service.PricingRuleService;
 import parking_Building_Management_System.service.MonthlyPassService;
@@ -65,6 +68,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final PricingRuleService pricingRuleService;
     private final MonthlyPassService monthlyPassService;
     private final BookingService bookingService;
+    private final PenaltyConfigRepository penaltyConfigRepository;
 
     @Override
     public EntryValidationResponse validateVehicleForEntry(String licensePlate) {
@@ -158,7 +162,10 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         }
 
         List<ParkingSlot> availableSlots = parkingSlotRepository
-                .findAvailableSlotsByZone(zoneId);
+                .findAvailableSlotsByZone(zoneId)
+                .stream()
+                .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
+                .collect(Collectors.toList());
 
         long availableCount = availableSlots.size();
         long occupiedCount = zone.getTotalSlots() - availableCount;
@@ -351,6 +358,9 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             String zoneName = (session.getSlot() != null && session.getSlot().getZone() != null) ? session.getSlot().getZone().getName() : null;
             String floorName = (session.getSlot() != null && session.getSlot().getFloor() != null) ? session.getSlot().getFloor().getName() : null;
             
+            boolean hasPass = session.getVehicle() != null && 
+                    monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId()).isPresent();
+            
             return ActiveSessionResponse.builder()
                     .id(session.getId())
                     .licensePlate(licensePlate)
@@ -360,6 +370,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .zoneName(zoneName)
                     .floorName(floorName)
                     .entryTime(session.getEntryTime())
+                    .hasMonthlyPass(hasPass)
+                    .ticketType(hasPass ? "MONTHLY" : "HOURLY")
                     .build();
         }).collect(java.util.stream.Collectors.toList());
     }
@@ -382,11 +394,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
     @Override
     public List<ParkingSession> findSessionsOverstay24Hours() {
-        log.info("Finding sessions overestaying 24+ hours");
+        log.info("Finding sessions overstaying 24+ hours");
         return parkingSessionRepository.findByStatus(ParkingSessionStatus.ACTIVE)
                 .stream()
                 .filter(session -> session.getOverstayFlaggedAt() == null &&
-                        session.getEntryTime().isBefore(LocalDateTime.now().minusHours(24)))
+                        session.getEntryTime().isBefore(LocalDateTime.now().minusHours(24)) &&
+                        monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId()).isEmpty())
                 .collect(Collectors.toList());
     }
 
@@ -482,48 +495,26 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         long durationMinutes = ChronoUnit.MINUTES.between(session.getEntryTime(), exitTime);
         long durationHours = calculateDurationInHours(session.getEntryTime(), exitTime);
 
-        // Phase 4: If monthly pass is active, return 0 or apply overstay logic
+        boolean hasPass = false;
+        // Phase 4: If monthly pass is active, no base fee and no overstay fee
         try {
             Optional<MonthlyPassDetailResponse> passOpt = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId());
-            if (passOpt.isPresent()) {
-                if (durationHours <= 24) {
-                    // Monthly pass holder with normal stay
-                    session.setFee(totalPenaltyFee);
-                    session.setFinalFee(totalPenaltyFee);
-                    session.setAppliedMonthlyPassFee(BigDecimal.ZERO);
-                    parkingSessionRepository.save(session);
-                    
-                    log.info("Monthly pass holder: base fee 0, penalty fee: {} for {} minutes", totalPenaltyFee, durationMinutes);
-                    return FeeCalculationResponse.builder()
-                            .sessionId(sessionId)
-                            .durationMinutes(durationMinutes)
-                            .totalFee(totalPenaltyFee)
-                            .message("No base charge - Monthly pass active" + (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0 ? " (Penalty applied)" : ""))
-                            .build();
-                } else if (durationHours > 24) {
-                    // Overstay for monthly pass holder
-                    long overstayHours = durationHours - 24;
-                    PricingRuleDetailResponse rule = getApplicablePricingRule(session);
-                    BigDecimal overstayMultiplier = rule != null ? rule.getOverstayRateMultiplier() : BigDecimal.valueOf(2.0);
-                    BigDecimal ratePerHour = rule != null ? rule.getRatePerHour() : BigDecimal.valueOf(50000);
-                    
-                    BigDecimal overstayFee = ratePerHour
-                            .multiply(BigDecimal.valueOf(overstayHours))
-                            .multiply(overstayMultiplier);
-                    BigDecimal totalFee = overstayFee.add(totalPenaltyFee);
-                    
-                    session.setFee(totalFee);
-                    session.setFinalFee(totalFee);
-                    parkingSessionRepository.save(session);
-                    
-                    log.info("Monthly pass holder overstay: {} hours, fee: {}, penalty: {}", overstayHours, overstayFee, totalPenaltyFee);
-                    return FeeCalculationResponse.builder()
-                            .sessionId(sessionId)
-                            .durationMinutes(durationMinutes)
-                            .totalFee(totalFee)
-                            .message("Overstay fee applied for monthly pass holder")
-                            .build();
-                }
+            if (passOpt.isPresent() || session.getTicketType() == TicketType.MONTHLY || session.getMonthlyPass() != null) {
+                hasPass = true;
+                session.setFee(totalPenaltyFee);
+                session.setFinalFee(totalPenaltyFee);
+                session.setAppliedMonthlyPassFee(BigDecimal.ZERO);
+                parkingSessionRepository.save(session);
+                
+                log.info("Monthly pass holder: base & overstay fee 0, penalty fee: {} for {} minutes ({} hours)", totalPenaltyFee, durationMinutes, durationHours);
+                return FeeCalculationResponse.builder()
+                        .sessionId(sessionId)
+                        .durationMinutes(durationMinutes)
+                        .totalFee(totalPenaltyFee)
+                        .message("No base or overstay charge - Monthly pass active" + (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0 ? " (Other penalty applied)" : ""))
+                        .hasMonthlyPass(true)
+                        .ticketType("MONTHLY")
+                        .build();
             }
         } catch (Exception e) {
             log.warn("Monthly pass check failed: {}", e.getMessage());
@@ -536,7 +527,17 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             // Fallback: use default pricing
             log.warn("No pricing rule found, using default rate");
             BigDecimal defaultRate = BigDecimal.valueOf(50000);
-            BigDecimal baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours))).add(totalPenaltyFee);
+            BigDecimal baseFee;
+            if (durationHours <= 24) {
+                baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours))).add(totalPenaltyFee);
+            } else {
+                BigDecimal normalFee24h = defaultRate.multiply(BigDecimal.valueOf(24));
+                long overstayHours = durationHours - 24;
+                long overstayDays = (long) Math.ceil((double) overstayHours / 24.0);
+                BigDecimal overstayRatePerDay = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
+                BigDecimal overstayFee = overstayRatePerDay.multiply(BigDecimal.valueOf(overstayDays));
+                baseFee = normalFee24h.add(overstayFee).add(totalPenaltyFee);
+            }
             BigDecimal finalFee = baseFee.subtract(session.getDiscountAmount());
             if (finalFee.compareTo(BigDecimal.ZERO) < 0) finalFee = BigDecimal.ZERO;
             
@@ -549,11 +550,14 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .durationMinutes(durationMinutes)
                     .totalFee(session.getFinalFee())
                     .message("Fee calculated with default rate")
+                    .hasMonthlyPass(hasPass)
+                    .ticketType(hasPass ? "MONTHLY" : "HOURLY")
                     .build();
         }
 
-        // Calculate base fee
-        BigDecimal baseHours = BigDecimal.valueOf(Math.max(1, durationHours));
+        // Calculate base fee (phí bình thường cho 24 giờ đầu hoặc cho số giờ <= 24)
+        long normalHours = durationHours > 24 ? 24 : Math.max(1, durationHours);
+        BigDecimal baseHours = BigDecimal.valueOf(normalHours);
         BigDecimal baseFee = baseHours.multiply(rule.getRatePerHour());
         
         // Apply minimum fee
@@ -574,14 +578,15 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             log.info("Daily maximum fee applied: {}", baseFee);
         }
 
-        // Apply overstay multiplier if > 24h
+        // Apply overstay fee if > 24h: phí bình thường + phụ phí quá hạn (tính thêm theo ngày từ Admin)
         if (durationHours > 24) {
             long overstayHours = durationHours - 24;
-            BigDecimal overstayFee = rule.getRatePerHour()
-                    .multiply(BigDecimal.valueOf(overstayHours))
-                    .multiply(rule.getOverstayRateMultiplier());
+            long overstayDays = (long) Math.ceil((double) overstayHours / 24.0);
+            BigDecimal overstayRatePerDay = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
+            BigDecimal overstayFee = overstayRatePerDay.multiply(BigDecimal.valueOf(overstayDays));
             baseFee = baseFee.add(overstayFee);
-            log.info("Overstay multiplier applied: {} hours, fee: {}", overstayHours, overstayFee);
+            log.info("Overstay penalty applied: {} hours ({} days) at {}/day, overstayFee: {}", 
+                    overstayHours, overstayDays, overstayRatePerDay, overstayFee);
         }
 
         if (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0) {
@@ -606,7 +611,15 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 .durationMinutes(durationMinutes)
                 .totalFee(finalFee)
                 .message("Fee calculated successfully for " + durationHours + " hour(s).")
+                .hasMonthlyPass(hasPass)
+                .ticketType(hasPass ? "MONTHLY" : "HOURLY")
                 .build();
+    }
+
+    private BigDecimal getOverstayPenaltyPerDay(VehicleType vehicleType) {
+        return penaltyConfigRepository.findByVehicleTypeAndExceptionTypeAndIsActiveTrue(vehicleType, ExceptionType.OVERSTAY)
+                .map(PenaltyConfig::getPenaltyAmount)
+                .orElse(BigDecimal.valueOf(20000));
     }
 
     private parking_Building_Management_System.entity.user.User createStaffUser(Long staffId) {
@@ -682,5 +695,25 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         long durationSeconds = ChronoUnit.SECONDS.between(entryTime, exitTime);
         // Ceiling division: ceil(seconds / 3600)
         return (durationSeconds + 3599) / 3600;
+    }
+
+    private int compareSlotCodeNatural(String s1, String s2) {
+        if (s1 == null && s2 == null) return 0;
+        if (s1 == null) return -1;
+        if (s2 == null) return 1;
+        String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+        String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+        for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+            String p1 = parts1[i];
+            String p2 = parts2[i];
+            if (p1.matches("\\d+") && p2.matches("\\d+")) {
+                int cmp = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
+                if (cmp != 0) return cmp;
+            } else {
+                int cmp = p1.compareToIgnoreCase(p2);
+                if (cmp != 0) return cmp;
+            }
+        }
+        return Integer.compare(parts1.length, parts2.length);
     }
 }

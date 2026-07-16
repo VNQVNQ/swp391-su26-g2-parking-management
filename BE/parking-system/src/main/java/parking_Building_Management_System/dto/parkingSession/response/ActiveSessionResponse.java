@@ -20,4 +20,7 @@ public class ActiveSessionResponse {
     private String floorName;
     
     private LocalDateTime entryTime;
+    
+    private Boolean hasMonthlyPass;
+    private String ticketType;
 }

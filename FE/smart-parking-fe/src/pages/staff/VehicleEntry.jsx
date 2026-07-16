@@ -117,13 +117,35 @@ export default function VehicleEntry() {
         return;
       }
       const result = await validateVehicle(cleanPlate);
-      if (!result.valid && result.errorCode === 'UNPAID_FEE') {
-        setError('Xe còn nợ phí — không thể vào bãi (BR-03)');
+      if (!result.valid) {
+        if (result.errorCode === 'VEHICLE_ALREADY_IN_PARKING') {
+          setError('Xe đã có trong hệ thống (đang đỗ trong bãi) — không thể tiếp tục cho xe vào');
+          return;
+        }
+        if (result.errorCode === 'UNPAID_FEE') {
+          setError('Xe còn nợ phí — không thể vào bãi (BR-03)');
+          return;
+        }
+        setError(result.message || 'Xe không đủ điều kiện vào bãi');
         return;
       }
       setVehicleInfo(result);
       setStep(2);
-    } catch {
+    } catch (err) {
+      const errCode = err?.response?.data?.data?.errorCode || err?.response?.data?.errorCode;
+      const errMsg = err?.response?.data?.message || err?.message || '';
+      if (errCode === 'VEHICLE_ALREADY_IN_PARKING' || errMsg.includes('ở trong bãi') || errMsg.includes('Parking Session hoạt động')) {
+        setError('Xe đã có trong hệ thống (đang đỗ trong bãi) — không thể tiếp tục cho xe vào');
+        return;
+      }
+      if (errCode === 'UNPAID_FEE') {
+        setError('Xe còn nợ phí — không thể vào bãi (BR-03)');
+        return;
+      }
+      if (err?.response?.status === 400 && errMsg) {
+        setError(errMsg);
+        return;
+      }
       setVehicleInfo({ valid: true, licensePlate: plate.trim(), foundVehicle: false });
       setStep(2);
     } finally { setLoading(false); }

@@ -15,6 +15,7 @@ import parking_Building_Management_System.repository.ParkingSessionRepository;
 import parking_Building_Management_System.repository.PenaltyConfigRepository;
 import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
+import parking_Building_Management_System.service.MonthlyPassService;
 import parking_Building_Management_System.service.ParkingSessionService;
 
 import java.math.BigDecimal;
@@ -38,6 +39,18 @@ public class ParkingExceptionController {
     private final VehicleRepository vehicleRepository;
     private final PenaltyConfigRepository penaltyConfigRepository;
     private final ParkingSessionService parkingSessionService;
+    private final MonthlyPassService monthlyPassService;
+
+    private void validateExceptionAllowedForSession(ParkingSession session, ExceptionType type) {
+        if (session != null && session.getVehicle() != null) {
+            boolean hasActiveMonthlyPass = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId()).isPresent();
+            if (hasActiveMonthlyPass) {
+                if (type != ExceptionType.WRONG_ZONE && type != ExceptionType.WRONG_SPOT && type != ExceptionType.LOST_TICKET) {
+                    throw new RuntimeException("Xe có vé tháng chỉ được xử lý ngoại lệ Đỗ sai vị trí và Mất thẻ/vé.");
+                }
+            }
+        }
+    }
 
     // ─── Helper: map exception entity → response map ───────────────────────────
     private Map<String, Object> mapException(ParkingException ex) {
@@ -164,6 +177,10 @@ public class ParkingExceptionController {
                         .orElseThrow(() -> new RuntimeException("No active session found for plate: " + licensePlate));
             }
 
+            if (session != null) {
+                validateExceptionAllowedForSession(session, ExceptionType.valueOf(type));
+            }
+
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             var user = userRepository.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -249,26 +266,51 @@ public class ParkingExceptionController {
             var user = userRepository.findByEmail(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            ExceptionType targetType = ExceptionType.valueOf(type);
+            ParkingException exception = null;
             if (session != null) {
-                ExceptionType targetType = ExceptionType.valueOf(type);
+                validateExceptionAllowedForSession(session, targetType);
                 boolean alreadyApplied = parkingExceptionRepository.findBySessionId(session.getId()).stream()
-                        .anyMatch(e -> e.getExceptionType() == targetType
+                        .anyMatch(e -> (e.getExceptionType() == targetType
+                                || (targetType == ExceptionType.WRONG_ZONE && e.getExceptionType() == ExceptionType.WRONG_SPOT)
+                                || (targetType == ExceptionType.WRONG_SPOT && e.getExceptionType() == ExceptionType.WRONG_ZONE))
                                 && (e.getStatus() == ExceptionStatus.RESOLVED || e.getStatus() == ExceptionStatus.APPROVED));
                 if (alreadyApplied) {
                     throw new RuntimeException("Ngoại lệ '" + targetType.getDisplayName() + "' đã được áp dụng cho phiên gửi xe này trước đó.");
                 }
+
+                exception = parkingExceptionRepository.findBySessionId(session.getId()).stream()
+                        .filter(e -> (e.getExceptionType() == targetType
+                                || (targetType == ExceptionType.WRONG_ZONE && e.getExceptionType() == ExceptionType.WRONG_SPOT)
+                                || (targetType == ExceptionType.WRONG_SPOT && e.getExceptionType() == ExceptionType.WRONG_ZONE))
+                                && e.getStatus() == ExceptionStatus.PENDING)
+                        .findFirst()
+                        .orElse(null);
             }
 
-            ParkingException exception = new ParkingException();
-            exception.setSession(session);
-            exception.setExceptionType(ExceptionType.valueOf(type));
-            exception.setReason(reason);
+            if (exception == null) {
+                exception = new ParkingException();
+                exception.setSession(session);
+                exception.setExceptionType(ExceptionType.valueOf(type));
+                exception.setCreatedBy(user);
+            } else {
+                exception.setExceptionType(ExceptionType.valueOf(type));
+            }
+            if (reason != null && !reason.isEmpty()) {
+                exception.setReason(reason);
+            }
             exception.setResolution(resolution != null ? resolution : "Đã xử lý bởi nhân viên");
-            exception.setEvidenceNote(evidenceNote);
+            if (evidenceNote != null && !evidenceNote.isEmpty()) {
+                exception.setEvidenceNote(evidenceNote);
+            }
             if (session != null && session.getVehicle() != null) {
                 try {
                     var configOpt = penaltyConfigRepository.findByVehicleTypeAndExceptionTypeAndIsActiveTrue(
                             session.getVehicle().getVehicleType(), ExceptionType.valueOf(type));
+                    if (!configOpt.isPresent() && ExceptionType.valueOf(type) == ExceptionType.WRONG_ZONE) {
+                        configOpt = penaltyConfigRepository.findByVehicleTypeAndExceptionTypeAndIsActiveTrue(
+                                session.getVehicle().getVehicleType(), ExceptionType.WRONG_SPOT);
+                    }
                     if (configOpt.isPresent() && configOpt.get().getPenaltyAmount() != null) {
                         exception.setPenaltyFee(configOpt.get().getPenaltyAmount());
                         log.info("Auto-applied admin penalty fee {} for session {}", configOpt.get().getPenaltyAmount(), session.getId());
@@ -283,7 +325,9 @@ public class ParkingExceptionController {
             } else if (penaltyFeeStr != null && !penaltyFeeStr.isEmpty()) {
                 exception.setPenaltyFee(new BigDecimal(penaltyFeeStr));
             }
-            exception.setCreatedBy(user);
+            if (exception.getCreatedBy() == null) {
+                exception.setCreatedBy(user);
+            }
             exception.setApprovedBy(user);
             exception.setStatus(ExceptionStatus.RESOLVED);
             exception.setResolvedAt(LocalDateTime.now());

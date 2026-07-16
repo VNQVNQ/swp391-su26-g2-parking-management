@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import parking_Building_Management_System.entity.enums.BookingStatus;
+import parking_Building_Management_System.entity.user.User;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -25,6 +26,10 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "uuid")
     UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id", nullable = false)

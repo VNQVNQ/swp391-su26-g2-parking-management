@@ -44,7 +44,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.status = :status AND b.bookingExpiryAt < :expiryTime")
     long countByStatusAndBookingExpiryAtBefore(@Param("status") BookingStatus status, @Param("expiryTime") LocalDateTime expiryTime);
 
-    @Query("SELECT b FROM Booking b WHERE b.vehicle.user.userId = :userId ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId OR (b.user IS NULL AND b.vehicle.user.userId = :userId) ORDER BY b.createdAt DESC")
     List<Booking> findByVehicleOwnerUserId(@Param("userId") Long userId);
 
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.slot.zone.id = :zoneId AND b.status IN :statuses AND b.startTime < :endTime AND b.endTime > :startTime")

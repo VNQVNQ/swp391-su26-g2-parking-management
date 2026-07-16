@@ -10,6 +10,7 @@ import api from '../../services/api';
 const EXCEPTION_TYPE_LABELS = {
   LOST_TICKET: 'Mất vé',
   WRONG_ZONE: 'Sai vị trí',
+  WRONG_SPOT: 'Sai vị trí',
   OVERSTAY: 'Quá giờ',
   UNPAID_EXIT: 'Nợ phí',
 };
@@ -51,6 +52,7 @@ const STATUS_CONFIG = {
 const TYPE_CONFIG = {
   LOST_TICKET: { label: 'Mất vé', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', icon: '🎫' },
   WRONG_ZONE: { label: 'Sai vị trí', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '📍' },
+  WRONG_SPOT: { label: 'Sai vị trí', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '📍' },
   OVERSTAY: { label: 'Quá giờ', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: '⏰' },
   UNPAID_EXIT: { label: 'Nợ phí', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', icon: '💰' },
 };
@@ -527,7 +529,6 @@ function WrongPositionModal({ onClose, onSuccess }) {
     currentSlot: '',
     correctSlot: '',
     reason: '',
-    penaltyFee: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -549,7 +550,6 @@ function WrongPositionModal({ onClose, onSuccess }) {
         reason: form.reason,
         subType: form.subType,
         evidenceNote: evidenceParts.join(' | ') || null,
-        penaltyFee: form.penaltyFee || null,
       });
       onSuccess();
       onClose();
@@ -654,20 +654,6 @@ function WrongPositionModal({ onClose, onSuccess }) {
             value={form.reason}
             onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
             placeholder="Mô tả chi tiết vi phạm đỗ xe sai vị trí..."
-          />
-        </div>
-
-        {/* Phụ phí */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary, #aaa)' }}>
-            Phụ phí vi phạm (VND)
-          </label>
-          <input
-            type="number"
-            style={inputSt}
-            value={form.penaltyFee}
-            onChange={e => setForm(p => ({ ...p, penaltyFee: e.target.value }))}
-            placeholder="Nhập số tiền phụ phí (nếu có)"
           />
         </div>
       </div>
@@ -794,7 +780,7 @@ function DetailModal({ ex, onClose, onResolve, isManager }) {
         )}
       </div>
 
-      {isManager && ex.status === 'PENDING' && (
+      {isManager && ex.status === 'PENDING' && ex.exceptionType !== 'WRONG_ZONE' && ex.exceptionType !== 'WRONG_SPOT' && (
         <div style={{
           display: 'flex', justifyContent: 'flex-end', gap: 10,
           padding: '16px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
@@ -1194,7 +1180,7 @@ export default function Exceptions() {
                         >
                           <Eye size={12} /> Chi tiết
                         </button>
-                        {ex.status === 'PENDING' && (
+                        {ex.status === 'PENDING' && ex.exceptionType !== 'WRONG_ZONE' && ex.exceptionType !== 'WRONG_SPOT' && (
                           <>
                             <button
                               title="Giải quyết"

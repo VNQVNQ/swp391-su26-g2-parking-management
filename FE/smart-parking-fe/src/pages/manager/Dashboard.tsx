@@ -61,7 +61,7 @@ export default function Dashboard() {
 
           return {
             floor: { id: f.id, floorName: f.name, totalSlots: f.totalSlots },
-            slots: mappedSlots.sort((a,b) => a.slotCode.localeCompare(b.slotCode))
+            slots: mappedSlots.sort((a,b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }))
           };
         });
 

@@ -15,6 +15,8 @@ import parking_Building_Management_System.entity.enums.ParkingSessionStatus;
 import parking_Building_Management_System.exception.*;
 import parking_Building_Management_System.repository.*;
 import parking_Building_Management_System.service.BookingService;
+import org.springframework.security.core.context.SecurityContextHolder;
+import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -31,19 +33,42 @@ public class BookingServiceImpl implements BookingService {
     private final ParkingSlotRepository parkingSlotRepository;
     private final ParkingSessionRepository parkingSessionRepository;
     private final ZoneRepository zoneRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
     public BookingResponse createBooking(BookingRequest request, UUID vehicleId) throws SlotNotAvailableException {
         log.info("Creating booking for vehicle ID: {}", vehicleId);
 
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> {
-                    log.error("Vehicle not found with ID: {}", vehicleId);
-                    return new RuntimeException("Vehicle not found with ID: " + vehicleId);
-                });
+        Vehicle vehicle = null;
+        if (vehicleId != null) {
+            vehicle = vehicleRepository.findById(vehicleId)
+                    .orElseThrow(() -> {
+                        log.error("Vehicle not found with ID: {}", vehicleId);
+                        return new RuntimeException("Vehicle not found with ID: " + vehicleId);
+                    });
+        } else if (request.getLicensePlate() != null && !request.getLicensePlate().trim().isEmpty()) {
+            String plate = request.getLicensePlate().trim().toUpperCase();
+            vehicle = vehicleRepository.findByLicensePlate(plate).orElse(null);
+            if (vehicle == null) {
+                if (request.getVehicleType() == null || request.getVehicleType().trim().isEmpty()) {
+                    throw new RuntimeException("vehicleType is required when booking with a new license plate");
+                }
+                vehicle = new Vehicle();
+                vehicle.setLicensePlate(plate);
+                vehicle.setVehicleType(VehicleType.valueOf(request.getVehicleType().trim().toUpperCase()));
+                vehicle.setHasMonthlyPass(false);
+                vehicle.setIsActive(true);
+                // KHÔNG gọi vehicle.setUser() ở đây để xe người quen không bị lưu vào "Xe của tôi"
+                vehicle = vehicleRepository.save(vehicle);
+            }
+        } else {
+            throw new IllegalArgumentException("Vui lòng chọn xe đã đăng ký hoặc nhập biển số xe khi đặt chỗ.");
+        }
 
-        List<Booking> pendingBookings = bookingRepository.findByVehicleIdAndStatus(vehicleId, BookingStatus.PENDING);
+        UUID actualVehicleId = vehicle.getId();
+
+        List<Booking> pendingBookings = bookingRepository.findByVehicleIdAndStatus(actualVehicleId, BookingStatus.PENDING);
         if (!pendingBookings.isEmpty()) {
             throw new IllegalStateException("Xe này đã có lượt đặt chỗ đang chờ (PENDING). Không thể tạo thêm lượt đặt chỗ mới.");
         }
@@ -94,6 +119,16 @@ public class BookingServiceImpl implements BookingService {
         booking.setEndTime(endTime);
         booking.setBookingExpiryAt(bookingExpiryAt);
         booking.setStatus(BookingStatus.PENDING);
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof parking_Building_Management_System.entity.user.ParkingUserDetails userDetails) {
+                userRepository.findById(userDetails.getUserId()).ifPresent(booking::setUser);
+            } else if (auth != null && auth.getName() != null && !auth.getName().equals("anonymousUser")) {
+                userRepository.findByEmail(auth.getName()).ifPresent(booking::setUser);
+            }
+        } catch (Exception e) {
+            log.warn("Could not attach user to newly created booking: {}", e.getMessage());
+        }
 
         booking = bookingRepository.save(booking);
         log.info("Booking created successfully with code: {} and ID: {}", bookingCode, booking.getId());

@@ -39,7 +39,9 @@ export default function DriverSlotView() {
         api.get(`/api/v1/bookings/zone/${zone.id}/booked-count`).catch(() => ({ data: { data: 0 } })),
         api.get(`/api/v1/bookings/zone/${zone.id}/booked-slots`).catch(() => ({ data: { data: [] } })),
       ]);
-      setSlots(slotsRes.data?.data ?? slotsRes.data ?? []);
+      const data = slotsRes.data?.data ?? slotsRes.data ?? [];
+      const sorted = Array.isArray(data) ? [...data].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      setSlots(sorted);
       setBookedCount(bookingRes.data?.data ?? bookingRes.data ?? 0);
       const bs = bookedSlotsRes.data?.data ?? bookedSlotsRes.data ?? [];
       setBookedSlots(Array.isArray(bs) ? bs : []);

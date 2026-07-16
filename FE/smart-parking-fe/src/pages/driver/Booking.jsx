@@ -19,11 +19,11 @@ function toLocalDT(date, time) {
   return `${date}T${time}:00`;
 }
 
-function calcDuration(timeFrom, timeTo) {
-  if (!timeFrom || !timeTo) return 0;
-  const [h1, m1] = timeFrom.split(':').map(Number);
-  const [h2, m2] = timeTo.split(':').map(Number);
-  return (h2 * 60 + m2) - (h1 * 60 + m1);
+function calcDuration(dateFrom, timeFrom, dateTo, timeTo) {
+  if (!dateFrom || !timeFrom || !dateTo || !timeTo) return 0;
+  const dt1 = new Date(`${dateFrom}T${timeFrom}:00`);
+  const dt2 = new Date(`${dateTo}T${timeTo}:00`);
+  return Math.round((dt2 - dt1) / (1000 * 60));
 }
 
 export default function Booking() {
@@ -32,6 +32,7 @@ export default function Booking() {
     vehicleType: 'CAR',
     licensePlate: '',
     date: getTodayStr(),
+    endDate: getTodayStr(),
     timeFrom: '',
     timeTo: '',
     useManualEntry: false,
@@ -74,11 +75,11 @@ export default function Booking() {
             useManualEntry: false
           }));
         } else {
-          setForm(f => ({ ...f, useManualEntry: true }));
+          setForm(f => ({ ...f, vehicleId: '', licensePlate: '', useManualEntry: true }));
         }
       } catch (err) {
         console.error('Failed to load vehicles:', err);
-        setForm(f => ({ ...f, useManualEntry: true }));
+        setForm(f => ({ ...f, vehicleId: '', licensePlate: '', useManualEntry: true }));
       } finally {
         setVehiclesLoading(false);
       }
@@ -88,11 +89,11 @@ export default function Booking() {
 
   /* ── Load Zones phù hợp loại xe khi mở Modal ── */
   const openSlotSelection = async () => {
-    if (!form.date || !form.timeFrom || !form.timeTo) {
-      setError('Vui lòng điền đầy đủ Ngày, Giờ vào và Giờ ra trước khi chọn chỗ đỗ');
+    if (!form.date || !form.timeFrom || !form.endDate || !form.timeTo) {
+      setError('Vui lòng điền đầy đủ Ngày vào, Giờ vào, Ngày ra và Giờ ra trước khi chọn chỗ đỗ');
       return;
     }
-    if (calcDuration(form.timeFrom, form.timeTo) < 15) {
+    if (calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo) < 15) {
       setError('Thời gian đặt tối thiểu là 15 phút để hiển thị sơ đồ chỗ trống');
       return;
     }
@@ -129,7 +130,7 @@ export default function Booking() {
     setModalError('');
     try {
       const startTimeISO = toLocalDT(form.date, form.timeFrom);
-      const duration = calcDuration(form.timeFrom, form.timeTo);
+      const duration = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
       const endTimeISO = new Date(new Date(startTimeISO).getTime() + duration * 60 * 1000).toISOString().slice(0, 19);
 
       const [slotsRes, bookedRes] = await Promise.all([
@@ -139,7 +140,9 @@ export default function Booking() {
         }).catch(() => ({ data: { data: [] } }))
       ]);
 
-      setSlots(slotsRes.data?.data ?? slotsRes.data ?? []);
+      const data = slotsRes.data?.data ?? slotsRes.data ?? [];
+      const sorted = Array.isArray(data) ? [...data].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      setSlots(sorted);
       const bookedIds = bookedRes.data?.data ?? bookedRes.data ?? [];
       setBookedSlotIds(Array.isArray(bookedIds) ? bookedIds : []);
     } catch (err) {
@@ -150,7 +153,7 @@ export default function Booking() {
     } finally {
       setModalLoading(false);
     }
-  }, [form.date, form.timeFrom, form.timeTo]);
+  }, [form.date, form.timeFrom, form.endDate, form.timeTo]);
 
   useEffect(() => {
     if (showMapModal && activeZone) {
@@ -160,13 +163,14 @@ export default function Booking() {
 
   /* ── Validation form chính ── */
   const validate = () => {
-    if (!form.useManualEntry && !form.vehicleId) { setError('Vui lòng chọn xe'); return false; }
-    if (form.useManualEntry && !form.licensePlate.trim()) { setError('Vui lòng nhập biển số'); return false; }
-    if (!form.date)     { setError('Vui lòng chọn ngày'); return false; }
+    if (!form.useManualEntry && !form.vehicleId) { setError('Vui lòng chọn xe đã đăng ký trong danh sách phương tiện của bạn'); return false; }
+    if (form.useManualEntry && !form.licensePlate.trim()) { setError('Vui lòng nhập biển số xe cần đặt chỗ'); return false; }
+    if (!form.date)     { setError('Vui lòng chọn ngày vào'); return false; }
     if (!form.timeFrom) { setError('Vui lòng chọn giờ vào'); return false; }
+    if (!form.endDate)  { setError('Vui lòng chọn ngày ra'); return false; }
     if (!form.timeTo)   { setError('Vui lòng chọn giờ ra'); return false; }
 
-    const duration = calcDuration(form.timeFrom, form.timeTo);
+    const duration = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
     if (duration < 15)  { setError('Thời gian đặt tối thiểu 15 phút'); return false; }
     if (duration > 720) { setError('Thời gian đặt tối đa 12 giờ'); return false; }
 
@@ -186,7 +190,7 @@ export default function Booking() {
     setLoading(true);
     try {
       const startTime = toLocalDT(form.date, form.timeFrom);
-      const duration  = calcDuration(form.timeFrom, form.timeTo);
+      const duration  = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
 
       const payload = {
         vehicleId:       form.useManualEntry ? null : form.vehicleId,
@@ -222,14 +226,17 @@ export default function Booking() {
     setSelectedSlot(null);
   };
 
-  const duration = form.timeFrom && form.timeTo ? calcDuration(form.timeFrom, form.timeTo) : 0;
+  const duration = form.timeFrom && form.timeTo && form.date && form.endDate ? calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo) : 0;
 
   /* ── Màn hình thành công ── */
   if (success && bookingResult) {
     const statusCfg = STATUS_CONFIG[bookingResult.status] || STATUS_CONFIG.PENDING;
     const endTime = bookingResult.endTime
       ? new Date(bookingResult.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      : '—';
+      : form.timeTo;
+    const endDateDisplay = bookingResult.endTime
+      ? new Date(bookingResult.endTime).toLocaleDateString('vi-VN')
+      : form.endDate;
     const startTimeDisplay = bookingResult.startTime
       ? new Date(bookingResult.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       : form.timeFrom;
@@ -262,14 +269,13 @@ export default function Booking() {
 
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 16, padding: '20px 24px', marginBottom: 20, textAlign: 'left' }}>
             {[
-              { label: 'Mã đặt chỗ',  value: bookingResult.bookingCode || '—', bold: true, mono: true },
-              { label: 'Biển số',      value: bookingResult.licensePlate || form.licensePlate },
-              { label: 'Chỗ đỗ',      value: bookingResult.slotCode || 'Tự động phân bổ' },
-              { label: 'Ngày',         value: dateDisplay },
-              { label: 'Giờ vào',      value: startTimeDisplay },
-              { label: 'Giờ ra',       value: endTime },
-              { label: 'Thời lượng',   value: `${bookingResult.durationMinutes || duration} phút` },
-              { label: 'Trạng thái',   value: statusCfg.label, chip: true, chipColor: statusCfg.color, chipBg: statusCfg.bg },
+              { label: 'Mã đặt chỗ',    value: bookingResult.bookingCode || '—', bold: true, mono: true },
+              { label: 'Biển số',       value: bookingResult.licensePlate || form.licensePlate },
+              { label: 'Chỗ đỗ',       value: bookingResult.slotCode || 'Tự động phân bổ' },
+              { label: 'Thời điểm vào', value: `${startTimeDisplay} (${dateDisplay})` },
+              { label: 'Thời điểm ra',  value: `${endTime} (${endDateDisplay})` },
+              { label: 'Thời lượng',    value: `${bookingResult.durationMinutes || duration} phút (~${((bookingResult.durationMinutes || duration) / 60).toFixed(1)} giờ)` },
+              { label: 'Trạng thái',    value: statusCfg.label, chip: true, chipColor: statusCfg.color, chipBg: statusCfg.bg },
             ].map(r => (
               <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--border-color)' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.label}</span>
@@ -328,18 +334,18 @@ export default function Booking() {
               <label className="form-label" style={{ margin: 0 }}>
                 Thông tin phương tiện <span className="required">*</span>
               </label>
-              {vehicles.length > 0 && (
-                <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 8, padding: 3, border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 8, padding: 3, border: '1px solid var(--border-color)' }}>
+                {vehicles.length > 0 && (
                   <button type="button" onClick={() => { setForm(f => ({ ...f, useManualEntry: false, vehicleId: vehicles[0]?.id || '', licensePlate: vehicles[0]?.licensePlate || '', vehicleType: vehicles[0]?.vehicleType || 'CAR', slotId: '', slotCode: '' })); setSelectedSlot(null); }}
                     style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, background: !form.useManualEntry ? 'var(--bg-card)' : 'transparent', color: !form.useManualEntry ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: !form.useManualEntry ? 'var(--shadow-sm)' : 'none' }}>
                     Xe của tôi
                   </button>
-                  <button type="button" onClick={() => { setForm(f => ({ ...f, useManualEntry: true, vehicleId: '', licensePlate: '', slotId: '', slotCode: '' })); setSelectedSlot(null); }}
-                    style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, background: form.useManualEntry ? 'var(--bg-card)' : 'transparent', color: form.useManualEntry ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: form.useManualEntry ? 'var(--shadow-sm)' : 'none' }}>
-                    Nhập tay
-                  </button>
-                </div>
-              )}
+                )}
+                <button type="button" onClick={() => { setForm(f => ({ ...f, useManualEntry: true, vehicleId: '', licensePlate: '', slotId: '', slotCode: '' })); setSelectedSlot(null); }}
+                  style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, background: form.useManualEntry ? 'var(--bg-card)' : 'transparent', color: form.useManualEntry ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: form.useManualEntry ? 'var(--shadow-sm)' : 'none' }}>
+                  Nhập tay
+                </button>
+              </div>
             </div>
 
             {vehiclesLoading ? (
@@ -362,7 +368,7 @@ export default function Booking() {
                     }));
                     setSelectedSlot(null);
                   }}>
-                  <option value="">-- Chọn xe --</option>
+                  <option value="">-- Chọn xe đã đăng ký --</option>
                   {vehicles.map(v => (
                     <option key={v.id} value={v.id}>
                       {v.licensePlate} - {v.vehicleType === 'MOTORBIKE' ? 'Xe máy' : v.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'}
@@ -372,7 +378,10 @@ export default function Booking() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <input type="text" className="form-input" placeholder="Nhập biển số (VD: 51G-12345)"
+                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 12, padding: '10px 14px', fontSize: '0.83rem', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>ℹ️ Biển số nhập tay sẽ <strong>không</strong> lưu vào danh sách xe chính chủ của bạn.</span>
+                </div>
+                <input type="text" className="form-input" placeholder="Nhập biển số xe (VD: 51G-12345)"
                   style={{ padding: '12px 16px', fontSize: '0.95rem' }}
                   value={form.licensePlate}
                   onChange={e => setForm(f => ({ ...f, licensePlate: e.target.value.toUpperCase() }))} />
@@ -400,40 +409,73 @@ export default function Booking() {
               <Clock size={16} color="var(--accent-primary)" />
               Thời gian đỗ xe <span className="required">*</span>
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Ngày</label>
-                <input type="date" className="form-input" value={form.date}
-                  min={getTodayStr()}
-                  onChange={e => {
-                    setForm(f => ({ ...f, date: e.target.value, slotId: '', slotCode: '' }));
-                    setSelectedSlot(null);
-                  }}
-                  style={{ padding: '10px 12px' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {/* Thời điểm vào */}
+              <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  🟢 Thời điểm vào
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Ngày vào</label>
+                    <input type="date" className="form-input" value={form.date}
+                      min={getTodayStr()}
+                      onChange={e => {
+                        const newDate = e.target.value;
+                        setForm(f => ({
+                          ...f,
+                          date: newDate,
+                          endDate: f.endDate < newDate ? newDate : f.endDate,
+                          slotId: '', slotCode: ''
+                        }));
+                        setSelectedSlot(null);
+                      }}
+                      style={{ padding: '9px 10px', fontSize: '0.88rem' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Giờ vào</label>
+                    <input type="time" className="form-input" value={form.timeFrom}
+                      onChange={e => {
+                        setForm(f => ({ ...f, timeFrom: e.target.value, slotId: '', slotCode: '' }));
+                        setSelectedSlot(null);
+                      }}
+                      style={{ padding: '9px 10px', fontSize: '0.88rem' }} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Giờ vào</label>
-                <input type="time" className="form-input" value={form.timeFrom}
-                  onChange={e => {
-                    setForm(f => ({ ...f, timeFrom: e.target.value, slotId: '', slotCode: '' }));
-                    setSelectedSlot(null);
-                  }}
-                  style={{ padding: '10px 12px' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Giờ ra</label>
-                <input type="time" className="form-input" value={form.timeTo}
-                  onChange={e => {
-                    setForm(f => ({ ...f, timeTo: e.target.value, slotId: '', slotCode: '' }));
-                    setSelectedSlot(null);
-                  }}
-                  style={{ padding: '10px 12px' }} />
+
+              {/* Thời điểm ra */}
+              <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+                <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f59e0b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  🔴 Thời điểm ra
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Ngày ra</label>
+                    <input type="date" className="form-input" value={form.endDate}
+                      min={form.date || getTodayStr()}
+                      onChange={e => {
+                        setForm(f => ({ ...f, endDate: e.target.value, slotId: '', slotCode: '' }));
+                        setSelectedSlot(null);
+                      }}
+                      style={{ padding: '9px 10px', fontSize: '0.88rem' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Giờ ra</label>
+                    <input type="time" className="form-input" value={form.timeTo}
+                      onChange={e => {
+                        setForm(f => ({ ...f, timeTo: e.target.value, slotId: '', slotCode: '' }));
+                        setSelectedSlot(null);
+                      }}
+                      style={{ padding: '9px 10px', fontSize: '0.88rem' }} />
+                  </div>
+                </div>
               </div>
             </div>
             {duration > 0 && (
-              <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: duration < 15 || duration > 720 ? 'rgba(239,68,68,0.1)' : 'var(--bg-secondary)', color: duration < 15 || duration > 720 ? '#ef4444' : 'var(--text-primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {duration < 15 || duration > 720 ? <AlertCircle size={14} /> : <Clock size={14} color="var(--accent-primary)" />}
-                {duration < 15 ? 'Thời lượng tối thiểu là 15 phút' : duration > 720 ? 'Thời lượng tối đa là 12 giờ (720 phút)' : `Tổng thời gian: ${duration} phút`}
+              <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: duration < 15 || duration > 720 ? 'rgba(239,68,68,0.1)' : 'var(--bg-secondary)', color: duration < 15 || duration > 720 ? '#ef4444' : 'var(--text-primary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {duration < 15 || duration > 720 ? <AlertCircle size={16} /> : <Clock size={16} color="var(--accent-primary)" />}
+                {duration < 15 ? 'Thời lượng tối thiểu là 15 phút' : duration > 720 ? 'Thời lượng tối đa là 12 giờ (720 phút)' : `Tổng thời gian đặt: ${duration} phút (~${(duration / 60).toFixed(1)} giờ)`}
               </div>
             )}
           </div>

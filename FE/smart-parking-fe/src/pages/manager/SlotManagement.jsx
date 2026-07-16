@@ -95,7 +95,7 @@ export default function SlotManagement() {
             status: isMaintenance ? 'maintenance' : (isOccupied ? 'occupied' : (isReserved ? 'reserved' : 'available')),
             vehicle: s.licensePlate || null,
           };
-        });
+        }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
         return { ...z, slots: zoneSlots };
       });
       setZonesData(mappedZones);
@@ -150,7 +150,7 @@ export default function SlotManagement() {
           return s.slotCode.toLowerCase().includes(q) || (s.vehicle && s.vehicle.toLowerCase().includes(q));
         }
         return true;
-      });
+      }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
 
       if (filteredSlots.length === 0 && search) return null;
       return { ...z, slots: filteredSlots };

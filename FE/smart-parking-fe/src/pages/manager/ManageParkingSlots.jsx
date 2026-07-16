@@ -131,7 +131,8 @@ export default function ManageParkingSlots() {
       ]);
       const slotsData = slotsRes.data.data ?? slotsRes.data ?? [];
       const zonesData = zonesRes.data.data ?? zonesRes.data ?? [];
-      setSlots(Array.isArray(slotsData) ? slotsData : []);
+      const sortedSlots = Array.isArray(slotsData) ? [...slotsData].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      setSlots(sortedSlots);
       setZones(Array.isArray(zonesData) ? zonesData : []);
       setError('');
     } catch (err) {
@@ -215,7 +216,7 @@ export default function ManageParkingSlots() {
     const matchZone = !filterZone || slot.zoneId === filterZone;
     const matchStatus = !filterStatus || slot.maintenanceStatus === filterStatus;
     return matchSearch && matchZone && matchStatus;
-  });
+  }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
 
   // Stats
   const available = slots.filter(s => s.maintenanceStatus === 'AVAILABLE' && !s.currentSessionId).length;

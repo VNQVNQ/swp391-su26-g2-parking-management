@@ -10,6 +10,12 @@ import {
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 const VEHICLE_ICON  = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 const VEHICLE_LABEL = { MOTORBIKE: 'Xe máy', CAR: 'Ô tô', TRUCK: 'Xe tải' };
+const WRONG_ZONE_SUBTYPES = [
+  { value: 'WRONG_VEHICLE_TYPE', label: 'Xe máy đỗ vào khu xe khác', icon: '🏍️' },
+  { value: 'WRONG_FLOOR', label: 'Xe đỗ nhầm tầng', icon: '🏢' },
+  { value: 'OCCUPIED_RESERVED', label: 'Chiếm vị trí đặt trước', icon: '📋' },
+  { value: 'MULTIPLE_SLOTS', label: 'Chiếm nhiều hơn một ô', icon: '⬛' },
+];
 const STEPS = ['search', 'info', 'face', 'payment', 'done'];
 const MAX_RETRY = 3;
 
@@ -77,9 +83,9 @@ function StepIndicator({ step }) {
 }
 
 /* ─── Exception Modal ────────────────────────────────────────────────────── */
-function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
-  const [type, setType]               = useState('LOST_TICKET');
-  const [notes, setNotes]             = useState('');
+function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initialNotes }) {
+  const [type, setType]               = useState(initialType || 'LOST_TICKET');
+  const [notes, setNotes]             = useState(initialNotes || '');
   const [penaltyFee, setPenaltyFee]   = useState('');
   const [penaltySource, setPenaltySrc]= useState('none'); // 'admin' | 'manual' | 'none'
   const [loadingFee, setLoadingFee]   = useState(false);
@@ -89,10 +95,15 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
   const [resultFee, setResultFee]     = useState(null);
   const [appliedTypes, setAppliedTypes] = useState([]);
 
+  const isMonthlyPass = session?.hasMonthlyPass === true 
+                     || session?.ticketType === 'MONTHLY' 
+                     || session?.ticketType === 'Vé tháng'
+                     || session?.ticketType === 'Monthly';
+
   const TYPES = [
-    { value: 'LOST_TICKET', label: '🎫 Mất vé',        color: '#f59e0b' },
-    { value: 'WRONG_ZONE',  label: '🗺️ Sai khu vực',  color: '#8b5cf6' },
-    { value: 'WRONG_SPOT',  label: '🅿️ Sai vị trí',   color: '#ec4899' },
+    { value: 'LOST_TICKET', label: '🎫 Mất vé',    color: '#f59e0b' },
+    { value: 'WRONG_ZONE',  label: '📍 Sai vị trí', color: '#8b5cf6' },
+    ...(!isMonthlyPass ? [{ value: 'OVERSTAY',    label: '⏰ Quá giờ',    color: '#3b82f6' }] : []),
   ];
 
   // Normalize vehicleType sang UPPERCASE enum value
@@ -109,7 +120,7 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
       const list = res.data?.data || [];
       const types = list
         .filter(ex => ex.status === 'RESOLVED' || ex.status === 'APPROVED')
-        .map(ex => ex.exceptionType);
+        .map(ex => ex.exceptionType === 'WRONG_SPOT' ? 'WRONG_ZONE' : ex.exceptionType);
       setAppliedTypes(types);
       return types;
     } catch {
@@ -124,9 +135,15 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
     setPenaltyFee('');
     setPenaltySrc('none');
     try {
-      const res = await api.get('/api/v1/penalty-configs/lookup', {
+      let res = await api.get('/api/v1/penalty-configs/lookup', {
         params: { vehicleType, exceptionType }
       });
+      if (!res.data?.found && exceptionType === 'WRONG_ZONE') {
+        const resSpot = await api.get('/api/v1/penalty-configs/lookup', {
+          params: { vehicleType, exceptionType: 'WRONG_SPOT' }
+        });
+        if (resSpot.data?.found) res = resSpot;
+      }
       if (res.data?.found && res.data?.data?.penaltyAmount != null) {
         const amount = Number(res.data.data.penaltyAmount);
         setPenaltyFee(String(amount));
@@ -147,15 +164,21 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
   useEffect(() => {
     const init = async () => {
       const types = await fetchAppliedExceptions();
-      const firstAvailable = TYPES.find(t => !types.includes(t.value))?.value || 'LOST_TICKET';
-      setType(firstAvailable);
-      fetchPenaltyFee(firstAvailable);
+      let targetType = initialType || 'LOST_TICKET';
+      if (types.includes(targetType)) {
+        const availableTypes = TYPES.filter(t => !types.includes(t.value));
+        targetType = availableTypes[0]?.value || 'LOST_TICKET';
+      }
+      setType(targetType);
+      fetchPenaltyFee(targetType);
+      if (initialNotes) setNotes(initialNotes);
     };
     init();
-  }, [session?.id]); // eslint-disable-line
+  }, [session?.id, initialType, initialNotes]); // eslint-disable-line
 
   const handleTypeChange = (newType) => {
     if (appliedTypes.includes(newType)) return;
+    if (isMonthlyPass && newType === 'OVERSTAY') return;
     setType(newType);
     fetchPenaltyFee(newType);
   };
@@ -258,8 +281,17 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied }) {
         ) : (
           <>
             {/* Loại ngoại lệ */}
+            {isMonthlyPass && (
+              <div style={{
+                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: '0.82rem',
+                color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 8
+              }}>
+                <span>💡 Xe vé tháng chỉ xử lý ngoại lệ <b>Đỗ sai vị trí</b> và <b>Mất vé/thẻ</b>.</span>
+              </div>
+            )}
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Loại ngoại lệ</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMonthlyPass ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
               {TYPES.map(t => {
                 const isApplied = appliedTypes.includes(t.value);
                 const isSelected = type === t.value && !isApplied;
@@ -618,6 +650,13 @@ export default function VehicleExit() {
   const [exitResult,      setExitResult]     = useState(null);
   const [showException,   setShowException]  = useState(false);
   const [receiptId,       setReceiptId]      = useState('');
+  const [sessionExceptions, setSessionExceptions] = useState([]);
+  const [exceptionInitialType, setExceptionInitialType] = useState(null);
+  const [exceptionInitialNotes, setExceptionInitialNotes] = useState('');
+
+  const pendingWrongZoneList = sessionExceptions.filter(ex => 
+    (ex.exceptionType === 'WRONG_ZONE' || ex.exceptionType === 'WRONG_SPOT') && ex.status === 'PENDING'
+  );
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -650,6 +689,12 @@ export default function VehicleExit() {
     setSelectedSession(session);
     setError('');
     setFeeLoading(true);
+    setExceptionInitialType(null);
+    setExceptionInitialNotes('');
+    try {
+      const exRes = await api.get('/api/v1/exceptions', { params: { sessionId: session.id } });
+      setSessionExceptions(exRes.data?.data || []);
+    } catch { setSessionExceptions([]); }
     try {
       const fee = await calculateFee(session.id);
       setFeeInfo(fee);
@@ -679,6 +724,7 @@ export default function VehicleExit() {
     setStep('search'); setSearchQuery(''); setSearchResults(null);
     setSelectedSession(null); setFeeInfo(null); setError('');
     setExitResult(null); setPayMethod('CASH');
+    setSessionExceptions([]); setExceptionInitialType(null); setExceptionInitialNotes('');
   };
 
   const plate = selectedSession?.licensePlate || selectedSession?.vehicle?.licensePlate || '';
@@ -778,6 +824,65 @@ export default function VehicleExit() {
       {/* ── BƯỚC 2: THÔNG TIN XE ── */}
       {step === 'info' && selectedSession && (
         <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {pendingWrongZoneList.length > 0 && (
+            <div style={{
+              background: 'rgba(239,68,68,0.12)', border: '2px solid #ef4444',
+              borderRadius: 20, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14,
+              boxShadow: '0 8px 30px rgba(239,68,68,0.18)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>
+                    ⚠️ PHÁT HIỆN VI PHẠM: XE ĐỖ SAI VỊ TRÍ
+                  </h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                    Hệ thống ghi nhận xe này đang vi phạm lỗi đỗ xe sai quy định trong bãi.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(239,68,68,0.3)' }}>
+                {pendingWrongZoneList.map(ex => (
+                  <div key={ex.id} style={{ marginBottom: pendingWrongZoneList.length > 1 ? 10 : 0 }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>📍</span> {ex.subType ? WRONG_ZONE_SUBTYPES.find(s => s.value === ex.subType)?.label || ex.subType : 'Đỗ sai vị trí'}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                      <strong>Lý do/Mô tả:</strong> {ex.reason}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Ghi nhận bởi: <strong style={{ color: 'var(--text-secondary)' }}>{ex.createdBy || 'Nhân viên bãi xe'}</strong> · {ex.createdAt ? new Date(ex.createdAt).toLocaleString('vi-VN') : ''}
+                      {ex.penaltyFee ? ` · Phí phạt dự kiến: ₫${parseInt(ex.penaltyFee).toLocaleString('vi-VN')}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderTop: '1px solid rgba(239,68,68,0.2)', paddingTop: 12 }}>
+                <span style={{ fontSize: '0.84rem', color: '#ef4444', fontWeight: 600 }}>
+                  👉 Vui lòng xử lý phụ phí vi phạm sai vị trí trước khi cho xe ra bãi!
+                </span>
+                <button
+                  onClick={() => {
+                    setExceptionInitialType('WRONG_ZONE');
+                    setExceptionInitialNotes(pendingWrongZoneList[0]?.reason || 'Xử lý vi phạm sai vị trí');
+                    setShowException(true);
+                  }}
+                  style={{
+                    padding: '10px 20px', background: '#ef4444', border: 'none', borderRadius: 10,
+                    color: '#fff', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 14px rgba(239,68,68,0.35)'
+                  }}
+                >
+                  <AlertTriangle size={16} /> Xử lý vi phạm ngay
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="card" style={{ padding: 28, borderRadius: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', flexShrink: 0 }}>
@@ -819,7 +924,7 @@ export default function VehicleExit() {
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { setStep('search'); setSelectedSession(null); }}
+            <button onClick={() => { setStep('search'); setSelectedSession(null); setSessionExceptions([]); setExceptionInitialType(null); setExceptionInitialNotes(''); }}
               style={{ flex: 0.35, padding: '14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <ArrowLeft size={15} /> Quay lại
             </button>
