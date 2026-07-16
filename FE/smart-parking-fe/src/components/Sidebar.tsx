@@ -1,45 +1,55 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, LogIn, LogOut, CircleDot,
+  LayoutDashboard, LogIn, LogOut, Search,
   DollarSign, CalendarCheck, AlertTriangle,
   BarChart3, Settings as SettingsIcon,
   ChevronLeft, ChevronRight, Car, Power,
-  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket, History,
+  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket, History, SquareParking,
 } from 'lucide-react';
 
 // ── Role-based navigation items ──────────────────────────────────────────────
 const navItems = [
   // ADMIN (System Administrator)
-  { to: '/admin/dashboard', label: 'Tổng quan',  icon: LayoutDashboard, roles: ['ADMIN'] },
-  { to: '/admin/pricing',   label: 'Bảng giá',    icon: DollarSign,      roles: ['ADMIN'] },
-  { to: '/admin/reports',   label: 'Báo cáo',    icon: BarChart3,       roles: ['ADMIN'] },
-  { to: '/admin/settings',  label: 'Cài đặt',   icon: SettingsIcon,    roles: ['ADMIN'] },
+  { to: '/admin/dashboard', label: 'Tổng quan',  icon: LayoutDashboard, roles: ['ADMIN'], group: 'MAIN' },
+  { to: '/admin/pricing',   label: 'Bảng giá',    icon: DollarSign,      roles: ['ADMIN'], group: 'MANAGEMENT' },
+  { to: '/admin/reports',   label: 'Báo cáo',    icon: BarChart3,       roles: ['ADMIN'], group: 'MANAGEMENT' },
+  { to: '/admin/settings',  label: 'Cài đặt',   icon: SettingsIcon,    roles: ['ADMIN'], group: 'SYSTEM' },
   // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
-  { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: CircleDot,       roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/passes',      label: 'Vé tháng & Đặt trước', icon: CalendarCheck,   roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/exceptions',  label: 'Xử lý Ngoại lệ',        icon: AlertTriangle,   roles: ['PARKING_MANAGER'] },
-  { to: '/PARKING_MANAGER/reports',     label: 'Báo cáo doanh thu',           icon: BarChart3,       roles: ['PARKING_MANAGER'] },
+  { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'], group: 'MAIN' },
+  { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
+  { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
+  { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
+  { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: Search,       roles: ['PARKING_MANAGER'], group: 'MONITOR' },
+  { to: '/PARKING_MANAGER/passes',      label: 'Vé tháng & Đặt trước', icon: CalendarCheck,   roles: ['PARKING_MANAGER'], group: 'MONITOR' },
+  { to: '/PARKING_MANAGER/reports',     label: 'Báo cáo doanh thu',           icon: BarChart3,       roles: ['PARKING_MANAGER'], group: 'SYSTEM' },
   // PARKING_STAFF
-  { to: '/entry',       label: 'Cho xe vào',     icon: LogIn,           roles: ['PARKING_STAFF'] },
-  { to: '/exit',        label: 'Cho xe ra',      icon: LogOut,          roles: ['PARKING_STAFF'] },
-  { to: '/PARKING_STAFF/slots', label: 'Bản đồ chỗ đỗ',         icon: MapPin,          roles: ['PARKING_STAFF'] },
+  { to: '/entry',       label: 'Cho xe vào',     icon: LogIn,           roles: ['PARKING_STAFF'], group: 'ACTION' },
+  { to: '/exit',        label: 'Cho xe ra',      icon: LogOut,          roles: ['PARKING_STAFF'], group: 'ACTION' },
+  { to: '/PARKING_STAFF/slots', label: 'Bản đồ chỗ đỗ',         icon: MapPin,          roles: ['PARKING_STAFF'], group: 'MONITOR' },
+  { to: '/PARKING_STAFF/exceptions',  label: 'Xử lý Ngoại lệ',        icon: AlertTriangle,   roles: ['PARKING_STAFF'], group: 'MONITOR' },
   // DRIVER
-  { to: '/driver/dashboard',        label: 'Tổng quan',         icon: LayoutDashboard, roles: ['DRIVER'] },
-  { to: '/driver/register-vehicle', label: 'Đăng ký xe',        icon: Car,             roles: ['DRIVER'] },
-  { to: '/driver/my-vehicles',      label: 'Xe của tôi',        icon: BookOpen,        roles: ['DRIVER'] },
-  { to: '/driver/monthly-pass',     label: 'Vé tháng',          icon: Ticket,          roles: ['DRIVER'] },
-  { to: '/driver/slots',            label: 'Xem chỗ trống',     icon: MapPin,          roles: ['DRIVER'] },
-  { to: '/driver/booking',          label: 'Đặt chỗ đỗ',        icon: Calendar,        roles: ['DRIVER'] },
-  { to: '/driver/booking-history',  label: 'Lịch sử đặt chỗ',  icon: History,         roles: ['DRIVER'] },
+  { to: '/driver/dashboard',        label: 'Tổng quan',         icon: LayoutDashboard, roles: ['DRIVER'], group: 'MAIN' },
+  { to: '/driver/register-vehicle', label: 'Đăng ký xe',        icon: Car,             roles: ['DRIVER'], group: 'VEHICLE' },
+  { to: '/driver/my-vehicles',      label: 'Xe của tôi',        icon: BookOpen,        roles: ['DRIVER'], group: 'VEHICLE' },
+  { to: '/driver/monthly-pass',     label: 'Vé tháng',          icon: Ticket,          roles: ['DRIVER'], group: 'SERVICE' },
+  { to: '/driver/slots',            label: 'Xem chỗ trống',     icon: MapPin,          roles: ['DRIVER'], group: 'SERVICE' },
+  { to: '/driver/booking',          label: 'Đặt chỗ đỗ',        icon: Calendar,        roles: ['DRIVER'], group: 'SERVICE' },
+  { to: '/driver/booking-history',  label: 'Lịch sử đặt chỗ',  icon: History,         roles: ['DRIVER'], group: 'SERVICE' },
 ];
+
+const GROUP_LABELS: Record<string, string> = {
+  MAIN: 'Bảng điều khiển',
+  MANAGEMENT: 'Quản lý',
+  SYSTEM: 'Hệ thống',
+  MONITOR: 'Giám sát',
+  ACTION: 'Thao tác',
+  VEHICLE: 'Phương tiện',
+  SERVICE: 'Dịch vụ',
+};
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN:   'Quản trị viên',
-  PARKING_MANAGER: 'Quản lý',
+  PARKING_MANAGER: 'Quản lý bãi đỗ',
   PARKING_STAFF:   'Nhân viên',
   DRIVER:  'Lái xe',
 };
@@ -52,53 +62,95 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
   const userRole  = user?.role || 'PARKING_STAFF';
   const visibleItems = navItems.filter(item => item.roles.includes(userRole));
 
+  const groupedItems = visibleItems.reduce((acc, item) => {
+    const g = item.group || 'OTHER';
+    if (!acc[g]) acc[g] = [];
+    acc[g].push(item);
+    return acc;
+  }, {} as Record<string, typeof navItems>);
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-      {/* Brand */}
-      <div className="sidebar-brand">
-        <div className="sidebar-logo"><Car /></div>
-        <div className="sidebar-brand-text">
-          <h1>ParkGuard</h1>
-          <p>Parking Management</p>
-        </div>
+      {/* Brand & Header */}
+      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', flexDirection: collapsed ? 'column' : 'row', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: collapsed ? '16px 0 8px 0' : '0' }}>
+        <Link to="/" className="sidebar-brand" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flex: 1, borderBottom: 'none', padding: collapsed ? '0 0 12px 0' : '20px 18px', width: collapsed ? 'auto' : '100%' }}>
+          <div className="sidebar-logo" style={{ borderRadius: '8px', margin: collapsed ? '0 auto' : '0' }}><SquareParking /></div>
+          {!collapsed && (
+            <div className="sidebar-brand-text">
+              <h1 style={{ lineHeight: '1.1' }}>ParkGuard</h1>
+              <p style={{ fontSize: '11px', marginTop: '2px', letterSpacing: '0.02em', color: '#94a3b8', fontWeight: 500 }}>Parking management</p>
+            </div>
+          )}
+        </Link>
+        <button onClick={onToggleCollapse} title={collapsed ? 'Mở rộng' : 'Thu gọn'} style={{ 
+            background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', 
+            padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginRight: collapsed ? '0' : '12px'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
       </div>
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {visibleItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.to ||
-            (item.to !== '/' && location.pathname.startsWith(item.to));
-          return (
-            <NavLink key={item.to} to={item.to}
-              className={`nav-item ${isActive ? 'active' : ''}`}>
-              <Icon />
-              <span className="nav-label">{item.label}</span>
-            </NavLink>
-          );
-        })}
+        {Object.entries(groupedItems).map(([group, items], index) => (
+          <div key={group} className="nav-group" style={{ marginBottom: '16px', paddingTop: index > 0 ? '16px' : '0', borderTop: index > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+            {!collapsed && GROUP_LABELS[group] && (
+              <div className="nav-group-label" style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 14px', marginBottom: '8px' }}>
+                {GROUP_LABELS[group]}
+              </div>
+            )}
+            {items.map((item) => {
+              const Icon = item.icon;
+              // Fix: location.pathname.startsWith(item.to + '/') ensures exact match or sub-route
+              const isActive = location.pathname === item.to ||
+                (item.to !== '/' && location.pathname.startsWith(item.to + '/'));
+              // TODO: Fetch real exception count from API. Set to 0 for now so it doesn't show randomly.
+              const exceptionCount = 0;
+              const showBadge = item.label === 'Xử lý Ngoại lệ' && exceptionCount > 0;
+              return (
+                <NavLink key={item.to} to={item.to}
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                  title={collapsed ? item.label : undefined}>
+                  <Icon />
+                  <span className="nav-label">{item.label}</span>
+                  {!collapsed && showBadge && (
+                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
+                      {exceptionCount}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
       <div className="sidebar-footer">
-        <div className="user-card">
-          <div className="user-avatar">{initials}</div>
-          <div className="user-info">
-            <h4>{displayName}</h4>
-            <p>{ROLE_LABELS[userRole] || userRole}</p>
+        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="user-card hover-lift" style={{ padding: '4px' }}>
+            <div className="user-avatar">{initials}</div>
+            <div className="user-info">
+              <h4 style={{ color: '#f1f5f9' }}>{displayName}</h4>
+              <p>{ROLE_LABELS[userRole] || userRole}</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {onLogout && (
+              <button className="collapse-btn logout-btn" onClick={onLogout} title="Đăng xuất" style={{ 
+                flex: 1, color: '#ef4444', justifyContent: 'center', background: 'transparent', 
+                border: 'none', padding: '8px', fontSize: '0.85rem' 
+              }}>
+                <Power size={16} />
+                <span className="collapse-text">Đăng xuất</span>
+              </button>
+            )}
           </div>
         </div>
-        {onLogout && (
-          <button className="collapse-btn" onClick={onLogout}
-            style={{ color: '#ef4444', marginBottom: '4px' }} title="Sign out">
-            <Power size={16} />
-            <span className="collapse-text">Sign Out</span>
-          </button>
-        )}
-        <button className="collapse-btn" onClick={onToggleCollapse}>
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          <span className="collapse-text">{collapsed ? '' : 'Collapse'}</span>
-        </button>
       </div>
     </aside>
   );

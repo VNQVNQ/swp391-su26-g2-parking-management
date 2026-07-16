@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Car, Mail, Lock, Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
+import { Car, Mail, Lock, Eye, EyeOff, ArrowRight, Shield, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
@@ -45,6 +45,20 @@ export default function Login() {
 
   return (
     <div className="auth-page">
+      <Link to="/" style={{
+        position: 'absolute', top: '24px', left: '24px', zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: '8px',
+        color: '#f1f5f9', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 500,
+        background: 'rgba(255,255,255,0.1)', padding: '8px 16px', borderRadius: '999px',
+        backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)',
+        transition: 'all 0.2s'
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'none' }}
+      >
+        <ArrowLeft size={16} />
+        Về trang chủ
+      </Link>
       {/* Animated background particles */}
       <div className="auth-bg-effects">
         <div className="auth-orb auth-orb-1" />

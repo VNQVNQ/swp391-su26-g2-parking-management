@@ -219,11 +219,25 @@ body {
   overflow-y: auto;
 }
 
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+}
+.sidebar-nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6);
+}
+
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   color: #94a3b8;
   text-decoration: none;
@@ -232,7 +246,7 @@ body {
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   border: none;
   background: none;
   width: 100%;
@@ -240,24 +254,25 @@ body {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.1);
   color: #f1f5f9;
 }
 
 .nav-item.active {
-  background: rgba(99, 102, 241, 0.2);
-  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.25);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .nav-item.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  background: #6366f1;
-  border-radius: 0 3px 3px 0;
+  top: 4px;
+  bottom: 4px;
+  width: 4px;
+  background: var(--accent-primary);
+  border-radius: 0 4px 4px 0;
 }
 
 .nav-item svg {
@@ -311,12 +326,13 @@ body {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 8px;
+  padding: 8px 12px;
   margin-top: 8px;
-  background: none;
-  border: none;
-  color: #64748b;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
   font-size: 0.8rem;
+  font-weight: 500;
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
@@ -324,8 +340,9 @@ body {
 }
 
 .collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
 }
 
 /* ===== CARDS ===== */
@@ -2014,6 +2031,13 @@ body {
   max-width: 520px;
 }
 
+.auth-form-card.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Form header */
 .auth-form-header {
   margin-bottom: 32px;
@@ -2085,10 +2109,10 @@ body {
 .auth-input-wrapper input {
   width: 100%;
   padding: 10px 16px 10px 44px;
-  background: #ffffff;
-  border: 2px solid #94a3b8;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-md);
-  color: #0f172a;
+  color: #ffffff;
   font-size: 0.95rem;
   font-family: inherit;
   transition: all var(--transition-fast);
@@ -2096,7 +2120,7 @@ body {
 }
 
 .auth-input-wrapper input::placeholder {
-  color: #94a3b8;
+  color: rgba(148, 163, 184, 0.7);
 }
 
 .auth-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
@@ -2131,6 +2155,25 @@ body {
   background-position: right 14px center;
 }
 
+.auth-input-wrapper select {
+  width: 100%;
+  padding: 10px 36px 10px 44px;
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-md);
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
 .auth-input-wrapper select:focus {
   border-color: #6366f1;
   background-color: #ffffff;
@@ -2147,9 +2190,10 @@ body {
 }
 
 .auth-input-wrapper input:focus {
-  border-color: #6366f1;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  color: #f1f5f9;
 }
 
 .auth-input-wrapper input:focus ~ .auth-input-icon,
@@ -2264,8 +2308,8 @@ body {
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1.5px solid var(--border-hover);
-  background: var(--bg-input);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: center;

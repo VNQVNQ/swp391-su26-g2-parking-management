@@ -1,6 +1,36 @@
-import { CalendarCheck, CreditCard, Car, Bike, Truck } from 'lucide-react';
+import { CalendarCheck, CreditCard, Car, Bike, Truck, Search, Filter } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+
+// Helper: extract vehicle type from pass object (handles nested vehicle object)
+const getVehicleType = (p) =>
+  p.vehicleType || p.vehicle?.vehicleType || p.vehicleTypeName || '';
+
+// Helper: extract license plate
+const getLicensePlate = (p) =>
+  p.licensePlate || p.vehicle?.licensePlate || p.vehiclePlate || 'N/A';
+
+const VEHICLE_TYPE_MAP = {
+  CAR: { label: 'Ô tô', icon: '🚗', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.25)' },
+  MOTORBIKE: { label: 'Xe máy', icon: '🏍️', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.25)' },
+  TRUCK: { label: 'Xe tải', icon: '🚛', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)' },
+};
+
+function VehicleTypeBadge({ type }) {
+  const normalized = String(type || '').toUpperCase().trim();
+  const info = VEHICLE_TYPE_MAP[normalized];
+  if (!info) return <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{type || '—'}</span>;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      background: info.bg, border: `1px solid ${info.border}`,
+      color: info.color, padding: '4px 10px', borderRadius: 8,
+      fontSize: '0.8rem', fontWeight: 600,
+    }}>
+      {info.icon} {info.label}
+    </span>
+  );
+}
 
 export default function PassesBookings() {
   const [tab, setTab] = useState('passes');
@@ -8,6 +38,9 @@ export default function PassesBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [passSearch, setPassSearch] = useState('');
+  const [passVehicleFilter, setPassVehicleFilter] = useState('');
+  const [passStatusFilter, setPassStatusFilter] = useState('');
 
   useEffect(() => {
     loadData();
@@ -24,8 +57,16 @@ export default function PassesBookings() {
       const passesData = passesRes.data?.data ?? passesRes.data ?? [];
       const bookingsData = bookingsRes.data?.data ?? bookingsRes.data ?? [];
 
-      setPasses(Array.isArray(passesData) ? passesData : []);
-      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      const parsedPasses = Array.isArray(passesData) ? passesData : [];
+      const parsedBookings = Array.isArray(bookingsData) ? bookingsData : [];
+
+      // Debug: log first pass to understand structure
+      if (parsedPasses.length > 0) {
+        console.log('[PassesBookings] Sample pass object:', parsedPasses[0]);
+      }
+
+      setPasses(parsedPasses);
+      setBookings(parsedBookings);
     } catch (err) {
       console.error(err);
       setError('Không thể tải dữ liệu');
@@ -44,17 +85,42 @@ export default function PassesBookings() {
     }
   };
 
+  // Stats
+  const activePasses = passes.filter(p => {
+    const s = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
+    return s === 'ACTIVE' || s === 'Active';
+  });
+  const carPasses = passes.filter(p => {
+    const t = getVehicleType(p).toUpperCase();
+    return t === 'CAR';
+  });
+  const motorbikePasses = passes.filter(p => {
+    const t = getVehicleType(p).toUpperCase();
+    return t === 'MOTORBIKE';
+  });
+
   const stats = [
-    { label: 'Vé tháng đang hoạt động', value: passes.filter(p => p.status === 'ACTIVE' || p.isActive).length, icon: CreditCard, color: '#10b981' },
-    { label: 'Chờ xử lý', value: bookings.filter(b => b.status === 'PENDING').length, icon: CalendarCheck, color: '#f59e0b' },
-    { label: 'Vé ô tô', value: passes.filter(p => p.vehicleType === 'CAR' || p.vehicle?.vehicleType === 'CAR').length, icon: Car, color: '#3b82f6' },
-    { label: 'Vé xe máy', value: passes.filter(p => p.vehicleType === 'MOTORBIKE' || p.vehicle?.vehicleType === 'MOTORBIKE').length, icon: Bike, color: '#8b5cf6' },
+    { label: 'Vé tháng đang hoạt động', value: activePasses.length, icon: CreditCard, color: '#10b981' },
+    { label: 'Chờ xử lý (đặt chỗ)', value: bookings.filter(b => b.status === 'PENDING').length, icon: CalendarCheck, color: '#f59e0b' },
+    { label: 'Vé ô tô', value: carPasses.length, icon: Car, color: '#3b82f6' },
+    { label: 'Vé xe máy', value: motorbikePasses.length, icon: Bike, color: '#8b5cf6' },
   ];
+
+  // Filter passes
+  const filteredPasses = passes.filter(p => {
+    const plate = getLicensePlate(p).toLowerCase();
+    const matchSearch = !passSearch || plate.includes(passSearch.toLowerCase());
+    const vt = getVehicleType(p).toUpperCase();
+    const matchVehicle = !passVehicleFilter || vt === passVehicleFilter;
+    const s = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
+    const matchStatus = !passStatusFilter || s === passStatusFilter;
+    return matchSearch && matchVehicle && matchStatus;
+  });
 
   return (
     <div className="page-full-width">
       <div className="page-header">
-        <h2>🎫 Vé tháng & Đặt trước</h2>
+        <h2>🎫 Vé tháng &amp; Đặt trước</h2>
         <p>Quản lý vé tháng và các đơn đặt chỗ trước</p>
       </div>
 
@@ -90,16 +156,55 @@ export default function PassesBookings() {
           {/* Monthly Passes Tab */}
           {tab === 'passes' && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Danh sách Vé tháng</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>Chỉ xem - Tài xế đăng ký vé tháng từ tài khoản của họ</p>
+              {/* Filter bar */}
+              <div className="card" style={{ padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+                  <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Tìm theo biển số..."
+                    value={passSearch}
+                    onChange={e => setPassSearch(e.target.value)}
+                    style={{ paddingLeft: 36, width: '100%', padding: '8px 12px 8px 36px' }}
+                  />
                 </div>
+                <select
+                  className="form-select"
+                  value={passVehicleFilter}
+                  onChange={e => setPassVehicleFilter(e.target.value)}
+                  style={{ minWidth: 140, padding: '8px 12px' }}>
+                  <option value="">Tất cả loại xe</option>
+                  <option value="CAR">🚗 Ô tô</option>
+                  <option value="MOTORBIKE">🏍️ Xe máy</option>
+                  <option value="TRUCK">🚛 Xe tải</option>
+                </select>
+                <select
+                  className="form-select"
+                  value={passStatusFilter}
+                  onChange={e => setPassStatusFilter(e.target.value)}
+                  style={{ minWidth: 140, padding: '8px 12px' }}>
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="ACTIVE">Hoạt động</option>
+                  <option value="EXPIRED">Hết hạn</option>
+                </select>
+                {(passSearch || passVehicleFilter || passStatusFilter) && (
+                  <button
+                    onClick={() => { setPassSearch(''); setPassVehicleFilter(''); setPassStatusFilter(''); }}
+                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                    ✕ Xóa lọc
+                  </button>
+                )}
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                  {filteredPasses.length}/{passes.length} vé
+                </span>
               </div>
-              
-              {passes.length === 0 ? (
+
+              {filteredPasses.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: 40 }}>
-                  <p style={{ color: 'var(--text-muted)' }}>Chưa có vé tháng nào trong hệ thống</p>
+                  <p style={{ color: 'var(--text-muted)' }}>
+                    {passes.length === 0 ? 'Chưa có vé tháng nào trong hệ thống' : 'Không tìm thấy vé phù hợp với bộ lọc'}
+                  </p>
                 </div>
               ) : (
                 <div className="card" style={{ overflowX: 'auto', marginBottom: '24px' }}>
@@ -115,21 +220,24 @@ export default function PassesBookings() {
                       </tr>
                     </thead>
                     <tbody>
-                      {passes.map(p => {
-                        const plate = p.licensePlate || p.vehicle?.licensePlate || 'N/A';
-                        const type = p.vehicleType || p.vehicle?.vehicleType || 'N/A';
+                      {filteredPasses.map(p => {
+                        const plate = getLicensePlate(p);
+                        const vehicleType = getVehicleType(p);
                         const status = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
-                        
+                        const isActive = status === 'ACTIVE' || status === 'Active';
+
                         return (
                           <tr key={p.id}>
-                            <td style={{ fontWeight: 600 }}>{plate}</td>
-                            <td>{type === 'CAR' ? 'Ô tô' : type === 'MOTORBIKE' ? 'Xe máy' : type === 'TRUCK' ? 'Xe tải' : type}</td>
+                            <td style={{ fontWeight: 700, fontFamily: 'monospace', letterSpacing: '0.05em' }}>{plate}</td>
+                            <td>
+                              <VehicleTypeBadge type={vehicleType} />
+                            </td>
                             <td>{p.startDate ? new Date(p.startDate).toLocaleDateString('vi-VN') : '—'}</td>
                             <td>{p.endDate ? new Date(p.endDate).toLocaleDateString('vi-VN') : '—'}</td>
                             <td style={{ fontWeight: 600 }}>₫{(p.fee || 0).toLocaleString()}</td>
                             <td>
-                              <span className={`badge ${status === 'ACTIVE' || status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
-                                {status === 'ACTIVE' || status === 'Active' ? 'Hoạt động' : 'Hết hạn'}
+                              <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
+                                {isActive ? '✓ Hoạt động' : '✗ Hết hạn'}
                               </span>
                             </td>
                           </tr>
@@ -197,11 +305,11 @@ export default function PassesBookings() {
                         const plate = b.licensePlate || b.vehicle?.licensePlate || 'N/A';
                         const slot = b.slotCode || b.slot?.slotCode || 'N/A';
                         const canCancel = b.status === 'PENDING' || b.status === 'CONFIRMED';
-                        
+
                         return (
                           <tr key={b.id}>
-                            <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.bookingCode || b.id.substring(0,8)}</td>
-                            <td style={{ fontWeight: 600 }}>{plate}</td>
+                            <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.bookingCode || b.id?.substring(0, 8)}</td>
+                            <td style={{ fontWeight: 700, fontFamily: 'monospace' }}>{plate}</td>
                             <td>{slot}</td>
                             <td>{b.startTime ? new Date(b.startTime).toLocaleString('vi-VN') : '—'}</td>
                             <td>{b.endTime ? new Date(b.endTime).toLocaleString('vi-VN') : '—'}</td>

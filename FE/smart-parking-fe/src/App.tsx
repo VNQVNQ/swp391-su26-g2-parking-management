@@ -20,6 +20,8 @@ import HungRegister from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 // @ts-ignore
 import ResetPassword from "./pages/ResetPassword";
+// @ts-ignore
+import LandingPage from "./pages/LandingPage";
 import HungSidebar from "./components/Sidebar";
 // @ts-ignore
 import Pricing from "./pages/admin/Pricing";
@@ -32,7 +34,7 @@ import SlotManagement from "./pages/manager/SlotManagement";
 // @ts-ignore
 import PassesBookings from "./pages/manager/PassesBookings";
 // @ts-ignore
-import Exceptions from "./pages/manager/Exceptions";
+import Exceptions from "./pages/staff/Exceptions";
 // @ts-ignore
 import VehicleEntry from "./pages/staff/VehicleEntry";
 // @ts-ignore
@@ -173,7 +175,7 @@ function AppShell() {
   if (loading) return <AuthLoading />;
 
   const isPublicRoute =
-    ["/login", "/register", "/forgot-password"].includes(location.pathname) ||
+    ["/", "/login", "/register", "/forgot-password"].includes(location.pathname) ||
     location.pathname.startsWith("/reset-password");
   const hasStoredSession = hasStoredAuthSession();
 
@@ -184,6 +186,7 @@ function AppShell() {
   if (!isAuthenticated) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<HungLogin />} />
         <Route path="/register" element={<HungRegister />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -191,7 +194,7 @@ function AppShell() {
           path="/reset-password/:tokenResetPassword"
           element={<ResetPassword />}
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -296,14 +299,6 @@ function AppShell() {
               }
             />
             <Route
-              path="/PARKING_MANAGER/exceptions"
-              element={
-                <RoleRoute allowedRoles={["PARKING_MANAGER"]}>
-                  <Exceptions />
-                </RoleRoute>
-              }
-            />
-            <Route
               path="/PARKING_MANAGER/reports"
               element={
                 <RoleRoute allowedRoles={["PARKING_MANAGER"]}>
@@ -334,6 +329,14 @@ function AppShell() {
               element={
                 <RoleRoute allowedRoles={["PARKING_STAFF"]}>
                   <SlotView />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/PARKING_STAFF/exceptions"
+              element={
+                <RoleRoute allowedRoles={["PARKING_STAFF"]}>
+                  <Exceptions />
                 </RoleRoute>
               }
             />
@@ -423,7 +426,7 @@ function AppShell() {
             />
             <Route
               path="/exceptions"
-              element={<Navigate to="/PARKING_MANAGER/exceptions" replace />}
+              element={<Navigate to="/PARKING_STAFF/exceptions" replace />}
             />
 
             <Route path="*" element={<Navigate to={defaultPage} replace />} />

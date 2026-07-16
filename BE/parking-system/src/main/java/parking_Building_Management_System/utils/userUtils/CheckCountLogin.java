@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class CheckCountLogin {
     public String getMessage(int count) {
         if (count < 5) {
-            return "Email or Password is incorrect";
+            return "Email hoặc Mật khẩu không chính xác";
         }
         return "Too many login attempts. Please try again later.";
     }

@@ -46,6 +46,24 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
+  // Helper to translate error messages to Vietnamese
+  const translateErrorMessage = (msg) => {
+    if (!msg) return 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+    const lowerMsg = msg.toLowerCase();
+    if (lowerMsg.includes('bad credentials') || lowerMsg.includes('invalid credentials') || lowerMsg.includes('wrong password') || lowerMsg.includes('user not found')) {
+      return 'Sai tên tài khoản hoặc mật khẩu.';
+    }
+    if (lowerMsg.includes('email already exists') || lowerMsg.includes('username already exists') || lowerMsg.includes('already taken')) {
+      return 'Email hoặc tên tài khoản đã tồn tại.';
+    }
+    if (lowerMsg.includes('network error') || lowerMsg.includes('failed to fetch')) {
+      return 'Lỗi kết nối mạng. Vui lòng kiểm tra lại.';
+    }
+    if (lowerMsg.includes('login failed')) return 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+    if (lowerMsg.includes('registration failed')) return 'Đăng ký thất bại. Vui lòng thử lại.';
+    return msg; // Fallback
+  };
+
   // ── Login ──────────────────────────────────────────────────────────
   const login = useCallback(async (credentials) => {
     setError(null);
@@ -57,8 +75,8 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return { success: true };
     } catch (err) {
-      const message =
-        err.response?.data?.message || err.message || 'Login failed';
+      const originalMessage = err.response?.data?.message || err.message || 'Login failed';
+      const message = translateErrorMessage(originalMessage);
       setError(message);
       return { success: false, error: message };
     }
@@ -72,14 +90,15 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.register(data);
       // Do NOT auto-login: backend register endpoint doesn't return tokens
-      return { success: true, message: result.message };
+      return { success: true, message: translateErrorMessage(result.message) || 'Đăng ký thành công!' };
     } catch (err) {
       // Extract message from BE's ApiResponse format: { statusCode, message, data }
-      const message =
+      const originalMessage =
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
         'Registration failed';
+      const message = translateErrorMessage(originalMessage);
       setError(message);
       return { success: false, error: message };
     }
