@@ -117,23 +117,7 @@
 | Version Control | Git + GitHub |
 | API Test | Postman |
 | Prototype | v0.dev / Lovable.dev |
-| Task Tracking | GitHub Projects |
 
---
-
-## ⚙️ Business Rules cốt lõi
-
-| ID | Loại | Mô tả |
-|:--:|------|-------|
-| **BR-01** | Calculational | Phí = `ceil((exitTime − entryTime) / 60)` × giá/giờ; áp dụng `minimum_fee` nếu < 1 giờ |
-| **BR-02** | Behavioral | PARKING_STAFF **không được** tự free slot → phải tạo ExceptionRecord → PARKING_MANAGER approve |
-| **BR-03** | Behavioral | Xe có session **chưa thanh toán** → chặn tạo session mới đến khi trả nợ |
-| **BR-04** | Temporal | Session > 24h không exit → auto-flag `OVERSTAY`; áp dụng phí phạt; notify PARKING_MANAGER |
-| **BR-05** | Temporal | Booking slot chỉ giữ **30 phút** sau giờ hẹn; hết thời gian → slot tự về `FREE` |
-
-> ⚠️ Tất cả Business Rules được enforce tại **Service layer** — không chỉ validate ở UI.
-
----
 
 ## ▶️ Hướng dẫn chạy dự án
 
@@ -148,7 +132,7 @@
 git clone https://github.com/VNQVNQ/swp391-su26-g2-parking-management.git
 cd swp391-su26-g2-parking-management/BE/parking-system
 
-# 2. Khởi động PostgreSQL + Redis (Yêu cầu cài đặt và cấu hình PostgreSQL, Redis cục bộ)
+# 2. Khởi động PostgreSQL (Yêu cầu cài đặt và cấu hình PostgreSQL)
 
 # 3. Cấu hình DB trong application-dev.yml
 # spring.datasource.url=jdbc:postgresql://localhost:5432/parking_bms
@@ -163,75 +147,16 @@ cd swp391-su26-g2-parking-management/BE/parking-system
 ### Frontend
 
 ```bash
-cd ../../FE
+cd ../../FE/smart-parking
 npm install
 npm run dev
 
 # Chạy tại: http://localhost:5173
 ```
 
----
-
-## 🌿 Git Workflow
-
-```
-main          ← Code sạch, chỉ Leader merge từ develop (protected branch)
-  └── develop ← Branch làm việc chính, tất cả feature PR về đây
-        ├── feature/BE-floor-zone-slot
-        ├── feature/BE-parking-session
-        ├── feature/BE-payment-report
-        ├── feature/FE-PARKING_STAFF-ui
-        └── feature/FE-PARKING_MANAGER-ui
-```
-
-**Quy tắc commit:**
-```bash
-feat:     Thêm tính năng mới
-fix:      Sửa bug
-chore:    Config, dependencies, refactor nhỏ
-docs:     Cập nhật tài liệu
-test:     Thêm unit test
-```
-
-**Quy trình làm việc:**
-```bash
-git checkout develop && git pull origin develop
-git checkout -b feature/BE-ten-tinh-nang
-# ... code, commit thường xuyên ...
-git push origin feature/BE-ten-tinh-nang
-# → Tạo Pull Request → assign reviewer → merge vào develop
-```
-
-> 🔒 `main` được bảo vệ: bắt buộc qua PR, cần ít nhất 1 approval từ Leader.
-
----
-
 ## 📡 API Endpoints
-
-| Method | Endpoint | Mô tả | Role |
-|:------:|----------|-------|:----:|
-| `GET` | `/api/floors` | Danh sách tầng | All |
-| `POST` | `/api/floors` | Tạo tầng mới | PARKING_MANAGER |
-| `GET` | `/api/zones?floorId=` | Zone theo tầng | All |
-| `GET` | `/api/slots/available?floorId=&vehicleType=` | Slot trống | PARKING_STAFF |
-| `POST` | `/api/slots/bulk` | Tạo slot hàng loạt | PARKING_MANAGER |
-| `POST` | `/api/sessions/entry` | Xe vào | PARKING_STAFF |
-| `POST` | `/api/sessions/exit/{id}` | Xe ra | PARKING_STAFF |
-| `GET` | `/api/sessions/active` | Session đang chạy | PARKING_STAFF/PARKING_MANAGER |
-| `GET` | `/api/reports/revenue` | Báo cáo doanh thu | PARKING_MANAGER |
-| `POST` | `/api/exceptions` | Tạo exception record | PARKING_STAFF |
-| `PUT` | `/api/exceptions/{id}/approve` | Duyệt exception | PARKING_MANAGER |
-
 > 📖 Xem đầy đủ tại Swagger UI sau khi chạy backend.
 
----
-
-## 📎 Tài liệu liên quan
-
-- 📄 [Business Rules Catalog (50 BRs)](./docs/BR_Catalog.docx)
-- 🗃️ [Entity-Relationship Diagram](./docs/ERD.png)
-- 🎨 [Prototype v0.dev](#) ← (https://v0-translate-website-to-english-kohl.vercel.app/entry)
-- 📬 [Postman Collection](#) ← *export và đính kèm*
 
 ---
 
