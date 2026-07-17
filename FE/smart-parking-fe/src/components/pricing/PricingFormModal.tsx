@@ -3,8 +3,8 @@ import type { PricingRule, PricingRuleFormData } from "../../types/pricing.types
 import type { VehicleType } from "../../types/slot.types";
 import { validatePricingForm } from "../../utils/validators";
 
-// BR-09: chỉ 4 loại xe này
-const VEHICLE_TYPES: VehicleType[] = ["Motorbike", "Car", "Bicycle", "Truck"];
+// Vehicle types
+const VEHICLE_TYPES: VehicleType[] = ["Motorbike", "Car", "Truck"];
 const ZONES = ["Zone A", "Zone B", "Zone C"];
 
 const EMPTY_FORM: PricingRuleFormData = {

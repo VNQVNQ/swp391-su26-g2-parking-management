@@ -606,12 +606,12 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             if (durationHours <= 24) {
                 baseFee = defaultRate.multiply(BigDecimal.valueOf(Math.max(1, durationHours))).add(totalPenaltyFee);
             } else {
-                BigDecimal normalFee24h = defaultRate.multiply(BigDecimal.valueOf(24));
-                long overstayHours = durationHours - 24;
-                long overstayDays = (long) Math.ceil((double) overstayHours / 24.0);
-                BigDecimal overstayRatePerDay = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
-                BigDecimal overstayFee = overstayRatePerDay.multiply(BigDecimal.valueOf(overstayDays));
-                baseFee = normalFee24h.add(overstayFee).add(totalPenaltyFee);
+                long fullDays = durationHours / 24;
+                long remainingHours = durationHours % 24;
+                BigDecimal fullDaysFee = defaultRate.multiply(BigDecimal.valueOf(fullDays));
+                BigDecimal overstayPenalty = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
+                BigDecimal lastDayFee = remainingHours > 0 ? overstayPenalty : BigDecimal.ZERO;
+                baseFee = fullDaysFee.add(lastDayFee).add(totalPenaltyFee);
             }
             BigDecimal finalFee = baseFee.subtract(session.getDiscountAmount());
             if (finalFee.compareTo(BigDecimal.ZERO) < 0) finalFee = BigDecimal.ZERO;
@@ -653,15 +653,19 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             log.info("Daily maximum fee applied: {}", baseFee);
         }
 
-        // Apply overstay fee if > 24h: phí bình thường + phụ phí quá hạn (tính thêm theo ngày từ Admin)
+        // Apply overstay fee if > 24h: Tổng tiền = (Số ngày trọn vẹn * Phí ngày) + Phí phạt do admin quy định cho giờ lẻ
         if (durationHours > 24) {
-            long overstayHours = durationHours - 24;
-            long overstayDays = (long) Math.ceil((double) overstayHours / 24.0);
-            BigDecimal overstayRatePerDay = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
-            BigDecimal overstayFee = overstayRatePerDay.multiply(BigDecimal.valueOf(overstayDays));
-            baseFee = baseFee.add(overstayFee);
-            log.info("Overstay penalty applied: {} hours ({} days) at {}/day, overstayFee: {}", 
-                    overstayHours, overstayDays, overstayRatePerDay, overstayFee);
+            BigDecimal dailyFee = baseFee; // Phí trọn vẹn của 1 ngày (đã áp dụng maximumDailyFee / peak hour cho ngày đầu)
+            long fullDays = durationHours / 24;
+            long remainingHours = durationHours % 24;
+
+            BigDecimal fullDaysFee = dailyFee.multiply(BigDecimal.valueOf(fullDays));
+            BigDecimal overstayPenalty = getOverstayPenaltyPerDay(session.getVehicle().getVehicleType());
+            BigDecimal lastDayFee = remainingHours > 0 ? overstayPenalty : BigDecimal.ZERO;
+
+            baseFee = fullDaysFee.add(lastDayFee);
+            log.info("Overstay fee calculated (New Logic): {} full days at {}/day + remaining hours ({}) penalty {} = total baseFee: {}", 
+                    fullDays, dailyFee, remainingHours, lastDayFee, baseFee);
         }
 
         if (totalPenaltyFee.compareTo(BigDecimal.ZERO) > 0) {

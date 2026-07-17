@@ -1,6 +1,7 @@
 package parking_Building_Management_System.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import parking_Building_Management_System.dto.pricingRule.request.PricingRuleRequest;
@@ -16,6 +17,7 @@ import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
 import parking_Building_Management_System.service.PricingRuleService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class PricingRuleServiceImpl implements PricingRuleService {
+
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.ASC, "createdAt", "vehicleType", "ticketType", "id");
 
     private final PricingRuleRepository pricingRuleRepository;
     private final UserRepository userRepository;
@@ -39,8 +43,29 @@ public class PricingRuleServiceImpl implements PricingRuleService {
         pricingRule.setName(request.getName());
         pricingRule.setVehicleType(request.getVehicleType());
         pricingRule.setTicketType(request.getTicketType());
-        pricingRule.setRatePerHour(request.getRatePerHour());
-        pricingRule.setMinimumFee(request.getMinimumFee());
+        if (request.getTicketType() == TicketType.MONTHLY) {
+            BigDecimal mFee = request.getMonthlyFee() != null && request.getMonthlyFee().compareTo(BigDecimal.ZERO) > 0
+                    ? request.getMonthlyFee()
+                    : (request.getMinimumFee() != null && request.getMinimumFee().compareTo(BigDecimal.ZERO) > 0 ? request.getMinimumFee() : new BigDecimal("500000"));
+            pricingRule.setMonthlyFee(mFee);
+            pricingRule.setMinimumFee(mFee);
+            if (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) <= 0) {
+                pricingRule.setRatePerHour(null);
+            } else {
+                pricingRule.setRatePerHour(request.getRatePerHour());
+            }
+        } else {
+            pricingRule.setMonthlyFee(request.getMonthlyFee());
+            BigDecimal minFee = request.getMinimumFee() != null && request.getMinimumFee().compareTo(BigDecimal.ZERO) > 0
+                    ? request.getMinimumFee()
+                    : (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) > 0 ? request.getRatePerHour() : new BigDecimal("5000"));
+            pricingRule.setMinimumFee(minFee);
+            if (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) <= 0) {
+                pricingRule.setRatePerHour(null);
+            } else {
+                pricingRule.setRatePerHour(request.getRatePerHour());
+            }
+        }
         pricingRule.setMaximumDailyFee(request.getMaximumDailyFee());
         pricingRule.setOverstayRateMultiplier(request.getOverstayRateMultiplier());
         pricingRule.setPeakHourStart(request.getPeakHourStart());
@@ -72,7 +97,7 @@ public class PricingRuleServiceImpl implements PricingRuleService {
     @Override
     @Transactional(readOnly = true)
     public List<PricingRuleResponse> getAllPricingRules() {
-        return pricingRuleRepository.findAll()
+        return pricingRuleRepository.findAll(DEFAULT_SORT)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -81,7 +106,7 @@ public class PricingRuleServiceImpl implements PricingRuleService {
     @Override
     @Transactional(readOnly = true)
     public List<PricingRuleResponse> getPricingRulesByVehicleType(VehicleType vehicleType) {
-        return pricingRuleRepository.findByVehicleType(vehicleType)
+        return pricingRuleRepository.findByVehicleType(vehicleType, DEFAULT_SORT)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -89,8 +114,17 @@ public class PricingRuleServiceImpl implements PricingRuleService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PricingRuleDetailResponse> getPricingRulesByTicketType(TicketType ticketType) {
+        return pricingRuleRepository.findByTicketTypeAndIsActiveTrue(ticketType, DEFAULT_SORT)
+                .stream()
+                .map(this::mapToDetailResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<PricingRuleResponse> getPricingRulesByZone(UUID zoneId) {
-        return pricingRuleRepository.findByZoneIdAndIsActiveTrue(zoneId)
+        return pricingRuleRepository.findByZoneIdAndIsActiveTrue(zoneId, DEFAULT_SORT)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -136,8 +170,29 @@ public class PricingRuleServiceImpl implements PricingRuleService {
         pricingRule.setName(request.getName());
         pricingRule.setVehicleType(request.getVehicleType());
         pricingRule.setTicketType(request.getTicketType());
-        pricingRule.setRatePerHour(request.getRatePerHour());
-        pricingRule.setMinimumFee(request.getMinimumFee());
+        if (request.getTicketType() == TicketType.MONTHLY) {
+            BigDecimal mFee = request.getMonthlyFee() != null && request.getMonthlyFee().compareTo(BigDecimal.ZERO) > 0
+                    ? request.getMonthlyFee()
+                    : (request.getMinimumFee() != null && request.getMinimumFee().compareTo(BigDecimal.ZERO) > 0 ? request.getMinimumFee() : new BigDecimal("500000"));
+            pricingRule.setMonthlyFee(mFee);
+            pricingRule.setMinimumFee(mFee);
+            if (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) <= 0) {
+                pricingRule.setRatePerHour(null);
+            } else {
+                pricingRule.setRatePerHour(request.getRatePerHour());
+            }
+        } else {
+            pricingRule.setMonthlyFee(request.getMonthlyFee());
+            BigDecimal minFee = request.getMinimumFee() != null && request.getMinimumFee().compareTo(BigDecimal.ZERO) > 0
+                    ? request.getMinimumFee()
+                    : (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) > 0 ? request.getRatePerHour() : new BigDecimal("5000"));
+            pricingRule.setMinimumFee(minFee);
+            if (request.getRatePerHour() != null && request.getRatePerHour().compareTo(BigDecimal.ZERO) <= 0) {
+                pricingRule.setRatePerHour(null);
+            } else {
+                pricingRule.setRatePerHour(request.getRatePerHour());
+            }
+        }
         pricingRule.setMaximumDailyFee(request.getMaximumDailyFee());
         pricingRule.setOverstayRateMultiplier(request.getOverstayRateMultiplier());
         pricingRule.setPeakHourStart(request.getPeakHourStart());
@@ -204,6 +259,12 @@ public class PricingRuleServiceImpl implements PricingRuleService {
                 pricingRule.getTicketType(),
                 pricingRule.getRatePerHour(),
                 pricingRule.getMinimumFee(),
+                pricingRule.getMonthlyFee(),
+                pricingRule.getMaximumDailyFee(),
+                pricingRule.getOverstayRateMultiplier(),
+                pricingRule.getPeakHourStart(),
+                pricingRule.getPeakHourEnd(),
+                pricingRule.getPeakHourMultiplier(),
                 pricingRule.getIsActive(),
                 pricingRule.getCreatedAt(),
                 pricingRule.getUpdatedAt()
@@ -219,6 +280,7 @@ public class PricingRuleServiceImpl implements PricingRuleService {
                 pricingRule.getRatePerHour(),
                 pricingRule.getMinimumFee(),
                 pricingRule.getMaximumDailyFee(),
+                pricingRule.getMonthlyFee(),
                 pricingRule.getOverstayRateMultiplier(),
                 pricingRule.getPeakHourStart(),
                 pricingRule.getPeakHourEnd(),

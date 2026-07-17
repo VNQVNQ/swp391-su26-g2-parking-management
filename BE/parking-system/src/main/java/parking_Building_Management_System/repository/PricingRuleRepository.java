@@ -1,5 +1,6 @@
 package parking_Building_Management_System.repository;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,10 +17,16 @@ public interface PricingRuleRepository extends JpaRepository<PricingRule, UUID> 
     List<PricingRule> findByVehicleTypeAndTicketType(VehicleType vehicleType, TicketType ticketType);
 
     List<PricingRule> findByVehicleType(VehicleType vehicleType);
+    List<PricingRule> findByVehicleType(VehicleType vehicleType, Sort sort);
 
     List<PricingRule> findByIsActiveTrue();
+    List<PricingRule> findByIsActiveTrue(Sort sort);
+
+    List<PricingRule> findByTicketTypeAndIsActiveTrue(TicketType ticketType);
+    List<PricingRule> findByTicketTypeAndIsActiveTrue(TicketType ticketType, Sort sort);
 
     List<PricingRule> findByZoneIdAndIsActiveTrue(UUID zoneId);
+    List<PricingRule> findByZoneIdAndIsActiveTrue(UUID zoneId, Sort sort);
 
     @Query("SELECT p FROM PricingRule p WHERE p.vehicleType = :vehicleType AND p.ticketType = :ticketType " +
            "AND p.zone.id = :zoneId AND p.effectiveFrom <= :date AND (p.effectiveTo IS NULL OR p.effectiveTo >= :date) " +

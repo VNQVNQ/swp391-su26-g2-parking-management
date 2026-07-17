@@ -67,6 +67,16 @@ public class PricingRuleController {
     }
 
     /**
+     * Get pricing rules by ticket type
+     */
+    @GetMapping("/ticket-type/{ticketType}")
+    public ResponseEntity<List<PricingRuleDetailResponse>> getPricingRulesByTicketType(
+            @PathVariable TicketType ticketType) {
+        List<PricingRuleDetailResponse> responses = pricingRuleService.getPricingRulesByTicketType(ticketType);
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
      * Get pricing rules by zone
      */
     @GetMapping("/zone/{zoneId}")

@@ -20,6 +20,7 @@ import parking_Building_Management_System.repository.MonthlyPassRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.service.MonthlyPassService;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -78,6 +79,10 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
 
         pass = monthlyPassRepository.save(pass);
         log.info("Monthly pass created successfully with ID: {}", pass.getId());
+
+        vehicle.setHasMonthlyPass(true);
+        vehicle.setMonthlyPassExpiry(endDate);
+        vehicleRepository.save(vehicle);
 
         return mapToResponse(pass);
     }
@@ -176,26 +181,39 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
                 .orElseThrow(() -> new RuntimeException("Monthly pass not found with ID: " + passId));
 
         LocalDate newEndDate = request.getEndDate();
+        if (newEndDate == null) {
+            if (request.getDurationInMonths() != null && request.getDurationInMonths() > 0) {
+                LocalDate baseDate = existingPass.getEndDate() != null && existingPass.getEndDate().isAfter(LocalDate.now())
+                        ? existingPass.getEndDate()
+                        : LocalDate.now();
+                newEndDate = baseDate.plusMonths(request.getDurationInMonths());
+            } else {
+                throw new IllegalArgumentException("Either endDate or durationInMonths must be provided");
+            }
+        }
+
         if (newEndDate.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("End date cannot be in the past");
         }
 
-        existingPass.setIsActive(false);
-        monthlyPassRepository.save(existingPass);
+        existingPass.setEndDate(newEndDate);
+        existingPass.setIsActive(true);
+        if (request.getFee() != null) {
+            BigDecimal currentFee = existingPass.getFee() != null ? existingPass.getFee() : BigDecimal.ZERO;
+            existingPass.setFee(currentFee.add(request.getFee()));
+        }
 
-        MonthlyPass newPass = new MonthlyPass();
-        newPass.setVehicle(existingPass.getVehicle());
-        newPass.setSlot(existingPass.getSlot());
-        newPass.setStartDate(LocalDate.now());
-        newPass.setEndDate(newEndDate);
-        newPass.setFee(request.getFee() != null ? request.getFee() : existingPass.getFee());
-        newPass.setPaymentStatus(PaymentStatus.UNPAID);
-        newPass.setIsActive(true);
+        existingPass = monthlyPassRepository.save(existingPass);
+        log.info("Monthly pass renewed successfully with ID: {}", existingPass.getId());
 
-        newPass = monthlyPassRepository.save(newPass);
-        log.info("Monthly pass renewed successfully with new ID: {}", newPass.getId());
+        Vehicle vehicle = existingPass.getVehicle();
+        if (vehicle != null) {
+            vehicle.setHasMonthlyPass(true);
+            vehicle.setMonthlyPassExpiry(newEndDate);
+            vehicleRepository.save(vehicle);
+        }
 
-        return mapToDetailResponse(newPass);
+        return mapToDetailResponse(existingPass);
     }
 
     @Override
@@ -228,6 +246,12 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
 
         pass = monthlyPassRepository.save(pass);
         log.info("Monthly pass updated successfully with ID: {}", pass.getId());
+
+        if (Boolean.TRUE.equals(pass.getIsActive())) {
+            vehicle.setHasMonthlyPass(true);
+            vehicle.setMonthlyPassExpiry(endDate);
+            vehicleRepository.save(vehicle);
+        }
 
         return mapToDetailResponse(pass);
     }
@@ -287,6 +311,7 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
         response.setId(pass.getId());
         response.setVehicleId(pass.getVehicle().getId());
         response.setLicensePlate(pass.getVehicle().getLicensePlate());
+        response.setVehicleType(pass.getVehicle().getVehicleType());
         response.setFee(pass.getFee());
         response.setStartDate(pass.getStartDate());
         response.setEndDate(pass.getEndDate());
@@ -332,6 +357,7 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
                 .id(pass.getId())
                 .vehicleId(pass.getVehicle().getId())
                 .licensePlate(pass.getVehicle().getLicensePlate())
+                .vehicleType(pass.getVehicle().getVehicleType())
                 .fee(pass.getFee())
                 .startDate(pass.getStartDate())
                 .endDate(pass.getEndDate())

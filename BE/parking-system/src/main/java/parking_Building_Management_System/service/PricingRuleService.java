@@ -19,6 +19,8 @@ public interface PricingRuleService {
 
     List<PricingRuleResponse> getPricingRulesByVehicleType(VehicleType vehicleType);
 
+    List<PricingRuleDetailResponse> getPricingRulesByTicketType(TicketType ticketType);
+
     List<PricingRuleResponse> getPricingRulesByZone(UUID zoneId);
 
     List<PricingRuleDetailResponse> findApplicablePricingRule(VehicleType vehicleType, TicketType ticketType, UUID zoneId, LocalDate date);

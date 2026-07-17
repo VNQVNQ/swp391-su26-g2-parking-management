@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import api from '../../services/api';
-import { Car, Bike, Truck, CheckCircle2, AlertCircle, Clock, ChevronRight, Check, ArrowRight } from 'lucide-react';
+import { Car, Bike, Truck, CheckCircle2, AlertCircle, Check } from 'lucide-react';
 
 const VEHICLE_TYPES = [
-  { id: 'MOTORBIKE', label: 'Xe máy', icon: <Bike size={32} strokeWidth={1.5} />, price: '5.000đ/lượt' },
-  { id: 'CAR',       label: 'Ô tô',   icon: <Car size={32} strokeWidth={1.5} />, price: '15.000đ/lượt' },
-  { id: 'TRUCK',     label: 'Xe tải', icon: <Truck size={32} strokeWidth={1.5} />, price: '30.000đ/lượt' },
+  { id: 'MOTORBIKE', label: 'Xe máy', icon: <Bike size={42} strokeWidth={1.5} />, price: '5.000đ/lượt' },
+  { id: 'CAR',       label: 'Ô tô',   icon: <Car size={42} strokeWidth={1.5} />, price: '15.000đ/lượt' },
+  { id: 'TRUCK',     label: 'Xe tải', icon: <Truck size={42} strokeWidth={1.5} />, price: '30.000đ/lượt' },
 ];
 
 export default function RegisterVehicle() {
@@ -18,7 +18,7 @@ export default function RegisterVehicle() {
   // Strict Real-time validation
   const plateRegex = /^[0-9]{2}[A-Z0-9]{1,2}-[0-9]{3}\.?[0-9]{2}$/;
   const isPlateValid = useMemo(() => {
-    if (!plate) return null; // haven't typed yet
+    if (!plate) return null;
     return plateRegex.test(plate.trim().toUpperCase());
   }, [plate]);
 
@@ -40,34 +40,40 @@ export default function RegisterVehicle() {
   const selectedVehicleData = VEHICLE_TYPES.find(v => v.id === type);
 
   if (success) return (
-    <div className="saas-container fade-in">
-      <div className="saas-success-card">
-        <div className="success-icon-wrapper">
-          <span className="celebration-emoji">🎉</span>
-        </div>
-        <h2 className="success-title">Đăng ký thành công!</h2>
-        <p className="success-subtitle">Xe đã được thêm vào hệ thống và sẵn sàng sử dụng.</p>
-        
-        <div className="success-details">
-          <div className="detail-row">
-            <span>Biển số xe</span>
-            <strong>{success.licensePlate}</strong>
+    <div className="saas-page fade-in">
+      <div className="saas-container success-container">
+        <div className="saas-success-card">
+          <div className="success-icon-wrapper">
+            <span className="celebration-emoji">🎉</span>
           </div>
-          <div className="detail-row">
-            <span>Loại phương tiện</span>
-            <strong>{selectedVehicleData?.label}</strong>
+          <h2 className="success-title">Đăng ký thành công!</h2>
+          <p className="success-subtitle">Xe đã được đăng kí thành công vào hệ thống</p>
+          
+          <div className="success-details">
+            <div className="detail-row">
+              <span>Biển số xe</span>
+              <strong className="license-plate-badge">{success.licensePlate}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Loại phương tiện</span>
+              <strong style={{ fontWeight: 700 }}>{selectedVehicleData?.label}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Trạng thái</span>
+              <strong className="status-badge-success">
+                <CheckCircle2 size={16} /> Đã kích hoạt
+              </strong>
+            </div>
           </div>
-          <div className="detail-row">
-            <span>Trạng thái</span>
-            <strong style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <CheckCircle2 size={16} /> Đã kích hoạt
-            </strong>
-          </div>
-        </div>
 
-        <button className="saas-btn-primary" style={{ width: '100%', height: 56, marginTop: 16 }} onClick={() => { setSuccess(null); setPlate(''); setError(''); setType('MOTORBIKE'); }}>
-          <span className="btn-content">Đăng ký xe khác <ArrowRight size={18} /></span>
-        </button>
+          <button 
+            type="button"
+            className="saas-btn-success-action"
+            onClick={() => { setSuccess(null); setPlate(''); setError(''); setType('MOTORBIKE'); }}
+          >
+            ➕ Đăng ký thêm xe khác
+          </button>
+        </div>
       </div>
       <style>{saasStyles}</style>
     </div>
@@ -75,147 +81,101 @@ export default function RegisterVehicle() {
 
   return (
     <div className="saas-page fade-in">
-      <div className="saas-container">
+      <div className="saas-container centered-container">
         
         {/* ── HEADER ── */}
-        <div className="saas-header">
-          <div className="header-left">
-            <h1 className="header-title">🚗 Đăng ký xe</h1>
-            <p className="header-subtitle">Đăng ký phương tiện để sử dụng hệ thống bãi xe thông minh.</p>
-          </div>
-          <div className="header-right">
-            <div className="time-badge">
-              <Clock size={16} />
-              <span>Estimated 30 seconds</span>
-            </div>
-          </div>
+        <div className="saas-header centered-header">
+          <h1 className="header-title">🚗 Đăng ký phương tiện</h1>
+          <p className="header-subtitle">Thêm thông tin xe của bạn để sử dụng hệ thống bãi đỗ & đăng ký vé tháng</p>
         </div>
 
-        {/* ── LAYOUT ── */}
-        <div className="saas-layout">
-          
-          {/* LEFT: FORM */}
-          <div className="saas-card form-section">
-            <div className="form-group">
-              <label className="saas-label">Biển số xe</label>
-              <div className={`saas-input-wrapper ${isPlateValid === true ? 'valid' : isPlateValid === false ? 'invalid' : ''}`}>
-                <div className="input-prefix">🚗</div>
-                <input 
-                  type="text" 
-                  className="saas-input"
-                  placeholder="VD: 51G-123.45"
-                  value={plate}
-                  onChange={e => setPlate(e.target.value.toUpperCase())} 
-                  autoFocus
-                />
-                {isPlateValid === true && <CheckCircle2 className="validation-icon success" size={20} />}
-                {isPlateValid === false && <AlertCircle className="validation-icon error" size={20} />}
-              </div>
-              
-              {/* Validation Messages */}
-              <div className="validation-msg-container">
-                {isPlateValid === null && (
-                  <p className="validation-hint">✓ Format chuẩn: 29A-123.45 hoặc 59F2-67890</p>
-                )}
-                {isPlateValid === true && (
-                  <p className="validation-msg success">✓ Biển số hợp lệ</p>
-                )}
-                {isPlateValid === false && (
-                  <p className="validation-msg error">❌ Biển số không đúng định dạng</p>
-                )}
-              </div>
+        {/* ── CENTERED FORM CARD ── */}
+        <div className="saas-card form-section centered-card">
+          <div className="form-group">
+            <label className="saas-label">Biển số xe <span className="req">*</span></label>
+            <div className={`saas-input-wrapper ${isPlateValid === true ? 'valid' : isPlateValid === false ? 'invalid' : ''}`}>
+              <div className="input-prefix">🚗</div>
+              <input 
+                type="text" 
+                className="saas-input"
+                placeholder="VD: 51G-123.45 hoặc 29A-678.90"
+                value={plate}
+                onChange={e => setPlate(e.target.value.toUpperCase())} 
+                autoFocus
+              />
+              {isPlateValid === true && <CheckCircle2 className="validation-icon success" size={24} />}
+              {isPlateValid === false && <AlertCircle className="validation-icon error" size={24} />}
             </div>
-
-            <div className="form-group" style={{ marginTop: 32 }}>
-              <label className="saas-label">Loại xe</label>
-              <div className="vehicle-type-grid">
-                {VEHICLE_TYPES.map(v => {
-                  const isSelected = type === v.id;
-                  return (
-                    <div 
-                      key={v.id}
-                      className={`saas-vehicle-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => setType(v.id)}
-                    >
-                      {isSelected && (
-                        <div className="tick-corner">
-                          <Check size={14} strokeWidth={3} />
-                        </div>
-                      )}
-                      <div className="vehicle-icon">{v.icon}</div>
-                      <div className="vehicle-label">{v.label}</div>
-                      <div className="vehicle-price">Chi phí: <br/>{v.price}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {error && (
-              <div className="saas-error-banner">
-                <AlertCircle size={18} />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <button 
-              className="saas-btn-primary submit-btn" 
-              onClick={handleSubmit} 
-              disabled={loading || isPlateValid === false}
-            >
-              {loading ? (
-                <span className="btn-content"><span className="spinner"></span> Đang đăng ký...</span>
-              ) : (
-                <span className="btn-content">🚗 Đăng ký xe</span>
+            
+            {/* Validation Messages */}
+            <div className="validation-msg-container">
+              {isPlateValid === null && (
+                <p className="validation-hint">✓ Định dạng chuẩn: 29A-123.45 hoặc 59F2-67890</p>
               )}
-            </button>
-          </div>
-
-          {/* RIGHT: INFO & PREVIEW */}
-          <div className="saas-right-panel">
-            {/* Live Preview Card */}
-            <div className="saas-card preview-card">
-              <h3 className="preview-title">🚗 Xe của bạn</h3>
-              <div className="preview-content">
-                <div className="preview-row">
-                  <span className="preview-label">Biển số:</span>
-                  <span className={`preview-value plate ${!plate ? 'empty' : ''}`}>
-                    {plate || 'Chưa nhập'}
-                  </span>
-                </div>
-                <div className="preview-row">
-                  <span className="preview-label">Loại:</span>
-                  <span className="preview-value type">
-                    {selectedVehicleData?.icon} {selectedVehicleData?.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Info Card */}
-            <div className="saas-card info-card">
-              <div className="info-section">
-                <h4 className="info-heading">✓ Hướng dẫn</h4>
-                <ol className="info-list">
-                  <li>Nhập chính xác biển số xe theo định dạng của biển số thực.</li>
-                  <li>Chọn đúng loại phương tiện để áp dụng bảng giá chính xác.</li>
-                  <li>Bấm Đăng ký để hoàn tất việc thêm xe.</li>
-                </ol>
-              </div>
-              
-              <div className="info-divider"></div>
-              
-              <div className="info-section">
-                <h4 className="info-heading">✓ Sau khi đăng ký</h4>
-                <ul className="info-list no-bullets">
-                  <li><CheckCircle2 size={16} /> Xe được lưu an toàn vào hệ thống</li>
-                  <li><CheckCircle2 size={16} /> Có thể tự động check-in qua camera</li>
-                  <li><CheckCircle2 size={16} /> Có thể xem lịch sử đỗ xe bất cứ lúc nào</li>
-                </ul>
-              </div>
+              {isPlateValid === true && (
+                <p className="validation-msg success"><CheckCircle2 size={16} /> Biển số hợp lệ, sẵn sàng đăng ký</p>
+              )}
+              {isPlateValid === false && (
+                <p className="validation-msg error"><AlertCircle size={16} /> Biển số không đúng định dạng hệ thống</p>
+              )}
             </div>
           </div>
-          
+
+          <div className="form-group" style={{ marginTop: 36 }}>
+            <label className="saas-label">Loại phương tiện <span className="req">*</span></label>
+            <div className="vehicle-type-grid">
+              {VEHICLE_TYPES.map(v => {
+                const isSelected = type === v.id;
+                return (
+                  <div 
+                    key={v.id}
+                    className={`saas-vehicle-card ${isSelected ? 'selected' : ''}`}
+                    onClick={() => setType(v.id)}
+                  >
+                    {isSelected && (
+                      <div className="tick-corner">
+                        <Check size={16} strokeWidth={3} />
+                      </div>
+                    )}
+                    <div className="vehicle-icon">{v.icon}</div>
+                    <div className="vehicle-label">{v.label}</div>
+                    <div className="vehicle-price">Chi phí cơ bản: <br/><strong>{v.price}</strong></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Live Preview Box */}
+          <div className="live-preview-box">
+            <div className="preview-info-row">
+              <span className="preview-lbl">Xe chuẩn bị đăng ký:</span>
+              <span className="preview-val">
+                <strong className={plate ? 'val-plate' : 'val-empty'}>{plate || 'CHƯA NHẬP BIỂN SỐ'}</strong>
+                <span className="val-type">({selectedVehicleData?.label})</span>
+              </span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="saas-error-banner">
+              <AlertCircle size={20} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button 
+            type="button"
+            className="saas-btn-primary submit-btn" 
+            onClick={handleSubmit} 
+            disabled={loading || isPlateValid === false}
+          >
+            {loading ? (
+              <span className="btn-content"><span className="spinner"></span> Đang xử lý đăng ký...</span>
+            ) : (
+              <span className="btn-content">✓ Hoàn tất đăng ký xe ngay</span>
+            )}
+          </button>
         </div>
       </div>
       
@@ -233,9 +193,7 @@ const saasStyles = `
     background-color: var(--bg-primary);
     min-height: calc(100vh - 80px);
     color: var(--text-primary);
-    padding: 40px 20px;
-    display: flex;
-    justify-content: center;
+    padding: 30px 20px 60px 20px;
   }
 
   .fade-in {
@@ -247,26 +205,29 @@ const saasStyles = `
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .saas-container {
+  .saas-container.centered-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .saas-container.success-container {
+    width: 100%;
+    max-width: 520px;
+    margin: 40px auto;
   }
 
   /* ── Header ── */
-  .saas-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 40px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border-color);
+  .saas-header.centered-header {
+    text-align: center;
+    margin-bottom: 36px;
   }
 
   .header-title {
-    font-size: 32px;
+    font-size: 34px;
     font-weight: 800;
-    margin: 0 0 12px 0;
-    letter-spacing: -0.5px;
+    margin: 0 0 10px 0;
+    letter-spacing: -0.6px;
     color: var(--text-primary);
   }
 
@@ -276,39 +237,21 @@ const saasStyles = `
     margin: 0;
   }
 
-  .time-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    padding: 8px 16px;
-    border-radius: 100px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  /* ── Layout ── */
-  .saas-layout {
-    display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 32px;
-  }
-
-  @media (max-width: 1024px) {
-    .saas-layout {
-      grid-template-columns: 1fr;
-    }
-  }
-
   /* ── Cards ── */
-  .saas-card {
+  .saas-card.centered-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: var(--shadow-md);
+    border-radius: 24px;
+    padding: 44px 40px;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 640px) {
+    .saas-card.centered-card {
+      padding: 28px 20px;
+    }
   }
 
   .form-section {
@@ -318,10 +261,15 @@ const saasStyles = `
 
   .saas-label {
     display: block;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
     margin-bottom: 12px;
     color: var(--text-primary);
+  }
+
+  .req {
+    color: #EF4444;
+    margin-left: 4px;
   }
 
   /* ── Input ── */
@@ -330,9 +278,10 @@ const saasStyles = `
     display: flex;
     align-items: center;
     background: var(--bg-input);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 16px;
     overflow: hidden;
+    height: 64px;
     transition: all 0.25s ease;
   }
 
@@ -352,50 +301,53 @@ const saasStyles = `
   }
 
   .input-prefix {
-    padding: 0 16px;
-    font-size: 20px;
+    padding: 0 20px;
+    font-size: 26px;
     border-right: 1px solid var(--border-color);
     color: var(--text-muted);
+    display: flex;
+    align-items: center;
   }
 
   .saas-input {
     flex: 1;
     background: transparent;
     border: none;
-    padding: 16px;
-    font-size: 16px;
-    font-weight: 600;
+    padding: 0 20px;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--text-primary);
     outline: none;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
   }
 
   .saas-input::placeholder {
     color: var(--text-muted);
     font-weight: 400;
+    font-size: 18px;
     letter-spacing: normal;
   }
 
   .validation-icon {
-    margin-right: 16px;
+    margin-right: 20px;
   }
   .validation-icon.success { color: #10B981; }
   .validation-icon.error { color: #EF4444; }
 
   .validation-msg-container {
-    margin-top: 8px;
+    margin-top: 10px;
     min-height: 24px;
   }
 
   .validation-hint {
-    font-size: 13px;
+    font-size: 14px;
     color: #64748B;
     margin: 0;
   }
 
   .validation-msg {
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     margin: 0;
     display: flex;
     align-items: center;
@@ -408,7 +360,7 @@ const saasStyles = `
   .vehicle-type-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 20px;
   }
 
   @media (max-width: 600px) {
@@ -420,13 +372,12 @@ const saasStyles = `
   .saas-vehicle-card {
     position: relative;
     background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 24px 16px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 20px;
+    padding: 28px 16px;
     text-align: center;
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: hidden;
   }
 
   .saas-vehicle-card:hover {
@@ -444,10 +395,10 @@ const saasStyles = `
 
   .tick-corner {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 24px;
-    height: 24px;
+    top: 14px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
     background: var(--accent-primary);
     border-radius: 50%;
     display: flex;
@@ -459,7 +410,7 @@ const saasStyles = `
 
   .vehicle-icon {
     color: var(--text-secondary);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     display: inline-flex;
   }
 
@@ -468,50 +419,102 @@ const saasStyles = `
   }
 
   .vehicle-label {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 8px;
   }
 
   .vehicle-price {
-    font-size: 13px;
+    font-size: 13.5px;
     color: var(--text-muted);
-    line-height: 1.4;
+    line-height: 1.5;
   }
 
-  /* ── Button ── */
+  /* ── Live Preview Box ── */
+  .live-preview-box {
+    margin-top: 36px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+    border-radius: 16px;
+    padding: 18px 24px;
+  }
+
+  .preview-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .preview-lbl {
+    font-size: 15px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .preview-val {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .val-plate {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent-primary);
+    background: var(--bg-card);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    letter-spacing: 1px;
+  }
+
+  .val-empty {
+    font-size: 16px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .val-type {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* ── Buttons ── */
   .submit-btn {
-    margin-top: 40px;
+    margin-top: 28px;
     width: 100%;
-    height: 56px;
+    height: 60px;
+    font-size: 18px;
   }
 
   .saas-btn-primary {
     background: var(--accent-gradient);
     border: none;
-    border-radius: 12px;
+    border-radius: 16px;
     color: #ffffff;
-    font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: var(--shadow-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     font-family: 'Inter', sans-serif;
   }
 
   .saas-btn-primary:hover:not(:disabled) {
     background: var(--accent-gradient-hover);
-    transform: scale(1.02);
+    transform: scale(1.015);
     box-shadow: var(--shadow-lg);
   }
 
   .saas-btn-primary:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.985);
   }
 
   .saas-btn-primary:disabled {
@@ -526,138 +529,16 @@ const saasStyles = `
     gap: 8px;
   }
 
-  /* ── Right Panel ── */
-  .saas-right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .preview-card {
-    background: var(--bg-card);
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-  }
-  
-  .preview-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 4px;
-    background: var(--accent-gradient);
-  }
-
-  .preview-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 0 0 20px 0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .preview-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .preview-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .preview-label {
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-
-  .preview-value {
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .preview-value.plate {
-    font-size: 18px;
-    letter-spacing: 1px;
-    background: var(--bg-secondary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-  }
-
-  .preview-value.plate.empty {
-    color: var(--text-muted);
-    font-style: italic;
-    letter-spacing: normal;
-  }
-
-  .info-card {
-    padding: 24px;
-  }
-
-  .info-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .info-heading {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .info-list {
-    margin: 0;
-    padding-left: 20px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.7;
-  }
-
-  .info-list.no-bullets {
-    padding-left: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .info-list.no-bullets li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-secondary);
-  }
-  
-  .info-list.no-bullets li svg {
-    color: var(--accent-green);
-    flex-shrink: 0;
-  }
-
-  .info-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 24px 0;
-  }
-
   /* ── Success Screen ── */
   .saas-success-card {
     background: var(--bg-card);
-    border: 1px solid var(--accent-green);
-    border-radius: 24px;
-    padding: 48px;
-    max-width: 520px;
-    margin: 80px auto;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 28px;
+    padding: 44px 36px;
+    width: 100%;
+    box-sizing: border-box;
     text-align: center;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 20px 45px rgba(16, 185, 129, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
     position: relative;
     overflow: hidden;
   }
@@ -666,26 +547,27 @@ const saasStyles = `
     content: '';
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at top center, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle at top center, rgba(16, 185, 129, 0.1) 0%, transparent 65%);
     pointer-events: none;
   }
 
   .success-icon-wrapper {
     width: 80px;
     height: 80px;
-    background: rgba(16, 185, 129, 0.1);
-    border: 2px solid rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+    border: 2px solid rgba(16, 185, 129, 0.4);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 24px;
+    margin: 0 auto 20px;
     position: relative;
     z-index: 1;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
   }
 
   .celebration-emoji {
-    font-size: 36px;
+    font-size: 38px;
     animation: bounce 2s infinite ease-in-out;
   }
 
@@ -695,28 +577,33 @@ const saasStyles = `
   }
 
   .success-title {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
     color: var(--text-primary);
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
     position: relative;
     z-index: 1;
   }
 
   .success-subtitle {
     font-size: 15px;
+    font-weight: 500;
     color: var(--text-secondary);
-    margin: 0 0 32px 0;
+    margin: 0 0 28px 0;
     position: relative;
     z-index: 1;
+    line-height: 1.5;
   }
 
   .success-details {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 32px;
+    border-radius: 20px;
+    padding: 20px 24px;
+    margin: 0 auto 28px auto;
+    width: 100%;
+    box-sizing: border-box;
     text-align: left;
     position: relative;
     z-index: 1;
@@ -726,8 +613,8 @@ const saasStyles = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--border-color);
   }
   .detail-row:last-child {
     border-bottom: none;
@@ -736,12 +623,63 @@ const saasStyles = `
 
   .detail-row span {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 14.5px;
+    font-weight: 500;
   }
 
   .detail-row strong {
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 15.5px;
+    font-weight: 700;
+  }
+
+  .license-plate-badge {
+    background: var(--bg-card);
+    border: 1.5px solid #3B82F6;
+    color: #2563EB !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    padding: 4px 12px;
+    border-radius: 8px;
+    letter-spacing: 0.8px;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+  }
+
+  .status-badge-success {
+    color: #10B981 !important;
+    font-weight: 700 !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  .saas-btn-success-action {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    height: 54px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 16px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .saas-btn-success-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(16, 185, 129, 0.35);
   }
 
   .saas-error-banner {
@@ -749,19 +687,19 @@ const saasStyles = `
     align-items: center;
     gap: 12px;
     background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 14px;
     padding: 16px;
     color: #FCA5A5;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     margin-top: 24px;
   }
 
   .spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255,255,255,0.3);
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid rgba(255,255,255,0.3);
     border-radius: 50%;
     border-top-color: #fff;
     animation: spin 0.8s linear infinite;

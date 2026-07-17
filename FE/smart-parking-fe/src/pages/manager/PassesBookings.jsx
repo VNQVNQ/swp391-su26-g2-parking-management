@@ -36,6 +36,7 @@ export default function PassesBookings() {
   const [tab, setTab] = useState('passes');
   const [passes, setPasses] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [monthlyPrices, setMonthlyPrices] = useState({ CAR: 2500000, MOTORBIKE: 500000, TRUCK: 4000000 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [passSearch, setPassSearch] = useState('');
@@ -49,13 +50,39 @@ export default function PassesBookings() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [passesRes, bookingsRes] = await Promise.all([
+      const [passesRes, bookingsRes, pricingRes] = await Promise.all([
         api.get('/api/v1/monthly-passes').catch(() => ({ data: { data: [] } })),
-        api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } }))
+        api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } })),
+        api.get('/api/v1/pricing-rules/ticket-type/MONTHLY').catch(() => ({ data: { data: [] } }))
       ]);
 
       const passesData = passesRes.data?.data ?? passesRes.data ?? [];
       const bookingsData = bookingsRes.data?.data ?? bookingsRes.data ?? [];
+      let rulesData = pricingRes.data?.data ?? pricingRes.data ?? [];
+
+      if (!Array.isArray(rulesData) || rulesData.length === 0) {
+        try {
+          const allRulesRes = await api.get('/api/v1/pricing-rules');
+          const allRules = allRulesRes.data?.data ?? allRulesRes.data ?? [];
+          if (Array.isArray(allRules)) {
+            rulesData = allRules.filter(r => (r.ticketType || '').toUpperCase() === 'MONTHLY');
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const prices = { CAR: 2500000, MOTORBIKE: 500000, TRUCK: 4000000 };
+      if (Array.isArray(rulesData)) {
+        rulesData.forEach(rule => {
+          if (rule && rule.vehicleType && rule.isActive !== false) {
+            const vt = String(rule.vehicleType).toUpperCase();
+            const fee = Number(rule.monthlyFee || rule.minimumFee || rule.ratePerHour || 0);
+            if (fee > 0) prices[vt] = fee;
+          }
+        });
+      }
+      setMonthlyPrices(prices);
 
       const parsedPasses = Array.isArray(passesData) ? passesData : [];
       const parsedBookings = Array.isArray(bookingsData) ? bookingsData : [];
@@ -224,7 +251,9 @@ export default function PassesBookings() {
                         const plate = getLicensePlate(p);
                         const vehicleType = getVehicleType(p);
                         const status = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
-                        const isActive = status === 'ACTIVE' || status === 'Active';
+                        const isPassActive = status === 'ACTIVE' || status === 'Active' || p.isActive === true;
+                        const vt = String(vehicleType).toUpperCase();
+                        const feeVal = p.fee || p.price || p.amount || monthlyPrices[vt] || 0;
 
                         return (
                           <tr key={p.id}>
@@ -234,10 +263,10 @@ export default function PassesBookings() {
                             </td>
                             <td>{p.startDate ? new Date(p.startDate).toLocaleDateString('vi-VN') : '—'}</td>
                             <td>{p.endDate ? new Date(p.endDate).toLocaleDateString('vi-VN') : '—'}</td>
-                            <td style={{ fontWeight: 600 }}>₫{(p.fee || 0).toLocaleString()}</td>
+                            <td style={{ fontWeight: 600 }}>₫{feeVal.toLocaleString('vi-VN')}</td>
                             <td>
-                              <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
-                                {isActive ? '✓ Hoạt động' : '✗ Hết hạn'}
+                              <span className={`badge ${isPassActive ? 'badge-success' : 'badge-danger'}`}>
+                                {isPassActive ? '✓ Hoạt động' : '✗ Hết hạn'}
                               </span>
                             </td>
                           </tr>
@@ -253,19 +282,19 @@ export default function PassesBookings() {
                 <div className="card" style={{ borderLeft: '4px solid #3b82f6', textAlign: 'center', padding: '28px' }}>
                   <Car size={28} style={{ color: '#3b82f6', marginBottom: '8px' }} />
                   <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Ô tô</h4>
-                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫2,500,000</p>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫{(monthlyPrices.CAR || 0).toLocaleString('vi-VN')}</p>
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
                 </div>
                 <div className="card" style={{ borderLeft: '4px solid #8b5cf6', textAlign: 'center', padding: '28px' }}>
                   <Bike size={28} style={{ color: '#8b5cf6', marginBottom: '8px' }} />
                   <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Xe máy</h4>
-                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫500,000</p>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫{(monthlyPrices.MOTORBIKE || 0).toLocaleString('vi-VN')}</p>
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
                 </div>
                 <div className="card" style={{ borderLeft: '4px solid #f59e0b', textAlign: 'center', padding: '28px' }}>
                   <Truck size={28} style={{ color: '#f59e0b', marginBottom: '8px' }} />
                   <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Xe tải</h4>
-                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫4,000,000</p>
+                  <p style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: '8px' }}>₫{(monthlyPrices.TRUCK || 0).toLocaleString('vi-VN')}</p>
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>/tháng</span>
                 </div>
               </div>

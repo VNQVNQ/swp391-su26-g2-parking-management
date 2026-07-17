@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Calendar, MapPin, Clock, AlertCircle, CheckCircle2, X, Car, Bike, Truck, ArrowRight, Grid3x3 } from 'lucide-react';
 import api from '../../services/api';
+import { compareSlotCodes } from '../../utils/slotHelper';
 
 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
@@ -141,7 +142,7 @@ export default function Booking() {
       ]);
 
       const data = slotsRes.data?.data ?? slotsRes.data ?? [];
-      const sorted = Array.isArray(data) ? [...data].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      const sorted = Array.isArray(data) ? [...data].sort(compareSlotCodes) : [];
       setSlots(sorted);
       const bookedIds = bookedRes.data?.data ?? bookedRes.data ?? [];
       setBookedSlotIds(Array.isArray(bookedIds) ? bookedIds : []);

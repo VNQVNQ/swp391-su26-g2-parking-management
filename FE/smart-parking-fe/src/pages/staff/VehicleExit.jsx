@@ -103,7 +103,6 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
   const TYPES = [
     { value: 'LOST_TICKET', label: '🎫 Mất vé',    color: '#f59e0b' },
     { value: 'WRONG_ZONE',  label: '📍 Sai vị trí', color: '#8b5cf6' },
-    ...(!isMonthlyPass ? [{ value: 'OVERSTAY',    label: '⏰ Quá giờ',    color: '#3b82f6' }] : []),
   ];
 
   // Normalize vehicleType sang UPPERCASE enum value
@@ -178,7 +177,6 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
 
   const handleTypeChange = (newType) => {
     if (appliedTypes.includes(newType)) return;
-    if (isMonthlyPass && newType === 'OVERSTAY') return;
     setType(newType);
     fetchPenaltyFee(newType);
   };
@@ -281,17 +279,15 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
         ) : (
           <>
             {/* Loại ngoại lệ */}
-            {isMonthlyPass && (
-              <div style={{
-                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
-                borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: '0.82rem',
-                color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 8
-              }}>
-                <span>💡 Xe vé tháng chỉ xử lý ngoại lệ <b>Đỗ sai vị trí</b> và <b>Mất vé/thẻ</b>.</span>
-              </div>
-            )}
+            <div style={{
+              background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+              borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: '0.82rem',
+              color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              <span>💡 Hệ thống đã tự động tính phí đỗ quá giờ. Xử lý ngoại lệ tại quầy chỉ gồm: <b>Mất vé/thẻ</b> và <b>Đỗ sai vị trí</b>.</span>
+            </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Loại ngoại lệ</p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMonthlyPass ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
               {TYPES.map(t => {
                 const isApplied = appliedTypes.includes(t.value);
                 const isSelected = type === t.value && !isApplied;

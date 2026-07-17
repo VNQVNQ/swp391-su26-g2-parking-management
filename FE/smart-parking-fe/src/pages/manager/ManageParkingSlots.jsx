@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Search, Grid3x3, List, Car, Bike, AlertTriangle, Layers, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
+import { compareSlotCodes } from '../../utils/slotHelper';
 
 const VEHICLE_TYPES = ['MOTORBIKE', 'CAR', 'TRUCK'];
 const MAINTENANCE_STATUS = ['AVAILABLE', 'MAINTENANCE'];
@@ -131,7 +132,7 @@ export default function ManageParkingSlots() {
       ]);
       const slotsData = slotsRes.data.data ?? slotsRes.data ?? [];
       const zonesData = zonesRes.data.data ?? zonesRes.data ?? [];
-      const sortedSlots = Array.isArray(slotsData) ? [...slotsData].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : [];
+      const sortedSlots = Array.isArray(slotsData) ? [...slotsData].sort(compareSlotCodes) : [];
       setSlots(sortedSlots);
       setZones(Array.isArray(zonesData) ? zonesData : []);
       setError('');
@@ -186,7 +187,8 @@ export default function ManageParkingSlots() {
     const start = parseInt(bulkForm.startNum) || 1;
     const end = parseInt(bulkForm.endNum) || 1;
     const prefix = bulkForm.prefix.toUpperCase();
-    for (let i = start; i <= end; i++) codes.push(`${prefix}${String(i).padStart(3, '0')}`);
+    const padLen = end >= 100 ? 3 : 2;
+    for (let i = start; i <= end; i++) codes.push(`${prefix}${String(i).padStart(padLen, '0')}`);
     return codes;
   };
 
@@ -216,7 +218,7 @@ export default function ManageParkingSlots() {
     const matchZone = !filterZone || slot.zoneId === filterZone;
     const matchStatus = !filterStatus || slot.maintenanceStatus === filterStatus;
     return matchSearch && matchZone && matchStatus;
-  }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
+  }).sort(compareSlotCodes);
 
   // Stats
   const available = slots.filter(s => s.maintenanceStatus === 'AVAILABLE' && !s.currentSessionId).length;
@@ -416,9 +418,11 @@ export default function ManageParkingSlots() {
       ) : (
         /* ═══ GRID VIEW ═══ */
         <div>
-          {Object.keys(slotsByZone).map(zoneId => {
-            const zoneSlots = slotsByZone[zoneId];
-            const zone = zones.find(z => z.id === zoneId);
+          {Object.keys(slotsByZone)
+            .sort((a, b) => (zones.find(z => z.id === a)?.name || '').localeCompare(zones.find(z => z.id === b)?.name || '', undefined, { numeric: true, sensitivity: 'base' }))
+            .map(zoneId => {
+              const zoneSlots = [...slotsByZone[zoneId]].sort(compareSlotCodes);
+              const zone = zones.find(z => z.id === zoneId);
             const zoneAvail = zoneSlots.filter(s => s.maintenanceStatus === 'AVAILABLE' && !s.currentSessionId).length;
             const zoneOcc = zoneSlots.filter(s => !!s.currentSessionId).length;
             return (

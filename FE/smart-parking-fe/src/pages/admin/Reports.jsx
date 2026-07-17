@@ -1,4 +1,4 @@
-import { BarChart3, DollarSign, Car, Activity, Clock, TrendingUp, Download, RefreshCw } from 'lucide-react';
+import { BarChart3, DollarSign, Car, Activity, Clock, TrendingUp, Download, RefreshCw, Calendar } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { getActiveSessions, getCompletedSessions, getZones } from '../../services/sessionApi';
 
@@ -223,9 +223,20 @@ function FloorBars({ data }) {
 }
 
 /* ─── Main Reports component ───────────────────────────────── */
+// Helper: format Date to yyyy-mm-dd string
+function toDateStr(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export default function Reports() {
   const [tab, setTab] = useState('revenue');
-  const [period, setPeriod] = useState('Today');
+
+  // Default: last 7 days to today
+  const todayStr = toDateStr(new Date());
+  const sevenDaysAgoStr = toDateStr(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+  const [dateFrom, setDateFrom] = useState(sevenDaysAgoStr);
+  const [dateTo, setDateTo] = useState(todayStr);
+
   const [activeSessions, setActiveSessions] = useState([]);
   const [completedSessions, setCompletedSessions] = useState([]);
   const [zones, setZones] = useState([]);
@@ -254,57 +265,65 @@ export default function Reports() {
   useEffect(() => { loadData(); }, []);
 
   const { revenueData, peakData, vehicleTypes, floorData, stats } = useMemo(() => {
-    const now = new Date();
-    const isToday = (date) => {
-      const d = new Date(date);
-      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date(0);
+    const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date();
+
+    const isInRange = (dateVal) => {
+      if (!dateVal) return false;
+      const d = new Date(dateVal);
+      return d >= from && d <= to;
     };
 
-    let todayRevenue = 0;
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const viDays = { Sun: 'CN', Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7' };
-    const revMap = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
-
+    // Revenue by day in range
+    const dayRevenueMap = {};
+    let totalRevenue = 0;
     completedSessions.forEach(v => {
-      if (!v.exitTime) return;
-      const exitTime = new Date(v.exitTime);
-      const dayName = days[exitTime.getDay()];
+      if (!v.exitTime || !isInRange(v.exitTime)) return;
+      const d = new Date(v.exitTime);
+      const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
       const fee = v.totalFee || 0;
-      revMap[dayName] += fee;
-      if (isToday(exitTime)) todayRevenue += fee;
+      dayRevenueMap[key] = (dayRevenueMap[key] || 0) + fee;
+      totalRevenue += fee;
     });
 
-    const mockRev = { Mon: 8200000, Tue: 9100000, Wed: 7800000, Thu: 11200000, Fri: 12450000, Sat: 10800000, Sun: 6500000 };
-    const chartRev = period === 'Today'
-      ? [{ day: 'Hôm nay', value: todayRevenue }]
-      : days.map(day => ({ day: viDays[day], value: Math.max(revMap[day], period === 'This Week' ? mockRev[day] : 0) }));
-
-    const hoursMap = {};
-    for (let i = 6; i <= 20; i++) {
-      hoursMap[i] = { entries: 0, exits: 0 };
-      if (period !== 'Today') {
-        hoursMap[i].entries = i >= 7 && i <= 9 ? 15 + Math.floor(Math.random() * 10) : i >= 17 && i <= 19 ? 12 + Math.floor(Math.random() * 8) : 3 + Math.floor(Math.random() * 6);
-        hoursMap[i].exits = i >= 11 && i <= 13 ? 10 + Math.floor(Math.random() * 8) : i >= 17 && i <= 19 ? 14 + Math.floor(Math.random() * 10) : 2 + Math.floor(Math.random() * 5);
-      }
+    // Build chart data sorted by date
+    const dayCount = Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
+    const chartRev = [];
+    for (let i = 0; i < Math.min(dayCount, 30); i++) {
+      const d = new Date(from.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+      chartRev.push({ day: key, value: dayRevenueMap[key] || 0 });
     }
+
+    // Peak hours in range
+    const hoursMap = {};
+    for (let i = 6; i <= 20; i++) hoursMap[i] = { entries: 0, exits: 0 };
     [...activeSessions, ...completedSessions].forEach(v => {
-      if (!v.entryTime) return;
+      if (!v.entryTime || !isInRange(v.entryTime)) return;
       const h = new Date(v.entryTime).getHours();
       if (hoursMap[h]) hoursMap[h].entries++;
     });
     completedSessions.forEach(v => {
-      if (!v.exitTime) return;
+      if (!v.exitTime || !isInRange(v.exitTime)) return;
       const h = new Date(v.exitTime).getHours();
       if (hoursMap[h]) hoursMap[h].exits++;
     });
-    const chartPeak = Object.keys(hoursMap).map(h => ({ label: `${String(h).padStart(2, '0')}h`, entries: hoursMap[h].entries, exits: hoursMap[h].exits }));
+    const chartPeak = Object.keys(hoursMap).map(h => ({
+      label: `${String(h).padStart(2, '0')}h`,
+      entries: hoursMap[h].entries,
+      exits: hoursMap[h].exits,
+    }));
 
-    let maxActivity = 0, peakHourStr = '08:00 - 09:00';
+    let maxActivity = 0, peakHourStr = 'N/A';
     Object.keys(hoursMap).forEach(h => {
       const act = hoursMap[h].entries + hoursMap[h].exits;
-      if (act > maxActivity) { maxActivity = act; peakHourStr = `${String(h).padStart(2, '0')}:00 - ${String(Number(h) + 1).padStart(2, '0')}:00`; }
+      if (act > maxActivity) {
+        maxActivity = act;
+        peakHourStr = `${String(h).padStart(2, '0')}:00 - ${String(Number(h) + 1).padStart(2, '0')}:00`;
+      }
     });
 
+    // Vehicle types (active sessions)
     let cars = 0, bikes = 0, others = 0;
     activeSessions.forEach(v => {
       if (v.vehicleType === 'CAR' || v.vehicleType === 'Car') cars++;
@@ -314,9 +333,10 @@ export default function Reports() {
     const chartTypes = [
       { name: 'Ô tô', value: cars, color: '#3b82f6' },
       { name: 'Xe máy', value: bikes, color: '#8b5cf6' },
-      { name: 'Khác', value: others, color: '#10b981' }
+      { name: 'Khác', value: others, color: '#10b981' },
     ];
 
+    // Floor occupancy
     const floorMap = {};
     let totalSlotsAll = 0, occupiedSlotsAll = 0;
     zones.forEach(z => {
@@ -332,20 +352,23 @@ export default function Reports() {
     });
     const chartFloors = Object.keys(floorMap).map(k => ({ name: k, total: floorMap[k].total, used: floorMap[k].used }));
 
-    let todayEntriesCount = 0;
-    [...activeSessions, ...completedSessions].forEach(v => { if (v.entryTime && isToday(v.entryTime)) todayEntriesCount++; });
+    // Entries in range
+    let rangeEntriesCount = 0;
+    [...activeSessions, ...completedSessions].forEach(v => {
+      if (v.entryTime && isInRange(v.entryTime)) rangeEntriesCount++;
+    });
 
     const occupancyPct = totalSlotsAll > 0 ? ((occupiedSlotsAll / totalSlotsAll) * 100).toFixed(1) : '0.0';
 
     const summaryStats = [
-      { label: period === 'Today' ? 'Doanh thu hôm nay' : 'Tổng doanh thu', value: `₫${(period === 'Today' ? todayRevenue : todayRevenue + 66050000).toLocaleString()}`, icon: DollarSign, color: '#10b981', trend: '+12%', trendUp: true },
-      { label: 'Lượt xe vào hôm nay', value: todayEntriesCount.toString(), icon: Car, color: '#3b82f6', trend: '+5%', trendUp: true },
+      { label: 'Tổng doanh thu', value: `₫${totalRevenue.toLocaleString('vi-VN')}`, icon: DollarSign, color: '#10b981', trend: null },
+      { label: 'Lượt xe vào', value: rangeEntriesCount.toString(), icon: Car, color: '#3b82f6', trend: null },
       { label: 'Tỷ lệ lấp đầy', value: `${occupancyPct}%`, subValue: `${occupiedSlotsAll}/${totalSlotsAll} chỗ`, icon: Activity, color: '#f59e0b', trend: null, pct: parseFloat(occupancyPct) },
       { label: 'Giờ cao điểm', value: peakHourStr, icon: Clock, color: '#8b5cf6', trend: null },
     ];
 
     return { revenueData: chartRev, peakData: chartPeak, vehicleTypes: chartTypes, floorData: chartFloors, stats: summaryStats };
-  }, [activeSessions, completedSessions, zones, period]);
+  }, [activeSessions, completedSessions, zones, dateFrom, dateTo]);
 
   const TABS = [
     { key: 'revenue', label: 'Doanh thu', icon: '💰' },
@@ -373,12 +396,41 @@ export default function Reports() {
                 {lastUpdated ? `Cập nhật lúc ${lastUpdated.toLocaleTimeString('vi-VN')}` : 'Xem báo cáo doanh thu và thống kê hoạt động'}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <select value={period} onChange={e => setPeriod(e.target.value)} style={selSt}>
-                <option value="Today">Hôm nay</option>
-                <option value="This Week">Tuần này</option>
-                <option value="This Month">Tháng này</option>
-              </select>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Quick range shortcuts */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[
+                  { label: 'Hôm nay', onClick: () => { const t = toDateStr(new Date()); setDateFrom(t); setDateTo(t); } },
+                  { label: '7 ngày', onClick: () => { setDateFrom(toDateStr(new Date(Date.now() - 6 * 86400000))); setDateTo(toDateStr(new Date())); } },
+                  { label: '30 ngày', onClick: () => { setDateFrom(toDateStr(new Date(Date.now() - 29 * 86400000))); setDateTo(toDateStr(new Date())); } },
+                ].map(q => (
+                  <button key={q.label} onClick={q.onClick} style={{ ...selSt, padding: '6px 12px', fontSize: '0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Date range picker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, padding: '4px 12px' }}>
+                <Calendar size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <input
+                  type="date"
+                  value={dateFrom}
+                  max={dateTo}
+                  onChange={e => setDateFrom(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: 130 }}
+                />
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>→</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom}
+                  max={toDateStr(new Date())}
+                  onChange={e => setDateTo(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: 130 }}
+                />
+              </div>
+
               <button onClick={loadData} style={{ ...selSt, display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px' }}>
                 <RefreshCw size={14} /> Làm mới
               </button>
@@ -446,7 +498,7 @@ export default function Reports() {
               <>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                   <BarChart3 size={18} style={{ color: '#10b981' }} />
-                  {period === 'Today' ? 'Doanh thu hôm nay' : 'Doanh thu tuần này'}
+                  Doanh thu từ {dateFrom} đến {dateTo}
                 </h3>
                 <AreaChart data={revenueData} />
               </>

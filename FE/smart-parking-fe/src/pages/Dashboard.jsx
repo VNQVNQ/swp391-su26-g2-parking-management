@@ -1,6 +1,7 @@
 import { TrendingUp, AlertCircle, Zap, Clock } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
+import { compareSlotCodes } from '../utils/slotHelper';
 
 // Status badge component
 function StatusBadge({ status }) {
@@ -10,7 +11,7 @@ function StatusBadge({ status }) {
     'Quá giờ': { bg: 'rgba(255, 107, 107, 0.12)', color: '#ff6b6b', border: '1px solid rgba(255, 107, 107, 0.3)' },
   };
 
-  const style = statusStyles[status] || { bg: '#2a2a2a', color: '#aaa', border: '1px solid #333' };
+  const style = statusStyles[status] || { bg: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' };
   return (
     <span style={{
       background: style.bg,
@@ -33,7 +34,7 @@ function ProgressBar({ percentage }) {
     <div style={{
       width: '100%',
       height: '6px',
-      background: '#2a2a2a',
+      background: 'var(--bg-secondary)',
       borderRadius: '3px',
       overflow: 'hidden',
       marginTop: '8px',
@@ -66,7 +67,7 @@ export default function Dashboard() {
         
         setZones(zonesRes.data.data || zonesRes.data || []);
         const sData = slotsRes.data.data || slotsRes.data || [];
-        setSlots(Array.isArray(sData) ? [...sData].sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' })) : []);
+        setSlots(Array.isArray(sData) ? [...sData].sort(compareSlotCodes) : []);
         setActiveSessions(sessionsRes.data.data || sessionsRes.data || []);
       } catch (error) {
         console.error("Lỗi tải dữ liệu Dashboard:", error);
@@ -298,7 +299,7 @@ export default function Dashboard() {
                   fontSize: '0.9rem',
                 }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-card)' }}>
-                    <tr style={{ borderBottom: '1px solid #2a2a2a' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Biển số xe</th>
                       <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Loại xe</th>
                       <th style={{ textAlign: 'left', padding: '14px 8px', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.85rem' }}>Vị trí</th>
@@ -308,7 +309,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {parkedVehicles.map((vehicle, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '14px 8px', color: 'var(--text-primary)', fontWeight: 600 }}>
                           {vehicle.plate}
                         </td>
@@ -386,8 +387,8 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Statistics */}
-          <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>
               Thống kê Tổng quát
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -396,15 +397,15 @@ export default function Dashboard() {
                 { label: 'Đang sử dụng', value: String(slotStats.occupied), unit: 'xe' },
                 { label: 'Vị trí trống', value: String(slotStats.available), unit: 'vị trí' },
               ].map((stat, i) => (
-                <div key={i} style={{ paddingBottom: '14px', borderBottom: i < 2 ? '1px solid #2a2a2a' : 'none' }}>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                <div key={i} style={{ paddingBottom: '14px', borderBottom: i < 2 ? '1px solid var(--border-color)' : 'none' }}>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 500 }}>
                     {stat.label}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '1.3rem', fontWeight: 700, color: '#00d084' }}>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 700, color: '#00d084' }}>
                       {stat.value}
                     </span>
-                    {stat.unit && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {stat.unit && <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
                       {stat.unit}
                     </span>}
                   </div>
@@ -414,8 +415,8 @@ export default function Dashboard() {
           </div>
 
           {/* Alerts */}
-          <div className="card" style={{ padding: '20px', border: '1px solid #2a2a2a', background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '14px', color: 'var(--text-primary)' }}>
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '14px', color: 'var(--text-primary)' }}>
               Cảnh báo
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -425,10 +426,11 @@ export default function Dashboard() {
                   style={{
                     background: `${alert.color}15`,
                     border: `1px solid ${alert.color}40`,
-                    padding: '10px 12px',
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.88rem',
                     color: alert.color,
+                    fontWeight: 500,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',

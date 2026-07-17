@@ -1,6 +1,7 @@
 import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import api from '../../services/api';
+import { compareSlotCodes } from '../../utils/slotHelper';
 
 // Slot component
 function SlotCard({ slot, onSlotClick }) {
@@ -95,9 +96,9 @@ export default function SlotManagement() {
             status: isMaintenance ? 'maintenance' : (isOccupied ? 'occupied' : (isReserved ? 'reserved' : 'available')),
             vehicle: s.licensePlate || null,
           };
-        }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
+        }).sort(compareSlotCodes);
         return { ...z, slots: zoneSlots };
-      });
+      }).sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
       setZonesData(mappedZones);
     } catch (err) {
       console.error(err);
@@ -150,7 +151,7 @@ export default function SlotManagement() {
           return s.slotCode.toLowerCase().includes(q) || (s.vehicle && s.vehicle.toLowerCase().includes(q));
         }
         return true;
-      }).sort((a, b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }));
+      }).sort(compareSlotCodes);
 
       if (filteredSlots.length === 0 && search) return null;
       return { ...z, slots: filteredSlots };
@@ -281,7 +282,7 @@ export default function SlotManagement() {
         </div>
       </div>
 
-      {filteredZones.map(zone => {
+      {filteredZones.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })).map(zone => {
         const zoneStats = {
           available: zone.slots.filter(s => s.status === 'available').length,
           occupied: zone.slots.filter(s => s.status === 'occupied').length,

@@ -47,7 +47,6 @@ const initialZones = [
   { id: 'zone-c', name: 'Zone C - Cars', location: 'Basement 2', floor: 'Basement 2', vehicleType: 'Car', total: 40, slots: mkSlots(40, []) },
   { id: 'zone-d', name: 'Zone D - Motorbikes', location: 'Basement 2', floor: 'Basement 2', vehicleType: 'Motorbike', total: 40, slots: mkSlots(40, []) },
   { id: 'zone-e', name: 'Zone E - Cars', location: 'Floor 1', floor: 'Floor 1', vehicleType: 'Car', total: 30, slots: mkSlots(30, []) },
-  { id: 'zone-f', name: 'Zone F - Bicycles', location: 'Floor 1', floor: 'Floor 1', vehicleType: 'Bicycle', total: 30, slots: mkSlots(30, []) },
   { id: 'zone-g', name: 'Zone G - Cars', location: 'Floor 2', floor: 'Floor 2', vehicleType: 'Car', total: 25, slots: mkSlots(25, []) },
   { id: 'zone-h', name: 'Zone H - Motorbikes', location: 'Floor 2', floor: 'Floor 2', vehicleType: 'Motorbike', total: 25, slots: mkSlots(25, []) },
 ];
@@ -135,7 +134,7 @@ export function ParkingProvider({ children }) {
 
   // --- Vehicle Actions ---
   const findAvailableSlot = useCallback((vehicleType) => {
-    const typeMap = { Car: 'Car', Motorbike: 'Motorbike', Truck: 'Car', Bicycle: 'Bicycle' };
+    const typeMap = { Car: 'Car', Motorbike: 'Motorbike', Truck: 'Car' };
     const matchType = typeMap[vehicleType] || vehicleType;
     for (const zone of zones) {
       if (zone.vehicleType !== matchType) continue;
@@ -358,7 +357,7 @@ export function ParkingProvider({ children }) {
 
   // --- Helpers ---
   const getVehicleAvailability = useCallback((vehicleType) => {
-    const typeMap = { motorbike: 'Motorbike', car: 'Car', truck: 'Car', bicycle: 'Bicycle' };
+    const typeMap = { motorbike: 'Motorbike', car: 'Car', truck: 'Car' };
     const matchType = typeMap[vehicleType] || vehicleType;
     let available = 0;
     zones.forEach(z => {

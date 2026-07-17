@@ -1,5 +1,5 @@
-// BR-09: VehicleType chỉ chấp nhận 4 loại này
-export type VehicleType = "Motorbike" | "Car" | "Bicycle" | "Truck";
+// VehicleType
+export type VehicleType = "Motorbike" | "Car" | "Truck";
 
 // BR-14, BR-22, BR-26, BR-27, BR-37
 export type SlotStatus = "FREE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";

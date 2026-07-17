@@ -55,6 +55,9 @@ public class PricingRule {
     @Column(name = "maximum_daily_fee", precision = 15, scale = 0)
     BigDecimal maximumDailyFee;
 
+    @Column(name = "monthly_fee", precision = 15, scale = 0)
+    BigDecimal monthlyFee;
+
     @Column(name = "overstay_rate_multiplier", precision = 3, scale = 2)
     BigDecimal overstayRateMultiplier;
 

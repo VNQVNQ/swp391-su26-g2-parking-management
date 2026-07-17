@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import api from '../../services/api';
 
@@ -10,6 +11,7 @@ const MONTH_DURATIONS = [
 ];
 
 export default function MonthlyPass() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('available');
   const [vehicles, setVehicles] = useState([]);
   const [passes, setPasses] = useState([]);
@@ -18,7 +20,7 @@ export default function MonthlyPass() {
   const [success, setSuccess] = useState(false);
   const [passId, setPassId] = useState('');
   const [error, setError] = useState('');
-  const [pricing] = useState({
+  const [pricing, setPricing] = useState({
     MOTORBIKE: { price1: 500000, price3: 1350000, price6: 2400000, price12: 4200000 },
     CAR: { price1: 2500000, price3: 6800000, price6: 12000000, price12: 20000000 },
     TRUCK: { price1: 3500000, price3: 9450000, price6: 16800000, price12: 29400000 }
@@ -33,22 +35,47 @@ export default function MonthlyPass() {
     vehicleId: '',
     vehicleType: 'CAR',
     duration: 1,
-    paymentMethod: 'CASH'
+    paymentMethod: 'CARD'
   });
 
-  // Load vehicles and passes on mount
+  // Load vehicles, passes and pricing rules on mount
   useEffect(() => {
     const load = async () => {
       setVehiclesLoading(true);
       try {
-        const [vehiclesRes, passesRes] = await Promise.all([
+        const [vehiclesRes, passesRes, pricingRes] = await Promise.all([
           api.get('/api/v1/vehicles/my-vehicles'),
-          api.get('/api/v1/monthly-passes/my-passes')
+          api.get('/api/v1/monthly-passes/my-passes'),
+          api.get('/api/v1/pricing-rules/ticket-type/MONTHLY').catch(() => ({ data: [] }))
         ]);
         const vehiclesData = vehiclesRes.data.data ?? vehiclesRes.data ?? [];
         const passesData = passesRes.data.data ?? passesRes.data ?? [];
+        const rulesData = pricingRes.data?.data ?? pricingRes.data ?? [];
+
         setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
         setPasses(Array.isArray(passesData) ? passesData : []);
+
+        const updatedPricing = {
+          MOTORBIKE: { price1: 500000, price3: 1350000, price6: 2400000, price12: 4200000 },
+          CAR: { price1: 2500000, price3: 6800000, price6: 12000000, price12: 20000000 },
+          TRUCK: { price1: 3500000, price3: 9450000, price6: 16800000, price12: 29400000 }
+        };
+
+        if (Array.isArray(rulesData)) {
+          rulesData.forEach(rule => {
+            if (rule && rule.vehicleType && rule.monthlyFee && Number(rule.monthlyFee) > 0) {
+              const base = Number(rule.monthlyFee);
+              const vType = rule.vehicleType.toUpperCase();
+              updatedPricing[vType] = {
+                price1: base,
+                price3: Math.round(base * 3 * 0.9),
+                price6: Math.round(base * 6 * 0.8),
+                price12: Math.round(base * 12 * 0.7)
+              };
+            }
+          });
+        }
+        setPricing(updatedPricing);
       } catch (err) {
         console.error('Failed to load data:', err);
       } finally {
@@ -59,8 +86,9 @@ export default function MonthlyPass() {
   }, []);
 
   const getPassPrice = (vehicleType, months) => {
-    const prices = pricing[vehicleType] || pricing.CAR;
-    return prices[`price${months}`] || 0;
+    const vType = (vehicleType || 'CAR').toUpperCase();
+    const prices = pricing[vType] || pricing.CAR;
+    return prices[`price${months}`] || (prices.price1 * months) || 0;
   };
 
   const handleRegister = async () => {
@@ -124,7 +152,7 @@ export default function MonthlyPass() {
     setRenewError('');
     try {
       const pass = renewModal;
-      const vehicleType = pass.vehicleType || 'CAR';
+      const vehicleType = pass.vehicleType || vehicles.find(v => v.id === pass.vehicleId)?.vehicleType || 'CAR';
       const newFee = getPassPrice(vehicleType, renewDuration);
 
       // Calculate new end date from current end date (or today if expired)
@@ -177,7 +205,7 @@ export default function MonthlyPass() {
           <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: '0.85rem', color: '#10b981' }}>
             ℹ️ Pass của bạn sẽ hết hạn vào <strong>{new Date(new Date().getFullYear(), new Date().getMonth() + form.duration, new Date().getDate()).toLocaleDateString('vi-VN')}</strong>
           </div>
-          <button className="btn-primary" onClick={() => { setSuccess(false); setForm({ vehicleId: '', vehicleType: 'CAR', duration: 1, paymentMethod: 'CASH' }); }}>
+          <button className="btn-primary" onClick={() => { setSuccess(false); setForm({ vehicleId: '', vehicleType: 'CAR', duration: 1, paymentMethod: 'CARD' }); }}>
             <span>🎫 Đăng ký thêm</span>
           </button>
         </div>
@@ -198,7 +226,7 @@ export default function MonthlyPass() {
           Đăng ký Pass
         </button>
         <button className={`tab-btn ${tab === 'active' ? 'active' : ''}`} onClick={() => setTab('active')}>
-          Pass đang hoạt động ({passes.length})
+          Pass đang hoạt động ({passes.filter(p => p.isActive !== false).length})
         </button>
       </div>
 
@@ -219,7 +247,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'MOTORBIKE', duration: d.months, paymentMethod: 'CASH' });
+                    setForm({ vehicleId: '', vehicleType: 'MOTORBIKE', duration: d.months, paymentMethod: 'CARD' });
                     setTab('register');
                   }}
                   style={{
@@ -259,7 +287,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'CAR', duration: d.months, paymentMethod: 'CASH' });
+                    setForm({ vehicleId: '', vehicleType: 'CAR', duration: d.months, paymentMethod: 'CARD' });
                     setTab('register');
                   }}
                   style={{
@@ -299,7 +327,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'TRUCK', duration: d.months, paymentMethod: 'CASH' });
+                    setForm({ vehicleId: '', vehicleType: 'TRUCK', duration: d.months, paymentMethod: 'CARD' });
                     setTab('register');
                   }}
                   style={{
@@ -327,110 +355,262 @@ export default function MonthlyPass() {
         </div>
       )}
 
-      {/* Tab: Register Form */}
+      {/* Tab: Register Form - 2 Column Layout */}
       {tab === 'register' && (
-        <div className="card" style={{ maxWidth: 520 }}>
-          <h3 style={{ marginBottom: 24 }}>Hoàn tất đăng ký Pass</h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+          gap: 28,
+          alignItems: 'start',
+          maxWidth: 1100,
+          margin: '0 auto'
+        }}>
+          {/* LEFT COLUMN: REGISTRATION FORM */}
+          <div className="card" style={{ padding: '32px 32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, borderBottom: '1px solid var(--border-color)', paddingBottom: 16 }}>
+              <span style={{ fontSize: '1.8rem' }}>✍️</span>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Hoàn tất đăng ký Pass</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Vui lòng chọn thông tin xe và gói thời hạn</p>
+              </div>
+            </div>
 
-          {/* Vehicle Selection */}
-          <div className="form-group">
-            <label className="form-label">Chọn xe <span className="required">*</span></label>
-            {vehiclesLoading ? (
-              <div style={{ padding: '12px', color: 'var(--text-muted)' }}>Đang tải danh sách xe...</div>
-            ) : vehicles.length > 0 ? (
+            {/* Vehicle Selection */}
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Chọn xe <span className="required">*</span></label>
+              {vehiclesLoading ? (
+                <div style={{ padding: '12px', color: 'var(--text-muted)' }}>Đang tải danh sách xe...</div>
+              ) : vehicles.length > 0 ? (
+                <select
+                  className="form-select"
+                  style={{ height: 48, fontSize: '1rem', fontWeight: 600 }}
+                  value={form.vehicleId}
+                  onChange={e => setForm({ ...form, vehicleId: e.target.value })}>
+                  <option value="">-- Chọn xe --</option>
+                  {vehicles
+                    .filter(v => v.vehicleType === form.vehicleType)
+                    .map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.licensePlate} ({v.vehicleType === 'MOTORBIKE' ? 'Xe máy' : v.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'})
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <div style={{ padding: '14px', color: 'var(--text-primary)', background: 'rgba(59, 130, 246, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  ℹ️ Bạn chưa có xe loại <strong>{form.vehicleType === 'MOTORBIKE' ? 'Xe máy' : form.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'}</strong>. <button type="button" onClick={() => navigate('/driver/register-vehicle')} style={{ background: 'none', border: 'none', color: '#3b82f6', textDecoration: 'underline', cursor: 'pointer', fontWeight: 700, padding: 0 }}>Đăng ký xe ngay</button>
+                </div>
+              )}
+            </div>
+
+            {/* Duration Selector inside form */}
+            <div className="form-group" style={{ marginTop: 20 }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Thời hạn đăng ký</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {MONTH_DURATIONS.map(d => {
+                  const isSelected = form.duration === d.months;
+                  return (
+                    <button
+                      key={d.months}
+                      type="button"
+                      onClick={() => setForm({ ...form, duration: d.months })}
+                      style={{
+                        padding: '12px 8px',
+                        background: isSelected ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-secondary)',
+                        border: isSelected ? '2px solid #3b82f6' : '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        color: isSelected ? '#3b82f6' : 'var(--text-primary)',
+                        fontWeight: isSelected ? 800 : 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.95rem' }}>{d.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Price Summary */}
+            <div className="form-group" style={{ marginTop: 20 }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Tổng tiền</label>
+              <div style={{
+                padding: '16px 20px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                borderRadius: '14px',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                fontSize: '1.4rem',
+                fontWeight: 800,
+                color: '#10b981',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Thanh toán trọn gói:</span>
+                <span>₫{getPassPrice(form.vehicleType, form.duration).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="form-group" style={{ marginTop: 20 }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Phương thức thanh toán online</label>
               <select
                 className="form-select"
-                value={form.vehicleId}
-                onChange={e => setForm({ ...form, vehicleId: e.target.value })}>
-                <option value="">-- Chọn xe --</option>
-                {vehicles
-                  .filter(v => v.vehicleType === form.vehicleType)
-                  .map(v => (
-                    <option key={v.id} value={v.id}>
-                      {v.licensePlate}
-                    </option>
-                  ))}
+                style={{ height: 48, fontSize: '1rem', fontWeight: 600 }}
+                value={form.paymentMethod}
+                onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                <option value="CARD">💳 Thẻ ngân hàng (ATM / Visa / MasterCard)</option>
+                <option value="TRANSFER">🏦 Chuyển khoản QR Code (MoMo / ZaloPay / VietQR)</option>
               </select>
-            ) : (
-              <div style={{ padding: '12px', color: 'var(--text-muted)', background: 'rgba(59, 130, 246, 0.1)', borderRadius: 'var(--radius-md)' }}>
-                ℹ️ Bạn chưa đăng ký xe nào. <a href="/vehicle-register" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Đăng ký xe ngay</a>
+            </div>
+
+            {error && (
+              <div className="error-banner" style={{ marginBottom: 16, marginTop: 16 }}>
+                <span>⚠️ {error}</span>
               </div>
             )}
-          </div>
 
-          {/* Duration */}
-          <div className="form-group">
-            <label className="form-label">Thời hạn</label>
-            <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
-              <strong>{form.duration} tháng</strong>
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 14, marginTop: 28 }}>
+              <button
+                type="button"
+                onClick={() => { setTab('available'); setError(''); }}
+                disabled={loading}
+                style={{
+                  padding: '14px 22px',
+                  background: 'var(--bg-secondary)',
+                  border: '1.5px solid var(--border-color)',
+                  borderRadius: '14px',
+                  color: 'var(--text-secondary)',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                ← Quay lại
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleRegister}
+                disabled={loading || !form.vehicleId}
+                style={{ 
+                  flex: 1, 
+                  height: 52, 
+                  fontSize: '1.05rem', 
+                  fontWeight: 800, 
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 6px 18px rgba(99, 102, 241, 0.3)'
+                }}>
+                <span>{loading ? 'Đang xử lý...' : '🎫 Xác nhận đăng ký Pass'}</span>
+              </button>
             </div>
           </div>
 
-          {/* Price Summary */}
-          <div className="form-group">
-            <label className="form-label">Tổng tiền</label>
-            <div style={{
-              padding: '16px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              borderRadius: 'var(--radius-md)',
-              borderLeft: '3px solid #10b981',
-              fontSize: '1.2rem',
-              fontWeight: 700,
-              color: '#10b981'
+          {/* RIGHT COLUMN: SUMMARY & PERKS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* 1. Live Order Summary Card */}
+            <div className="card" style={{ 
+              padding: '28px 32px', 
+              background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(16, 185, 129, 0.03) 100%)',
+              border: '1.5px solid rgba(16, 185, 129, 0.25)',
+              boxShadow: '0 10px 30px rgba(16, 185, 129, 0.06)'
             }}>
-              ₫{getPassPrice(form.vehicleType, form.duration).toLocaleString()}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <span style={{ fontSize: '1.5rem' }}>🧾</span>
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Tóm tắt đơn đăng ký</h4>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, background: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Loại phương tiện:</span>
+                  <strong style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)' }}>
+                    {form.vehicleType === 'MOTORBIKE' ? '🏍️ Xe máy' : form.vehicleType === 'CAR' ? '🚗 Ô tô' : '🚛 Xe tải'}
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Biển số xe chọn:</span>
+                  {form.vehicleId ? (
+                    <strong style={{ 
+                      color: '#3b82f6', 
+                      background: 'var(--bg-card)', 
+                      padding: '4px 12px', 
+                      borderRadius: '8px', 
+                      border: '1px solid #3b82f6',
+                      fontWeight: 800
+                    }}>
+                      {vehicles.find(v => v.id.toString() === form.vehicleId.toString())?.licensePlate || 'Chưa xác định'}
+                    </strong>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Chưa chọn xe</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Gói thời hạn:</span>
+                  <strong style={{ color: 'var(--text-primary)' }}>{form.duration} tháng</strong>
+                </div>
+
+                <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>Tổng thanh toán:</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>
+                    ₫{getPassPrice(form.vehicleType, form.duration).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.86rem', color: '#10b981', fontWeight: 600 }}>
+                <span>✓</span> Bảo vệ giá ưu đãi & Kích hoạt tự động ngay sau khi xác nhận
+              </div>
             </div>
-          </div>
 
-          {/* Payment Method */}
-          <div className="form-group">
-            <label className="form-label">Phương thức thanh toán</label>
-            <select
-              className="form-select"
-              value={form.paymentMethod}
-              onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
-              <option value="CASH">Tiền mặt</option>
-              <option value="CARD">Thẻ ngân hàng</option>
-              <option value="TRANSFER">Chuyển khoản</option>
-            </select>
-          </div>
+            {/* 2. Perks & Benefits Card */}
+            <div className="card" style={{ padding: '24px 28px', background: 'var(--bg-secondary)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>✨</span> Lợi ích của Pass Hàng Tháng
+              </h4>
 
-          {error && (
-            <div className="error-banner" style={{ marginBottom: 16 }}>
-              <span>⚠️ {error}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '8px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: '1rem' }}>⚡</div>
+                  <div>
+                    <strong style={{ fontSize: '0.93rem', color: 'var(--text-primary)', display: 'block' }}>Ra vào không giới hạn 24/7</strong>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block', marginTop: 2 }}>Thoải mái ra vào bãi đỗ xe bất kể thời gian trong ngày hay trong tháng, không phải lo phát sinh chi phí lẻ.</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: '1rem' }}>💰</div>
+                  <div>
+                    <strong style={{ fontSize: '0.93rem', color: 'var(--text-primary)', display: 'block' }}>Tiết kiệm tối đa chi phí gửi xe</strong>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block', marginTop: 2 }}>Chi phí trọn gói theo tháng giúp tiết kiệm đáng kể so với tổng chi phí thanh toán theo từng lượt hay theo giờ hàng ngày.</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: '1rem' }}>📱</div>
+                  <div>
+                    <strong style={{ fontSize: '0.93rem', color: 'var(--text-primary)', display: 'block' }}>Quản lý & Gia hạn trực tuyến tiện lợi</strong>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, display: 'block', marginTop: 2 }}>Dễ dàng theo dõi lịch sử vé tháng, kiểm tra thời hạn và thực hiện gia hạn nhanh chóng ngay trên hệ thống web.</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-            <button
-              onClick={() => { setTab('available'); setError(''); }}
-              disabled={loading}
-              style={{
-                padding: '12px 20px',
-                background: 'var(--bg-input)',
-                border: '1.5px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-secondary)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              ← Quay lại
-            </button>
-            <button
-              className="btn-primary"
-              onClick={handleRegister}
-              disabled={loading || !form.vehicleId}
-              style={{ flex: 1 }}>
-              <span>{loading ? 'Đang xử lý...' : '🎫 Xác nhận đăng ký'}</span>
-            </button>
           </div>
         </div>
       )}
@@ -438,7 +618,7 @@ export default function MonthlyPass() {
       {/* Tab: Active Passes */}
       {tab === 'active' && (
         <>
-          {passes.length === 0 ? (
+          {passes.filter(p => p.isActive !== false).length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: 60 }}>
               <p style={{ fontSize: '2rem', marginBottom: 12 }}>🎫</p>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Bạn chưa có pass nào đang hoạt động</p>
@@ -448,7 +628,7 @@ export default function MonthlyPass() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-              {passes.map(pass => {
+              {passes.filter(p => p.isActive !== false).map(pass => {
                 const endDate = pass.endDate ? new Date(pass.endDate) : null;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -567,7 +747,7 @@ export default function MonthlyPass() {
                     }}>
                     <div style={{ fontSize: '0.9rem' }}>{d.label}</div>
                     <div style={{ fontSize: '0.8rem', marginTop: 4, fontWeight: 700, color: '#f59e0b' }}>
-                      ₫{getPassPrice(renewModal.vehicleType || 'CAR', d.months).toLocaleString()}
+                      ₫{getPassPrice(renewModal.vehicleType || vehicles.find(v => v.id === renewModal.vehicleId)?.vehicleType || 'CAR', d.months).toLocaleString()}
                     </div>
                   </button>
                 ))}
@@ -581,7 +761,7 @@ export default function MonthlyPass() {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Phí gia hạn:</span>
-                <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '1rem' }}>₫{getPassPrice(renewModal.vehicleType || 'CAR', renewDuration).toLocaleString()}</span>
+                <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '1rem' }}>₫{getPassPrice(renewModal.vehicleType || vehicles.find(v => v.id === renewModal.vehicleId)?.vehicleType || 'CAR', renewDuration).toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Hạn mới đến:</span>

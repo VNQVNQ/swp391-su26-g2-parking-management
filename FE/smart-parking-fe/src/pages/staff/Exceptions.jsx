@@ -18,7 +18,7 @@ const EXCEPTION_TYPE_LABELS = {
 const WRONG_ZONE_SUBTYPES = [
   {
     value: 'WRONG_VEHICLE_TYPE',
-    label: 'Xe máy đỗ vào khu xe khác',
+    label: 'Xe đỗ sai vị trí',
     desc: 'Xe máy đỗ vào khu xe ô tô hoặc ngược lại',
     icon: '🏍️',
   },
@@ -172,14 +172,47 @@ function LostTicketModal({ onClose, onSuccess }) {
   const [sessionHistory, setSessionHistory] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [defaultPenaltyAmount, setDefaultPenaltyAmount] = useState('');
+  const [loadingFee, setLoadingFee] = useState(false);
   const [form, setForm] = useState({
     phoneInput: '',
     cccdInput: '',
     faceDesc: '',
     reason: '',
-    penaltyFee: '50000',
+    penaltyFee: '',
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Tự động tải cấu hình phí bồi thường mất vé từ bảng Admin
+  useEffect(() => {
+    const fetchDefaultPenalty = async () => {
+      setLoadingFee(true);
+      try {
+        const res = await api.get('/api/v1/penalty-configs/lookup', {
+          params: { vehicleType: 'CAR', exceptionType: 'LOST_TICKET' }
+        });
+        if (res.data?.found && res.data?.data?.penaltyAmount != null) {
+          const amt = String(Number(res.data.data.penaltyAmount));
+          setDefaultPenaltyAmount(amt);
+          setForm(p => ({ ...p, penaltyFee: p.penaltyFee || amt }));
+        } else {
+          const allRes = await api.get('/api/v1/penalty-configs');
+          const configs = allRes.data?.data || [];
+          const lostTicketCfg = configs.find(c => c.exceptionType === 'LOST_TICKET' && c.isActive !== false);
+          if (lostTicketCfg && lostTicketCfg.penaltyAmount != null) {
+            const amt = String(Number(lostTicketCfg.penaltyAmount));
+            setDefaultPenaltyAmount(amt);
+            setForm(p => ({ ...p, penaltyFee: p.penaltyFee || amt }));
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải cấu hình phí phạt từ Admin:', err);
+      } finally {
+        setLoadingFee(false);
+      }
+    };
+    fetchDefaultPenalty();
+  }, []);
 
   const handleSearchPlate = async () => {
     if (!plateInput.trim()) return;
@@ -197,7 +230,23 @@ function LostTicketModal({ onClose, onSuccess }) {
         .catch(() => null);
 
       if (sessRes?.data?.data?.length > 0) {
-        setSessionInfo(sessRes.data.data[0]);
+        const foundSess = sessRes.data.data[0];
+        setSessionInfo(foundSess);
+        const vType = foundSess.vehicleType || foundSess.vehicle?.vehicleType;
+        if (vType) {
+          try {
+            const lookupRes = await api.get('/api/v1/penalty-configs/lookup', {
+              params: { vehicleType: vType, exceptionType: 'LOST_TICKET' }
+            });
+            if (lookupRes.data?.found && lookupRes.data?.data?.penaltyAmount != null) {
+              const amt = String(Number(lookupRes.data.data.penaltyAmount));
+              setDefaultPenaltyAmount(amt);
+              setForm(p => ({ ...p, penaltyFee: amt }));
+            }
+          } catch (err) {
+            console.error('Lỗi khi tải cấu hình phí phạt theo loại xe:', err);
+          }
+        }
       } else {
         // Thử endpoint khác
         const sessRes2 = await api.get('/api/v1/parking-sessions', {
@@ -205,7 +254,26 @@ function LostTicketModal({ onClose, onSuccess }) {
         }).catch(() => null);
         if (sessRes2?.data?.data) {
           const active = (sessRes2.data.data || []).find(s => s.status === 'ACTIVE' || !s.exitTime);
-          setSessionInfo(active || null);
+          if (active) {
+            setSessionInfo(active);
+            const vType = active.vehicleType || active.vehicle?.vehicleType;
+            if (vType) {
+              try {
+                const lookupRes = await api.get('/api/v1/penalty-configs/lookup', {
+                  params: { vehicleType: vType, exceptionType: 'LOST_TICKET' }
+                });
+                if (lookupRes.data?.found && lookupRes.data?.data?.penaltyAmount != null) {
+                  const amt = String(Number(lookupRes.data.data.penaltyAmount));
+                  setDefaultPenaltyAmount(amt);
+                  setForm(p => ({ ...p, penaltyFee: amt }));
+                }
+              } catch (err) {
+                console.error('Lỗi khi tải cấu hình phí phạt theo loại xe:', err);
+              }
+            }
+          } else {
+            setSessionInfo(null);
+          }
         }
       }
 
@@ -234,7 +302,7 @@ function LostTicketModal({ onClose, onSuccess }) {
         licensePlate: plateInput.trim().toUpperCase(),
         reason: form.reason,
         evidenceNote: evidenceParts.join(' | '),
-        penaltyFee: form.penaltyFee || '50000',
+        penaltyFee: form.penaltyFee || defaultPenaltyAmount || '0',
         ...(sessionInfo?.id && { sessionId: sessionInfo.id }),
       });
       onSuccess();
@@ -443,17 +511,19 @@ function LostTicketModal({ onClose, onSuccess }) {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary, #aaa)' }}>
-                  💰 Phụ phí mất vé (VND)
+                  💰 Phụ phí mất vé (VND) {loadingFee && <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'normal' }}>(Đang tải cấu hình Admin...)</span>}
                 </label>
                 <input
                   type="number"
                   style={inputSt}
                   value={form.penaltyFee}
                   onChange={e => setForm(p => ({ ...p, penaltyFee: e.target.value }))}
-                  placeholder="50000"
+                  placeholder={defaultPenaltyAmount || "0"}
                 />
                 <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--text-muted, #666)' }}>
-                  Mặc định theo quy định BR-41: 50,000 VND
+                  {defaultPenaltyAmount 
+                    ? `Mặc định theo cấu hình phí phạt của Admin (BR-41): ${Number(defaultPenaltyAmount).toLocaleString('vi-VN')} VND`
+                    : 'Mặc định theo cấu hình phí phạt của Admin (BR-41)'}
                 </p>
               </div>
             </div>
@@ -781,40 +851,16 @@ function DetailModal({ ex, onClose, onResolve, isManager }) {
         )}
       </div>
 
-      {(ex.status === 'PENDING' || ex.status === 'IN_PROGRESS') && (
-        <div style={{
-          display: 'flex', justifyContent: 'flex-end', gap: 10,
-          padding: '16px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
-        }}>
-          {ex.status === 'PENDING' && (
-            <button onClick={() => onResolve(ex, 'IN_PROGRESS')} style={{
-              padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(234,179,8,0.4)',
-              background: 'rgba(234,179,8,0.1)', color: '#eab308',
-              cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
-            }}>
-              <CheckSquare size={14} /> Bắt đầu xử lý
-            </button>
-          )}
-          {ex.status === 'IN_PROGRESS' && (
-            <>
-              <button onClick={() => onResolve(ex, 'REJECTED')} style={{
-                padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
-                background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-                cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
-              }}>
-                <XSquare size={14} /> Từ chối
-              </button>
-              <button onClick={() => onResolve(ex, 'RESOLVED')} style={{
-                padding: '9px 20px', borderRadius: 8, border: 'none',
-                background: '#10b981', color: '#fff',
-                cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
-              }}>
-                <CheckSquare size={14} /> Hoàn tất xử lý
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      {/* Trạng thái được tự động cập nhật khi driver lấy xe ra và staff áp dụng phí phạt */}
+      <div style={{
+        padding: '14px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
+        background: 'rgba(99,102,241,0.04)',
+      }}>
+        <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #666)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
+          Trạng thái được cập nhật tự động khi driver lấy xe ra và phí phạt được áp dụng.
+        </p>
+      </div>
     </ModalOverlay>
   );
 }
@@ -911,6 +957,7 @@ export default function Exceptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('ALL');
+  const [defaultLostTicketRuleAmount, setDefaultLostTicketRuleAmount] = useState('50.000');
 
   // Modals
   const [showLostTicketModal, setShowLostTicketModal] = useState(false);
@@ -941,7 +988,24 @@ export default function Exceptions() {
     }
   }, [activeTab, filterStatus]);
 
-  useEffect(() => { loadExceptions(); }, [loadExceptions]);
+  useEffect(() => {
+    loadExceptions();
+    api.get('/api/v1/penalty-configs/lookup', { params: { vehicleType: 'CAR', exceptionType: 'LOST_TICKET' } })
+      .then(res => {
+        if (res.data?.found && res.data?.data?.penaltyAmount != null) {
+          setDefaultLostTicketRuleAmount(Number(res.data.data.penaltyAmount).toLocaleString('vi-VN'));
+        } else {
+          api.get('/api/v1/penalty-configs').then(allRes => {
+            const configs = allRes.data?.data || [];
+            const lostTicketCfg = configs.find(c => c.exceptionType === 'LOST_TICKET' && c.isActive !== false);
+            if (lostTicketCfg && lostTicketCfg.penaltyAmount != null) {
+              setDefaultLostTicketRuleAmount(Number(lostTicketCfg.penaltyAmount).toLocaleString('vi-VN'));
+            }
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [loadExceptions]);
 
   const handleResolveClick = (ex, status) => {
     setDetailException(null);
@@ -955,9 +1019,7 @@ export default function Exceptions() {
 
   const stats = [
     { label: 'Chưa xử lý', value: exceptions.filter(e => e.status === 'PENDING').length, color: '#ef4444', icon: Clock },
-    { label: 'Đang xử lý', value: exceptions.filter(e => e.status === 'IN_PROGRESS').length, color: '#eab308', icon: RefreshCw },
     { label: 'Đã giải quyết', value: exceptions.filter(e => e.status === 'RESOLVED' || e.status === 'APPROVED').length, color: '#10b981', icon: CheckCircle },
-    { label: 'Sai vị trí', value: exceptions.filter(e => e.exceptionType === 'WRONG_ZONE').length, color: '#6366f1', icon: MapPin },
   ];
 
   const tabs = [
@@ -1183,58 +1245,17 @@ export default function Exceptions() {
                     </td>
                     <td><Badge type={ex.status} config={STATUS_CONFIG} /></td>
                     <td onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          title="Xem chi tiết"
-                          onClick={() => setDetailException(ex)}
-                          style={{
-                            padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border-color, #2a2a4a)',
-                            background: 'var(--bg-secondary, #0d0d1a)', color: 'var(--text-secondary, #aaa)',
-                            cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
-                          }}
-                        >
-                          <Eye size={12} /> Chi tiết
-                        </button>
-                        {ex.status === 'PENDING' && (
-                          <button
-                            title="Bắt đầu xử lý"
-                            onClick={() => handleResolveClick(ex, 'IN_PROGRESS')}
-                            style={{
-                              padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(234,179,8,0.3)',
-                              background: 'rgba(234,179,8,0.1)', color: '#eab308',
-                              cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
-                            }}
-                          >
-                            <CheckSquare size={12} />
-                          </button>
-                        )}
-                        {ex.status === 'IN_PROGRESS' && (
-                          <>
-                            <button
-                              title="Hoàn tất xử lý"
-                              onClick={() => handleResolveClick(ex, 'RESOLVED')}
-                              style={{
-                                padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(16,185,129,0.3)',
-                                background: 'rgba(16,185,129,0.1)', color: '#10b981',
-                                cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
-                              }}
-                            >
-                              <CheckSquare size={12} />
-                            </button>
-                            <button
-                              title="Từ chối"
-                              onClick={() => handleResolveClick(ex, 'REJECTED')}
-                              style={{
-                                padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)',
-                                background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-                                cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
-                              }}
-                            >
-                              <XSquare size={12} />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      <button
+                        title="Xem chi tiết"
+                        onClick={() => setDetailException(ex)}
+                        style={{
+                          padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border-color, #2a2a4a)',
+                          background: 'var(--bg-secondary, #0d0d1a)', color: 'var(--text-secondary, #aaa)',
+                          cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
+                        }}
+                      >
+                        <Eye size={12} /> Chi tiết
+                      </button>
                     </td>
                   </tr>
                 );
@@ -1253,7 +1274,7 @@ export default function Exceptions() {
           {[
             {
               code: 'BR-41', icon: '🎫', title: 'Mất vé',
-              desc: 'Bắt buộc xác minh danh tính: biển số + SĐT + CCCD. Phụ phí bồi thường: 50,000 VND',
+              desc: `Bắt buộc xác minh danh tính: biển số + SĐT + CCCD. Phụ phí bồi thường theo cấu hình Admin: ${defaultLostTicketRuleAmount} VND`,
             },
             {
               code: 'BR-42', icon: '🏍️', title: 'Xe máy đỗ sai khu',
@@ -1264,8 +1285,8 @@ export default function Exceptions() {
               desc: 'Xe chiếm vị trí đã được đặt qua hệ thống booking — ưu tiên xử lý ngay',
             },
             {
-              code: 'BR-44', icon: '✅', title: 'Phê duyệt',
-              desc: 'Ngoại lệ chỉ được đóng sau khi Quản lý xem xét và phê duyệt hoặc từ chối',
+              code: 'BR-44', icon: '🔄', title: 'Tự động cập nhật',
+              desc: 'Trạng thái ngoại lệ tự động được cập nhật khi driver lấy xe ra và staff đã áp dụng phí phạt thành công',
             },
           ].map((r, i) => (
             <div key={i} className="rule-card">

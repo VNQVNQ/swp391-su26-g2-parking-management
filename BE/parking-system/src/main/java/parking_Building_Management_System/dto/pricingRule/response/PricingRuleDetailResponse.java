@@ -26,6 +26,7 @@ public class PricingRuleDetailResponse {
     BigDecimal ratePerHour;
     BigDecimal minimumFee;
     BigDecimal maximumDailyFee;
+    BigDecimal monthlyFee;
     BigDecimal overstayRateMultiplier;
     LocalTime peakHourStart;
     LocalTime peakHourEnd;

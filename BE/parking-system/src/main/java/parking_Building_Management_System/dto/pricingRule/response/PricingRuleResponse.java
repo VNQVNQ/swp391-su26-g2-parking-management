@@ -23,6 +23,12 @@ public class PricingRuleResponse {
     TicketType ticketType;
     BigDecimal ratePerHour;
     BigDecimal minimumFee;
+    BigDecimal monthlyFee;
+    BigDecimal maximumDailyFee;
+    BigDecimal overstayRateMultiplier;
+    java.time.LocalTime peakHourStart;
+    java.time.LocalTime peakHourEnd;
+    BigDecimal peakHourMultiplier;
     Boolean isActive;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

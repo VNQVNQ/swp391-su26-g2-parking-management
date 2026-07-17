@@ -1,6 +1,7 @@
 import StatCards from "../../components/dashboard/StatCards";
 import SlotGrid from "../../components/dashboard/SlotGrid";
 import { RevenueChart, PeakHourChart, UtilizationChart } from "../../components/dashboard/Charts";
+import { compareSlotCodes } from "../../utils/slotHelper";
 import {
   dashboardStats,
   mockSlotsByFloor,
@@ -61,7 +62,7 @@ export default function Dashboard() {
 
           return {
             floor: { id: f.id, floorName: f.name, totalSlots: f.totalSlots },
-            slots: mappedSlots.sort((a,b) => (a.slotCode || '').localeCompare(b.slotCode || '', undefined, { numeric: true, sensitivity: 'base' }))
+            slots: mappedSlots.sort(compareSlotCodes)
           };
         });
 

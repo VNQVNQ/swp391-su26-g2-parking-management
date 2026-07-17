@@ -250,20 +250,46 @@ function PenaltySection() {
 
 /* ── Main Pricing Component ─────────────────────────────────────────── */
 export default function Pricing() {
-  const store = useParkingStore();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(false);
   
   const initialForm = {
-    name: '', vehicleType: 'Car', ticketType: 'Hourly',
-    rate: '', minFee: '', maxDaily: '',
+    name: '', vehicleType: 'CAR', ticketType: 'HOURLY',
+    rate: '', minFee: '', maxDaily: '', monthlyFee: '',
     peakStart: '', peakEnd: '', peakMult: ''
   };
   const [form, setForm] = useState(initialForm);
 
+  useEffect(() => { fetchRules(); }, []);
+
+  const fetchRules = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/api/v1/pricing-rules');
+      const list = res.data?.data || res.data || [];
+      const sorted = [...list].sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          if (diff !== 0) return diff;
+        }
+        const vA = a.vehicleType || '';
+        const vB = b.vehicleType || '';
+        if (vA !== vB) return vA.localeCompare(vB);
+        const tA = a.ticketType || '';
+        const tB = b.ticketType || '';
+        if (tA !== tB) return tA.localeCompare(tB);
+        return (a.id || '').localeCompare(b.id || '');
+      });
+      setRules(sorted);
+    } catch { setRules([]); }
+    finally { setLoading(false); }
+  };
+
   const stats = [
-    { label: 'Chính sách đang áp dụng', value: store.pricingConfigs.filter(p => p.active).length, icon: Shield, color: '#10b981' },
-    { label: 'Tổng chính sách', value: store.pricingConfigs.length, icon: Settings, color: '#3b82f6' },
+    { label: 'Chính sách đang áp dụng', value: rules.filter(p => p.isActive !== false).length, icon: Shield, color: '#10b981' },
+    { label: 'Tổng chính sách', value: rules.length, icon: Settings, color: '#3b82f6' },
     { label: 'Giá cơ bản Ô tô', value: '₫20.000/giờ', icon: DollarSign, color: '#f59e0b' },
     { label: 'Giờ cao điểm', value: '07:00 - 09:00', icon: Clock, color: '#8b5cf6' },
   ];
@@ -271,22 +297,46 @@ export default function Pricing() {
   const handleEdit = (p) => {
     setEditingId(p.id);
     setForm({
-      name: p.name, vehicleType: p.vehicleType, ticketType: p.ticketType,
-      rate: p.rate || '', minFee: p.minFee || '', maxDaily: p.maxDaily || '',
-      peakStart: p.peakStart || '', peakEnd: p.peakEnd || '', peakMult: p.peakMult || ''
+      name: p.name || '',
+      vehicleType: (p.vehicleType || 'CAR').toUpperCase(),
+      ticketType: (p.ticketType || 'HOURLY').toUpperCase(),
+      rate: p.ratePerHour || p.rate || '',
+      minFee: p.minimumFee || p.minFee || '',
+      maxDaily: p.maximumDailyFee || p.maxDaily || '',
+      monthlyFee: p.monthlyFee || ((p.ticketType || '').toUpperCase() === 'MONTHLY' ? (p.minimumFee || p.ratePerHour || '') : ''),
+      peakStart: p.peakHourStart || p.peakStart || '',
+      peakEnd: p.peakHourEnd || p.peakEnd || '',
+      peakMult: p.peakHourMultiplier || p.peakMult || ''
     });
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const config = {
-      name: form.name, vehicleType: form.vehicleType, ticketType: form.ticketType,
-      rate: Number(form.rate), minFee: Number(form.minFee) || 0, maxDaily: Number(form.maxDaily) || 0,
-      peakStart: form.peakStart, peakEnd: form.peakEnd, peakMult: Number(form.peakMult) || 0
+      name: form.name || `${VEHICLE_TYPE_LABELS[form.vehicleType.toUpperCase()] || form.vehicleType} (${form.ticketType})`,
+      vehicleType: form.vehicleType.toUpperCase(),
+      ticketType: form.ticketType.toUpperCase(),
+      ratePerHour: Number(form.rate) || 0,
+      minimumFee: Number(form.minFee) || 0,
+      maximumDailyFee: form.maxDaily ? Number(form.maxDaily) : null,
+      monthlyFee: Number(form.monthlyFee) || 0,
+      peakHourStart: form.peakStart || null,
+      peakHourEnd: form.peakEnd || null,
+      peakHourMultiplier: Number(form.peakMult) || 1,
+      overstayRateMultiplier: 1.5,
+      effectiveFrom: new Date().toISOString().split('T')[0]
     };
-    if (editingId) store.updatePricing(editingId, config);
-    else store.addPricing(config);
-    setShowModal(false);
+    try {
+      if (editingId) {
+        await api.put(`/api/v1/pricing-rules/${editingId}`, config);
+      } else {
+        await api.post('/api/v1/pricing-rules', config);
+      }
+      setShowModal(false);
+      fetchRules();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Không thể lưu chính sách vào hệ thống.');
+    }
   };
 
   const inputSt = {
@@ -343,20 +393,42 @@ export default function Pricing() {
             </tr>
           </thead>
           <tbody>
-            {store.pricingConfigs.map(p => (
+            {loading ? (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Đang tải danh sách bảng giá...</td></tr>
+            ) : rules.length === 0 ? (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Chưa có chính sách nào được cấu hình</td></tr>
+            ) : rules.map(p => {
+              const vType = (p.vehicleType || '').toUpperCase();
+              const tType = (p.ticketType || '').toUpperCase();
+              return (
               <tr key={p.id}>
                 <td style={{ fontWeight: 600 }}>{p.name}</td>
-                <td>{VEHICLE_TYPE_LABELS[(p.vehicleType || '').toUpperCase()] || p.vehicleType}</td>
+                <td>{VEHICLE_TYPE_LABELS[vType] || p.vehicleType}</td>
                 <td>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₫{p.rate.toLocaleString()}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {(p.ticketType || '').toUpperCase() === 'HOURLY' ? ' /giờ' : (p.ticketType || '').toUpperCase() === 'DAILY' ? ' /ngày' : ' /tháng'}
-                  </span>
+                  {tType === 'MONTHLY' ? (
+                    <>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₫{Number(p.monthlyFee || p.minimumFee || p.ratePerHour || 0).toLocaleString('vi-VN')}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> /tháng</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₫{Number(p.ratePerHour || p.rate || 0).toLocaleString('vi-VN')}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {tType === 'HOURLY' ? ' /giờ' : ' /ngày'}
+                      </span>
+                    </>
+                  )}
                 </td>
-                <td>{p.maxDaily ? `₫${p.maxDaily.toLocaleString()}` : '—'}</td>
+                <td>{p.maximumDailyFee ? `₫${Number(p.maximumDailyFee).toLocaleString('vi-VN')}` : '—'}</td>
                 <td>
                   <label className="toggle-switch">
-                    <input type="checkbox" checked={p.active} onChange={() => store.togglePricing(p.id)} />
+                    <input type="checkbox" checked={p.isActive !== false} onChange={async () => {
+                      try {
+                        if (p.isActive !== false) await api.put(`/api/v1/pricing-rules/${p.id}/deactivate`);
+                        else await api.put(`/api/v1/pricing-rules/${p.id}/activate`);
+                        fetchRules();
+                      } catch { alert('Không thể đổi trạng thái chính sách'); }
+                    }} />
                     <span className="toggle-slider"></span>
                   </label>
                 </td>
@@ -364,7 +436,7 @@ export default function Pricing() {
                   <button className="btn-sm btn-sm-secondary" onClick={() => handleEdit(p)}>Chỉnh sửa</button>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
@@ -410,25 +482,31 @@ export default function Pricing() {
               <div className="form-group">
                 <label className="form-label">Loại xe</label>
                 <select style={inputSt} value={form.vehicleType} onChange={e => setForm(p => ({...p, vehicleType: e.target.value}))}>
-                  <option value="Car">Ô tô (Car)</option>
-                  <option value="Motorbike">Xe máy (Motorbike)</option>
-                  <option value="Truck">Xe tải (Truck)</option>
-                  <option value="Bicycle">Xe đạp (Bicycle)</option>
+                  <option value="CAR">Ô tô (Car)</option>
+                  <option value="MOTORBIKE">Xe máy (Motorbike)</option>
+                  <option value="TRUCK">Xe tải (Truck)</option>
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Loại vé</label>
                 <select style={inputSt} value={form.ticketType} onChange={e => setForm(p => ({...p, ticketType: e.target.value}))}>
-                  <option value="Hourly">Theo giờ (Hourly)</option>
-                  <option value="Daily">Theo ngày (Daily)</option>
-                  <option value="Monthly">Theo tháng (Monthly)</option>
+                  <option value="HOURLY">Theo giờ (Hourly)</option>
+                  <option value="DAILY">Theo ngày (Daily)</option>
+                  <option value="MONTHLY">Theo tháng (Monthly)</option>
                 </select>
               </div>
               
-              <div className="form-group">
-                <label className="form-label">Giá cơ bản (VNĐ/giờ)</label>
-                <input style={inputSt} type="number" value={form.rate} onChange={e => setForm(p => ({...p, rate: e.target.value}))} placeholder="VD: 20000" />
-              </div>
+              {form.ticketType.toUpperCase() === 'MONTHLY' ? (
+                <div className="form-group">
+                  <label className="form-label">Giá vé tháng (VNĐ/tháng)</label>
+                  <input style={inputSt} type="number" value={form.monthlyFee} onChange={e => setForm(p => ({...p, monthlyFee: e.target.value}))} placeholder="VD: 500000" />
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">Giá cơ bản (VNĐ/{form.ticketType.toUpperCase() === 'DAILY' ? 'ngày' : 'giờ'})</label>
+                  <input style={inputSt} type="number" value={form.rate} onChange={e => setForm(p => ({...p, rate: e.target.value}))} placeholder="VD: 20000" />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Phí tối thiểu (VNĐ)</label>
                 <input style={inputSt} type="number" value={form.minFee} onChange={e => setForm(p => ({...p, minFee: e.target.value}))} placeholder="VD: 20000" />

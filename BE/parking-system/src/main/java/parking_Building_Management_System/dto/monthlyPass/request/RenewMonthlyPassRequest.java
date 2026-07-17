@@ -1,6 +1,5 @@
 package parking_Building_Management_System.dto.monthlyPass.request;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -16,11 +15,14 @@ import java.time.LocalDate;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RenewMonthlyPassRequest {
     
-    @NotNull(message = "End date is required")
     LocalDate endDate;
     
     @Positive(message = "Fee must be greater than 0 if provided")
     BigDecimal fee;
     
     Boolean autoRenew;
+
+    Integer durationInMonths;
+
+    String vehicleLicensePlate;
 }
