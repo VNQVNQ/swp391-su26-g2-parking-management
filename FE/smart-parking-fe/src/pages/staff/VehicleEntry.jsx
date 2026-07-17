@@ -289,6 +289,18 @@ export default function VehicleEntry() {
                 </span>
               </div>
 
+              {vehicleInfo?.hasActiveMonthlyPass && (
+                <div style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, fontSize: '0.9rem', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CheckCircle2 size={20} /> Xe có vé tháng hợp lệ
+                </div>
+              )}
+
+              {vehicleInfo?.hasActiveBooking && (
+                <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CheckCircle2 size={20} /> Xe đã đặt chỗ trước (Vị trí: {vehicleInfo.bookedSlotCode || 'Chưa xác định'})
+                </div>
+              )}
+
               {vehicleInfo?.foundVehicle ? (
                 <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 24, fontSize: '0.9rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <CheckCircle2 size={20} /> Xe đã có trong hệ thống (Loại: {vehicleTypeLabel(vehicleInfo.vehicleType)})
@@ -509,6 +521,13 @@ export default function VehicleEntry() {
                   <p style={{ fontSize: '0.82rem', color: '#10b981', marginBottom: 24 }}>🔐 Khuôn mặt đã được lưu để xác thực khi ra</p>
                 )}
 
+                {sessionResult.bookingCode && (
+                  <div style={{ padding: 12, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, color: '#10b981', marginBottom: 20, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Check size={20} />
+                    <span><strong>Áp dụng Đặt chỗ:</strong> Khách đã dùng mã <strong>{sessionResult.bookingCode}</strong> để vào bãi. Trạng thái đã chuyển sang "Đã vào".</span>
+                  </div>
+                )}
+
                 <div style={{ background: 'var(--bg-input)', border: '1px dashed var(--border-color)', borderRadius: 12, padding: 24, textAlign: 'left', marginBottom: 32 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 0' }}>
                     {[
@@ -517,7 +536,9 @@ export default function VehicleEntry() {
                       { label: 'Tầng',     value: sessionResult.floorName,   col: 2 },
                       { label: 'Giờ vào',  value: new Date(sessionResult.entryTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }), col: 1 },
                       { label: 'Mã phiên', value: sessionResult.sessionId?.slice(0, 8), col: 2 },
-                    ].map(r => (
+                    ]
+                    .concat(sessionResult.bookingCode ? [{ label: 'Mã đặt chỗ', value: sessionResult.bookingCode, col: 2 }] : [])
+                    .map(r => (
                       <div key={r.label} style={{ gridColumn: `span ${r.col}` }}>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{r.label}</div>
                         <div style={{ color: r.label === 'Chỗ đỗ' ? 'var(--accent-primary)' : 'var(--text-primary)', fontWeight: 700, fontSize: r.label === 'Chỗ đỗ' ? '1.2rem' : '0.95rem' }}>{r.value}</div>

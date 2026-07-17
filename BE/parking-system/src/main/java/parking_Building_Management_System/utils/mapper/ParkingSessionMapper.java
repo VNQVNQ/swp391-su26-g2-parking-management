@@ -60,6 +60,13 @@ public class ParkingSessionMapper {
                 .paymentStatus(session.getPaymentStatus())
                 .staffId(staffId)
                 .staffName(staffName)
+                .hasActiveMonthlyPass(session.getMonthlyPass() != null)
+                .monthlyPassId(session.getMonthlyPass() != null ? session.getMonthlyPass().getId() : null)
+                .appliedMonthlyPassFee(session.getAppliedMonthlyPassFee())
+                .appliedPricingRuleName(session.getAppliedRule() != null ? session.getAppliedRule().getName() : null)
+                .appliedPricingRuleId(session.getAppliedRule() != null ? session.getAppliedRule().getId() : null)
+                .bookingCode(session.getBooking() != null ? session.getBooking().getBookingCode() : null)
+                .bookingId(session.getBooking() != null ? session.getBooking().getId() : null)
                 .createdAt(session.getCreatedAt())
                 .build();
     }

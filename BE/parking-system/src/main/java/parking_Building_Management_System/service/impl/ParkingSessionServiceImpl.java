@@ -39,7 +39,9 @@ import parking_Building_Management_System.entity.PricingRule;
 import parking_Building_Management_System.dto.pricingRule.response.PricingRuleDetailResponse;
 import parking_Building_Management_System.dto.monthlyPass.response.MonthlyPassDetailResponse;
 import parking_Building_Management_System.dto.booking.response.BookingDetailResponse;
+import parking_Building_Management_System.dto.booking.response.BookingResponse;
 import parking_Building_Management_System.entity.enums.TicketType;
+import parking_Building_Management_System.entity.enums.BookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -116,14 +118,46 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         // Phase 4: Check if vehicle has active monthly pass
         boolean hasActiveMonthlyPass = monthlyPassService.validateMonthlyPassValidityByLicensePlate(licensePlate);
+        UUID monthlyPassId = null;
+        if (hasActiveMonthlyPass) {
+            monthlyPassService.findActiveMonthlyPassByLicensePlate(licensePlate).ifPresent(pass -> {
+                // Not returning ID here since it's not strictly required, but setting flag
+            });
+        }
         
-        log.info("Vehicle validation successful: {}, hasActiveMonthlyPass: {}", licensePlate, hasActiveMonthlyPass);
+        // Check for active booking
+        boolean hasActiveBooking = false;
+        String bookingCode = null;
+        String bookedSlotCode = null;
+        
+        try {
+            List<BookingResponse> vehicleBookings = bookingService.getBookingsByVehicle(vehicle.getId());
+            LocalDateTime now = LocalDateTime.now();
+            Optional<BookingResponse> validBooking = vehicleBookings.stream()
+                    .filter(b -> BookingStatus.PENDING.equals(b.getStatus()) 
+                            && b.getBookingExpiryAt() != null 
+                            && b.getBookingExpiryAt().isAfter(now))
+                    .findFirst();
+            if (validBooking.isPresent()) {
+                hasActiveBooking = true;
+                bookingCode = validBooking.get().getBookingCode();
+                bookedSlotCode = validBooking.get().getSlotCode();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to check active booking during validation: {}", e.getMessage());
+        }
+        
+        log.info("Vehicle validation successful: {}, hasActiveMonthlyPass: {}, hasActiveBooking: {}", licensePlate, hasActiveMonthlyPass, hasActiveBooking);
         return EntryValidationResponse.builder()
                 .valid(true)
                 .foundVehicle(true)
                 .vehicleId(vehicle.getId())
                 .licensePlate(vehicle.getLicensePlate())
                 .message("Vehicle is valid for entry")
+                .hasActiveMonthlyPass(hasActiveMonthlyPass)
+                .hasActiveBooking(hasActiveBooking)
+                .bookingCode(bookingCode)
+                .bookedSlotCode(bookedSlotCode)
                 .build();
     }
 
@@ -143,9 +177,28 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             return List.of();
         }
 
+        // Phase 4: Auto-detect booking if not provided but vehicle has an active one
+        if ((bookingCode == null || bookingCode.trim().isEmpty()) && vehicle.getId() != null) {
+            try {
+                List<BookingResponse> vehicleBookings = bookingService.getBookingsByVehicle(vehicle.getId());
+                LocalDateTime now = LocalDateTime.now();
+                Optional<BookingResponse> validBooking = vehicleBookings.stream()
+                        .filter(b -> BookingStatus.PENDING.equals(b.getStatus()) 
+                                && b.getBookingExpiryAt() != null 
+                                && b.getBookingExpiryAt().isAfter(now))
+                        .findFirst();
+                if (validBooking.isPresent()) {
+                    bookingCode = validBooking.get().getBookingCode();
+                    log.info("Auto-detected active booking for vehicle: {}", bookingCode);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to auto-detect booking for vehicle: {}", e.getMessage());
+            }
+        }
+
         // Phase 4: If booking code provided, validate and prioritize booking slot
         ParkingSlot bookedSlot = null;
-        if (bookingCode != null && !bookingCode.isEmpty()) {
+        if (bookingCode != null && !bookingCode.trim().isEmpty()) {
             try {
                 BookingDetailResponse booking = bookingService.getBookingByCode(bookingCode);
                 if (booking != null && Boolean.FALSE.equals(booking.getIsExpired())) {
@@ -247,9 +300,28 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             throw new RuntimeException("No available slots in this zone");
         }
 
+        // Auto-detect booking if not provided but vehicle has an active one
+        if ((bookingCode == null || bookingCode.trim().isEmpty()) && vehicle.getId() != null) {
+            try {
+                List<BookingResponse> vehicleBookings = bookingService.getBookingsByVehicle(vehicle.getId());
+                LocalDateTime now = LocalDateTime.now();
+                Optional<BookingResponse> validBooking = vehicleBookings.stream()
+                        .filter(b -> BookingStatus.PENDING.equals(b.getStatus()) 
+                                && b.getBookingExpiryAt() != null 
+                                && b.getBookingExpiryAt().isAfter(now))
+                        .findFirst();
+                if (validBooking.isPresent()) {
+                    bookingCode = validBooking.get().getBookingCode();
+                    log.info("Auto-detected active booking for vehicle: {}", bookingCode);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to auto-detect booking for vehicle: {}", e.getMessage());
+            }
+        }
+
         // Phase 4: Handle booking if provided
         Booking linkedBooking = null;
-        if (bookingCode != null && !bookingCode.isEmpty()) {
+        if (bookingCode != null && !bookingCode.trim().isEmpty()) {
             try {
                 BookingDetailResponse bookingDetail = bookingService.getBookingByCode(bookingCode);
                 linkedBooking = new Booking();
@@ -260,7 +332,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                 
                 // Use booking slot if available
                 ParkingSlot bookedSlot = parkingSlotRepository.findById(bookingDetail.getSlotId()).orElse(null);
-                if (bookedSlot != null && availableSlots.contains(bookedSlot)) {
+                if (bookedSlot != null && bookedSlot.getCurrentSession() == null && 
+                    bookedSlot.getMaintenanceStatus() == parking_Building_Management_System.entity.enums.SlotMaintenanceStatus.AVAILABLE) {
                     availableSlots = List.of(bookedSlot);
                     log.info("Using booked slot: {}", bookedSlot.getSlotCode());
                 }
@@ -358,8 +431,9 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             String zoneName = (session.getSlot() != null && session.getSlot().getZone() != null) ? session.getSlot().getZone().getName() : null;
             String floorName = (session.getSlot() != null && session.getSlot().getFloor() != null) ? session.getSlot().getFloor().getName() : null;
             
-            boolean hasPass = session.getVehicle() != null && 
-                    monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId()).isPresent();
+            boolean hasPass = session.getTicketType() == TicketType.MONTHLY;
+            boolean hasBooking = session.getBooking() != null;
+            String bookingCode = hasBooking ? session.getBooking().getBookingCode() : null;
             
             return ActiveSessionResponse.builder()
                     .id(session.getId())
@@ -372,6 +446,8 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .entryTime(session.getEntryTime())
                     .hasMonthlyPass(hasPass)
                     .ticketType(hasPass ? "MONTHLY" : "HOURLY")
+                    .hasBooking(hasBooking)
+                    .bookingCode(bookingCode)
                     .build();
         }).collect(java.util.stream.Collectors.toList());
     }
@@ -498,8 +574,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         boolean hasPass = false;
         // Phase 4: If monthly pass is active, no base fee and no overstay fee
         try {
-            Optional<MonthlyPassDetailResponse> passOpt = monthlyPassService.findActiveMonthlyPassByVehicle(session.getVehicle().getId());
-            if (passOpt.isPresent() || session.getTicketType() == TicketType.MONTHLY || session.getMonthlyPass() != null) {
+            if (session.getTicketType() == TicketType.MONTHLY || session.getMonthlyPass() != null) {
                 hasPass = true;
                 session.setFee(totalPenaltyFee);
                 session.setFinalFee(totalPenaltyFee);

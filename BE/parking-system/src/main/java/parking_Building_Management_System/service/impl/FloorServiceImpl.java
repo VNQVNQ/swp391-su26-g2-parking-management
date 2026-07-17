@@ -17,6 +17,7 @@ public class FloorServiceImpl implements FloorService {
 
     private final FloorRepository floorRepository;
     private final parking_Building_Management_System.repository.ZoneRepository zoneRepository;
+    private final parking_Building_Management_System.repository.ParkingSlotRepository parkingSlotRepository;
 
     @Override
     public FloorResponse createFloor(FloorRequest request) {
@@ -79,6 +80,9 @@ public class FloorServiceImpl implements FloorService {
     public void deleteFloor(UUID id) {
         if (!floorRepository.existsById(id)) {
             throw new RuntimeException("Floor not found");
+        }
+        if (parkingSlotRepository.existsByFloorIdAndCurrentSessionIsNotNull(id)) {
+            throw new RuntimeException("Không thể xóa vì đang có xe");
         }
         if (!zoneRepository.findByFloorId(id).isEmpty()) {
             throw new RuntimeException("Không thể xóa tầng này vì đang chứa các khu vực (Zone)");

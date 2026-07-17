@@ -37,6 +37,11 @@ public class EntryValidationResponse {
     boolean hasActiveMonthlyPass;
     UUID monthlyPassId;
 
+    // Booking info
+    boolean hasActiveBooking;
+    String bookingCode;
+    String bookedSlotCode;
+
     // Nếu có vấn đề
     String errorCode;
 }

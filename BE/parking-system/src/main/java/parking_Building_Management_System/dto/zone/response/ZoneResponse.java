@@ -21,6 +21,7 @@ public class ZoneResponse {
     VehicleType vehicleType;
     Integer totalSlots;
     Integer availableSlots;
+    Integer createdSlots;
     Boolean isActive;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

@@ -126,6 +126,9 @@ public class ZoneServiceImpl implements ZoneService {
         if (!zoneRepository.existsById(id)) {
             throw new RuntimeException("Zone not found");
         }
+        if (parkingSlotRepository.existsByZoneIdAndCurrentSessionIsNotNull(id)) {
+            throw new RuntimeException("Không thể xóa vì đang có xe");
+        }
         if (!parkingSlotRepository.findByZoneId(id).isEmpty()) {
             throw new RuntimeException("Không thể xóa khu vực này vì đang chứa các chỗ đỗ (Slot)");
         }
@@ -134,6 +137,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     private ZoneResponse mapToResponse(Zone zone) {
         int availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId()).size();
+        int createdSlots = parkingSlotRepository.findByZoneId(zone.getId()).size();
         return new ZoneResponse(
                 zone.getId(),
                 zone.getFloor().getId(),
@@ -142,6 +146,7 @@ public class ZoneServiceImpl implements ZoneService {
                 zone.getVehicleType(),
                 zone.getTotalSlots(),
                 availableSlots,
+                createdSlots,
                 zone.getIsActive(),
                 zone.getCreatedAt(),
                 zone.getUpdatedAt()

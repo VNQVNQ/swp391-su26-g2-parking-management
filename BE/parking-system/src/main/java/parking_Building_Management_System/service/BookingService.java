@@ -36,6 +36,8 @@ public interface BookingService {
     
     int autoExpireBookings();
     
+    int autoDeleteCancelledBookings();
+    
     boolean isSlotAvailableForBooking(UUID slotId, LocalDateTime startTime, LocalDateTime endTime);
     
     String generateBookingCode();

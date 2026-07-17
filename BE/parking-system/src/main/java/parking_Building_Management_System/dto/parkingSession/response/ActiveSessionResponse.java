@@ -23,4 +23,7 @@ public class ActiveSessionResponse {
     
     private Boolean hasMonthlyPass;
     private String ticketType;
+
+    private Boolean hasBooking;
+    private String bookingCode;
 }

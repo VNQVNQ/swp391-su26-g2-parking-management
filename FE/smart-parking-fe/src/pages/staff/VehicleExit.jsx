@@ -784,11 +784,34 @@ export default function VehicleExit() {
                       const slot = session.slotCode     || session.slot?.slotCode        || '—';
                       const type = session.vehicleType  || session.vehicle?.vehicleType  || 'CAR';
                       const hasFace = !!loadFaceDescriptor(session.id);
+                      
+                      const hasPass = session.hasMonthlyPass === true 
+                                   || session.ticketType === 'MONTHLY' 
+                                   || session.ticketType === 'Vé tháng'
+                                   || session.ticketType === 'Monthly';
+                      
+                      const hasBooking = session.hasBooking === true || session.bookingCode != null;
+
                       return (
                         <button key={session.id} onClick={() => handleSelectSession(session)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px', borderRadius: 14, cursor: 'pointer', background: 'var(--bg-secondary)', border: '2px solid var(--border-color)', textAlign: 'left', transition: 'all 0.15s', width: '100%' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px', borderRadius: 14, cursor: 'pointer', background: 'var(--bg-secondary)', border: '2px solid var(--border-color)', textAlign: 'left', transition: 'all 0.15s', width: '100%', position: 'relative' }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.05)'; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}>
+                          
+                          {/* Badges */}
+                          <div style={{ position: 'absolute', top: -8, right: 10, display: 'flex', gap: 6 }}>
+                            {hasBooking && (
+                              <div style={{ background: '#f59e0b', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: 10, fontWeight: 700, boxShadow: '0 2px 4px rgba(245,158,11,0.3)' }}>
+                                ĐẶT CHỖ
+                              </div>
+                            )}
+                            {hasPass && (
+                              <div style={{ background: '#8b5cf6', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: 10, fontWeight: 700, boxShadow: '0 2px 4px rgba(139,92,246,0.3)' }}>
+                                VÉ THÁNG
+                              </div>
+                            )}
+                          </div>
+                          
                           <span style={{ fontSize: 28, flexShrink: 0 }}>{VEHICLE_ICON[type] || '🚗'}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '1px' }}>{p}</p>

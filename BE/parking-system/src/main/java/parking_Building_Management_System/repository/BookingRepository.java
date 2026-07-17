@@ -27,6 +27,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findByStatusAndBookingExpiryAtBefore(BookingStatus status, LocalDateTime expiryTime);
 
+    List<Booking> findByStatusAndUpdatedAtBefore(BookingStatus status, LocalDateTime updatedAt);
+
+    @Query("SELECT b FROM Booking b WHERE b.status IN (:statuses) AND b.updatedAt < :updatedAt AND NOT EXISTS (SELECT 1 FROM ParkingSession p WHERE p.booking = b)")
+    List<Booking> findByStatusesAndUpdatedAtBeforeAndNotReferencedBySession(
+            @Param("statuses") java.util.List<BookingStatus> statuses,
+            @Param("updatedAt") LocalDateTime updatedAt
+    );
+
     @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.startTime > :startTime")
     List<Booking> findByStatusAndStartTimeAfter(@Param("status") BookingStatus status, @Param("startTime") LocalDateTime startTime);
 

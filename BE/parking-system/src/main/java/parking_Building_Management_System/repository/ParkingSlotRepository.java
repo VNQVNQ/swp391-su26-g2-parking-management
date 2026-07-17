@@ -19,6 +19,10 @@ public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, UUID> 
 
     List<ParkingSlot> findByZoneId(UUID zoneId);
 
+    boolean existsByFloorIdAndCurrentSessionIsNotNull(UUID floorId);
+
+    boolean existsByZoneIdAndCurrentSessionIsNotNull(UUID zoneId);
+
     List<ParkingSlot> findByMaintenanceStatus(SlotMaintenanceStatus maintenanceStatus);
 
     List<ParkingSlot> findByFloorIdAndMaintenanceStatus(UUID floorId, SlotMaintenanceStatus maintenanceStatus);

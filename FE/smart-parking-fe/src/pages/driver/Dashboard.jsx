@@ -261,8 +261,11 @@ function DriverDashboard() {
                   }}
                 >
                   <option value="" disabled>-- Chọn xe --</option>
-                  {(Array.isArray(myVehicles) ? myVehicles : []).map(v => (
-                    <option key={v.id || v.licensePlate} value={v.licensePlate}>{v.licensePlate}</option>
+                  {Array.from(new Set([
+                    ...(Array.isArray(myVehicles) ? myVehicles : []).map(v => v.licensePlate),
+                    ...(recentBookings || []).map(b => b.licensePlate || b.vehicle?.licensePlate).filter(Boolean)
+                  ])).map(plate => (
+                    <option key={plate} value={plate}>{plate}</option>
                   ))}
                 </select>
               </div>

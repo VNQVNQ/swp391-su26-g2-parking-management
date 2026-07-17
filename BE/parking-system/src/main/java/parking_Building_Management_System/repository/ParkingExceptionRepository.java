@@ -25,6 +25,8 @@ public interface ParkingExceptionRepository extends JpaRepository<ParkingExcepti
 
     @Query("SELECT e FROM ParkingException e WHERE e.session.vehicle.id = :vehicleId ORDER BY e.createdAt DESC")
     List<ParkingException> findByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    List<ParkingException> findByStatusAndResolvedAtBefore(ExceptionStatus status, java.time.LocalDateTime cutoffTime);
 }
 
 

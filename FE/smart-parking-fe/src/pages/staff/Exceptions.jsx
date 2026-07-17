@@ -43,10 +43,11 @@ const WRONG_ZONE_SUBTYPES = [
 ];
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Đang chờ', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  PENDING: { label: 'Chưa xử lý', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' }, // changed to red as requested
+  IN_PROGRESS: { label: 'Đang xử lý', color: '#eab308', bg: 'rgba(234,179,8,0.12)' }, // yellow as requested
   APPROVED: { label: 'Đã duyệt', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  REJECTED: { label: 'Từ chối', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  RESOLVED: { label: 'Đã giải quyết', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  REJECTED: { label: 'Từ chối', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
+  RESOLVED: { label: 'Đã xử lý', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
 };
 
 const TYPE_CONFIG = {
@@ -780,25 +781,38 @@ function DetailModal({ ex, onClose, onResolve, isManager }) {
         )}
       </div>
 
-      {isManager && ex.status === 'PENDING' && ex.exceptionType !== 'WRONG_ZONE' && ex.exceptionType !== 'WRONG_SPOT' && (
+      {(ex.status === 'PENDING' || ex.status === 'IN_PROGRESS') && (
         <div style={{
           display: 'flex', justifyContent: 'flex-end', gap: 10,
           padding: '16px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
         }}>
-          <button onClick={() => onResolve(ex, 'REJECTED')} style={{
-            padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
-            background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-            cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
-          }}>
-            <XSquare size={14} /> Từ chối
-          </button>
-          <button onClick={() => onResolve(ex, 'RESOLVED')} style={{
-            padding: '9px 20px', borderRadius: 8, border: 'none',
-            background: '#10b981', color: '#fff',
-            cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
-          }}>
-            <CheckSquare size={14} /> Giải quyết
-          </button>
+          {ex.status === 'PENDING' && (
+            <button onClick={() => onResolve(ex, 'IN_PROGRESS')} style={{
+              padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(234,179,8,0.4)',
+              background: 'rgba(234,179,8,0.1)', color: '#eab308',
+              cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+            }}>
+              <CheckSquare size={14} /> Bắt đầu xử lý
+            </button>
+          )}
+          {ex.status === 'IN_PROGRESS' && (
+            <>
+              <button onClick={() => onResolve(ex, 'REJECTED')} style={{
+                padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
+                background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+              }}>
+                <XSquare size={14} /> Từ chối
+              </button>
+              <button onClick={() => onResolve(ex, 'RESOLVED')} style={{
+                padding: '9px 20px', borderRadius: 8, border: 'none',
+                background: '#10b981', color: '#fff',
+                cursor: 'pointer', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+              }}>
+                <CheckSquare size={14} /> Hoàn tất xử lý
+              </button>
+            </>
+          )}
         </div>
       )}
     </ModalOverlay>
@@ -814,7 +828,7 @@ function ResolveModal({ ex, targetStatus, onClose, onSuccess }) {
   const isReject = targetStatus === 'REJECTED';
 
   const handleConfirm = async () => {
-    if (!notes.trim()) { alert('Vui lòng nhập ghi chú'); return; }
+    if (!notes.trim() && targetStatus !== 'IN_PROGRESS') { alert('Vui lòng nhập ghi chú'); return; }
     setSubmitting(true);
     try {
       await api.put(`/api/v1/exceptions/${ex.id}/resolve`, {
@@ -833,7 +847,7 @@ function ResolveModal({ ex, targetStatus, onClose, onSuccess }) {
   return (
     <ModalOverlay onClose={onClose}>
       <ModalHeader
-        title={isReject ? '❌ Từ chối ngoại lệ' : '✅ Giải quyết ngoại lệ'}
+        title={isReject ? '❌ Từ chối ngoại lệ' : targetStatus === 'IN_PROGRESS' ? '⏳ Bắt đầu xử lý' : '✅ Giải quyết ngoại lệ'}
         onClose={onClose}
       />
       <div style={{ padding: '24px' }}>
@@ -849,13 +863,14 @@ function ResolveModal({ ex, targetStatus, onClose, onSuccess }) {
 
         <div>
           <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary, #aaa)' }}>
-            {isReject ? 'Lý do từ chối' : 'Ghi chú giải quyết'} <span style={{ color: '#ef4444' }}>*</span>
+            {isReject ? 'Lý do từ chối' : targetStatus === 'IN_PROGRESS' ? 'Ghi chú (Tùy chọn)' : 'Ghi chú giải quyết'} 
+            {targetStatus !== 'IN_PROGRESS' && <span style={{ color: '#ef4444' }}> *</span>}
           </label>
           <textarea
             style={{ ...inputSt, minHeight: 100, resize: 'vertical' }}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder={isReject ? 'Nhập lý do từ chối...' : 'Nhập kết quả xử lý...'}
+            placeholder={isReject ? 'Nhập lý do từ chối...' : targetStatus === 'IN_PROGRESS' ? 'Nhập ghi chú xử lý (không bắt buộc)...' : 'Nhập kết quả xử lý...'}
             autoFocus
           />
         </div>
@@ -872,18 +887,18 @@ function ResolveModal({ ex, targetStatus, onClose, onSuccess }) {
         </button>
         <button
           onClick={handleConfirm}
-          disabled={submitting || !notes.trim()}
+          disabled={submitting || (!notes.trim() && targetStatus !== 'IN_PROGRESS')}
           style={{
             padding: '9px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            background: isReject ? '#ef4444' : '#10b981', color: '#fff', fontWeight: 600,
+            background: isReject ? '#ef4444' : targetStatus === 'IN_PROGRESS' ? '#eab308' : '#10b981', color: '#fff', fontWeight: 600,
             fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6,
-            opacity: submitting || !notes.trim() ? 0.6 : 1,
+            opacity: submitting || (!notes.trim() && targetStatus !== 'IN_PROGRESS') ? 0.6 : 1,
           }}
         >
           {submitting
             ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-            : isReject ? <XSquare size={14} /> : <CheckSquare size={14} />}
-          {isReject ? 'Xác nhận từ chối' : 'Xác nhận giải quyết'}
+            : isReject ? <XSquare size={14} /> : targetStatus === 'IN_PROGRESS' ? <Clock size={14} /> : <CheckSquare size={14} />}
+          {isReject ? 'Xác nhận từ chối' : targetStatus === 'IN_PROGRESS' ? 'Xác nhận xử lý' : 'Xác nhận giải quyết'}
         </button>
       </div>
     </ModalOverlay>
@@ -939,10 +954,10 @@ export default function Exceptions() {
   });
 
   const stats = [
-    { label: 'Đang chờ xử lý', value: exceptions.filter(e => e.status === 'PENDING').length, color: '#f59e0b', icon: Clock },
+    { label: 'Chưa xử lý', value: exceptions.filter(e => e.status === 'PENDING').length, color: '#ef4444', icon: Clock },
+    { label: 'Đang xử lý', value: exceptions.filter(e => e.status === 'IN_PROGRESS').length, color: '#eab308', icon: RefreshCw },
     { label: 'Đã giải quyết', value: exceptions.filter(e => e.status === 'RESOLVED' || e.status === 'APPROVED').length, color: '#10b981', icon: CheckCircle },
-    { label: 'Mất vé', value: exceptions.filter(e => e.exceptionType === 'LOST_TICKET').length, color: '#ef4444', icon: Ticket },
-    { label: 'Sai vị trí', value: exceptions.filter(e => e.exceptionType === 'WRONG_ZONE').length, color: '#f59e0b', icon: MapPin },
+    { label: 'Sai vị trí', value: exceptions.filter(e => e.exceptionType === 'WRONG_ZONE').length, color: '#6366f1', icon: MapPin },
   ];
 
   const tabs = [
@@ -1180,10 +1195,23 @@ export default function Exceptions() {
                         >
                           <Eye size={12} /> Chi tiết
                         </button>
-                        {ex.status === 'PENDING' && ex.exceptionType !== 'WRONG_ZONE' && ex.exceptionType !== 'WRONG_SPOT' && (
+                        {ex.status === 'PENDING' && (
+                          <button
+                            title="Bắt đầu xử lý"
+                            onClick={() => handleResolveClick(ex, 'IN_PROGRESS')}
+                            style={{
+                              padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(234,179,8,0.3)',
+                              background: 'rgba(234,179,8,0.1)', color: '#eab308',
+                              cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4,
+                            }}
+                          >
+                            <CheckSquare size={12} />
+                          </button>
+                        )}
+                        {ex.status === 'IN_PROGRESS' && (
                           <>
                             <button
-                              title="Giải quyết"
+                              title="Hoàn tất xử lý"
                               onClick={() => handleResolveClick(ex, 'RESOLVED')}
                               style={{
                                 padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(16,185,129,0.3)',

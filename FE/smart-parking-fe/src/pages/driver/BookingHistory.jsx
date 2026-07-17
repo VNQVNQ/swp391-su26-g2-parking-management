@@ -4,14 +4,14 @@ import api from '../../services/api';
 
 const STATUS_CONFIG = {
   PENDING: {
-    label: 'Chờ xác nhận',
+    label: 'Chưa vào',
     color: '#f59e0b',
     bg: 'rgba(245,158,11,0.12)',
     border: 'rgba(245,158,11,0.35)',
     icon: '⏳',
   },
   CONFIRMED: {
-    label: 'Đã xác nhận',
+    label: 'Đã vào',
     color: '#10b981',
     bg: 'rgba(16,185,129,0.12)',
     border: 'rgba(16,185,129,0.35)',
@@ -118,8 +118,8 @@ export default function BookingHistory() {
 
   const filterTabs = [
     { value: 'ALL',      label: 'Tất cả',         count: stats.total     },
-    { value: 'PENDING',  label: 'Chờ xác nhận',   count: stats.pending   },
-    { value: 'CONFIRMED',label: 'Đã xác nhận',    count: stats.confirmed },
+    { value: 'PENDING',  label: 'Chưa vào',   count: stats.pending   },
+    { value: 'CONFIRMED',label: 'Đã vào',    count: stats.confirmed },
     { value: 'CANCELLED',label: 'Đã hủy',          count: stats.cancelled },
     { value: 'EXPIRED',  label: 'Hết hạn',         count: stats.expired  },
   ];
@@ -151,8 +151,8 @@ export default function BookingHistory() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Tổng đặt chỗ',    value: stats.total,     color: 'var(--text-primary)' },
-          { label: 'Đang chờ',         value: stats.pending,   color: '#f59e0b' },
-          { label: 'Đã xác nhận',      value: stats.confirmed, color: '#10b981' },
+          { label: 'Chưa vào',         value: stats.pending,   color: '#f59e0b' },
+          { label: 'Đã vào',      value: stats.confirmed, color: '#10b981' },
           { label: 'Hủy / Hết hạn',   value: stats.cancelled + stats.expired, color: '#ef4444' },
         ].map(s => (
           <div key={s.label} className="stat-card" style={{ borderLeft: `3px solid ${s.color}` }}>

@@ -28,4 +28,20 @@ public class BookingScheduler {
             log.error("Error in auto-expire bookings scheduler: {}", e.getMessage(), e);
         }
     }
+
+    @Scheduled(fixedDelay = 300000) // runs every 5 minutes
+    public void autoDeleteCancelledBookings() {
+        log.info("Starting auto-delete cancelled bookings scheduler (runs every 5 minutes)");
+        try {
+            int deletedCount = bookingService.autoDeleteCancelledBookings();
+            
+            if (deletedCount > 0) {
+                log.info("Successfully deleted {} cancelled bookings older than 15 minutes", deletedCount);
+            } else {
+                log.debug("No cancelled bookings deleted in this cycle");
+            }
+        } catch (Exception e) {
+            log.error("Error in auto-delete cancelled bookings scheduler: {}", e.getMessage(), e);
+        }
+    }
 }

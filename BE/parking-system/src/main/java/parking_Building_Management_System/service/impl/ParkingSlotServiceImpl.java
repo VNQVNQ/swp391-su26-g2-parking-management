@@ -204,10 +204,12 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
     @Override
     public void deleteSlot(UUID id) {
-        if (!parkingSlotRepository.existsById(id)) {
-            throw new RuntimeException("Parking slot not found");
+        ParkingSlot slot = parkingSlotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Parking slot not found"));
+        if (slot.getCurrentSession() != null) {
+            throw new RuntimeException("Không thể xóa vì đang có xe");
         }
-        parkingSlotRepository.deleteById(id);
+        parkingSlotRepository.delete(slot);
     }
 
     @Override

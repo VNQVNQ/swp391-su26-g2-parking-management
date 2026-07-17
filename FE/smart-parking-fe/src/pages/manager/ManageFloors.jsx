@@ -114,8 +114,9 @@ export default function ManageFloors() {
   const getOccupancyForFloor = (floorId) => {
     const floorZones = zones.filter(z => z.floorId === floorId);
     const total = floorZones.reduce((sum, z) => sum + (z.totalSlots || 0), 0);
+    const created = floorZones.reduce((sum, z) => sum + (z.createdSlots || 0), 0);
     const avail = floorZones.reduce((sum, z) => sum + (z.availableSlots || 0), 0);
-    const used = total - avail;
+    const used = created - avail;
     return { total, used, pct: total > 0 ? Math.round((used / total) * 100) : 0 };
   };
 

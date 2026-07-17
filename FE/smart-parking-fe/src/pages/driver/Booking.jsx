@@ -5,10 +5,10 @@ import api from '../../services/api';
 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
 const STATUS_CONFIG = {
-  PENDING:   { label: 'Chờ xác nhận', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  CONFIRMED: { label: 'Đã xác nhận',  color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  CANCELLED: { label: 'Đã hủy',       color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
-  EXPIRED:   { label: 'Hết hạn',      color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  PENDING: { label: 'Chưa vào', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  CONFIRMED: { label: 'Đã vào', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  CANCELLED: { label: 'Đã hủy', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  EXPIRED: { label: 'Hết hạn', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
 };
 
 function getTodayStr() {
@@ -40,22 +40,22 @@ export default function Booking() {
     slotCode: '',
   });
 
-  const [vehicles,       setVehicles]       = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
-  const [loading,        setLoading]        = useState(false);
-  const [success,        setSuccess]        = useState(false);
-  const [bookingResult,  setBookingResult]  = useState(null);
-  const [error,          setError]          = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [bookingResult, setBookingResult] = useState(null);
+  const [error, setError] = useState('');
 
   // ── State cho Modal Chọn Chỗ ──
-  const [showMapModal,    setShowMapModal]    = useState(false);
-  const [zones,           setZones]           = useState([]);
-  const [slots,           setSlots]           = useState([]);
-  const [bookedSlotIds,   setBookedSlotIds]   = useState([]);
-  const [activeZone,      setActiveZone]      = useState(null);
-  const [modalLoading,    setModalLoading]    = useState(false);
-  const [modalError,      setModalError]      = useState('');
-  const [selectedSlot,    setSelectedSlot]    = useState(null); // { id, slotCode }
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [zones, setZones] = useState([]);
+  const [slots, setSlots] = useState([]);
+  const [bookedSlotIds, setBookedSlotIds] = useState([]);
+  const [activeZone, setActiveZone] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(null); // { id, slotCode }
 
   /* ── Load xe đã đăng ký ── */
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function Booking() {
         if (list.length > 0) {
           setForm(f => ({
             ...f,
-            vehicleId:   list[0].id,
+            vehicleId: list[0].id,
             licensePlate: list[0].licensePlate,
             vehicleType: list[0].vehicleType || 'CAR',
             useManualEntry: false
@@ -105,7 +105,7 @@ export default function Booking() {
       const res = await api.get('/api/v1/zones');
       const allZones = res.data.data ?? res.data ?? [];
       const filteredZones = allZones.filter(z => z.vehicleType === form.vehicleType);
-      
+
       setZones(filteredZones);
       if (filteredZones.length > 0) {
         setActiveZone(filteredZones[0]);
@@ -164,14 +164,22 @@ export default function Booking() {
   /* ── Validation form chính ── */
   const validate = () => {
     if (!form.useManualEntry && !form.vehicleId) { setError('Vui lòng chọn xe đã đăng ký trong danh sách phương tiện của bạn'); return false; }
-    if (form.useManualEntry && !form.licensePlate.trim()) { setError('Vui lòng nhập biển số xe cần đặt chỗ'); return false; }
-    if (!form.date)     { setError('Vui lòng chọn ngày vào'); return false; }
+    if (form.useManualEntry) {
+      const plate = form.licensePlate.trim();
+      if (!plate) { setError('Vui lòng nhập biển số xe cần đặt chỗ'); return false; }
+      const plateRegex = /^([1-9][0-9][A-Za-z][A-Za-z0-9]?|[A-Za-z]{2})[-.\s]?\d{5}(\.\d{1,2})?$/;
+      if (!plateRegex.test(plate)) {
+        setError('Biển số xe không hợp lệ (VD: 59B-123.45, 29A-12345)');
+        return false;
+      }
+    }
+    if (!form.date) { setError('Vui lòng chọn ngày vào'); return false; }
     if (!form.timeFrom) { setError('Vui lòng chọn giờ vào'); return false; }
-    if (!form.endDate)  { setError('Vui lòng chọn ngày ra'); return false; }
-    if (!form.timeTo)   { setError('Vui lòng chọn giờ ra'); return false; }
+    if (!form.endDate) { setError('Vui lòng chọn ngày ra'); return false; }
+    if (!form.timeTo) { setError('Vui lòng chọn giờ ra'); return false; }
 
     const duration = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
-    if (duration < 15)  { setError('Thời gian đặt tối thiểu 15 phút'); return false; }
+    if (duration < 15) { setError('Thời gian đặt tối thiểu 15 phút'); return false; }
     if (duration > 720) { setError('Thời gian đặt tối đa 12 giờ'); return false; }
 
     const startDT = new Date(`${form.date}T${form.timeFrom}:00`);
@@ -190,15 +198,15 @@ export default function Booking() {
     setLoading(true);
     try {
       const startTime = toLocalDT(form.date, form.timeFrom);
-      const duration  = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
+      const duration = calcDuration(form.date, form.timeFrom, form.endDate, form.timeTo);
 
       const payload = {
-        vehicleId:       form.useManualEntry ? null : form.vehicleId,
-        licensePlate:    form.useManualEntry ? form.licensePlate.trim() : undefined,
-        vehicleType:     form.useManualEntry ? form.vehicleType : undefined,
+        vehicleId: form.useManualEntry ? null : form.vehicleId,
+        licensePlate: form.useManualEntry ? form.licensePlate.trim() : undefined,
+        vehicleType: form.useManualEntry ? form.vehicleType : undefined,
         startTime,
         durationMinutes: duration,
-        slotId:          form.slotId || null
+        slotId: form.slotId || null
       };
 
       const res = await api.post('/api/v1/bookings', payload);
@@ -269,13 +277,13 @@ export default function Booking() {
 
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 16, padding: '20px 24px', marginBottom: 20, textAlign: 'left' }}>
             {[
-              { label: 'Mã đặt chỗ',    value: bookingResult.bookingCode || '—', bold: true, mono: true },
-              { label: 'Biển số',       value: bookingResult.licensePlate || form.licensePlate },
-              { label: 'Chỗ đỗ',       value: bookingResult.slotCode || 'Tự động phân bổ' },
+              { label: 'Mã đặt chỗ', value: bookingResult.bookingCode || '—', bold: true, mono: true },
+              { label: 'Biển số', value: bookingResult.licensePlate || form.licensePlate },
+              { label: 'Chỗ đỗ', value: bookingResult.slotCode || 'Tự động phân bổ' },
               { label: 'Thời điểm vào', value: `${startTimeDisplay} (${dateDisplay})` },
-              { label: 'Thời điểm ra',  value: `${endTime} (${endDateDisplay})` },
-              { label: 'Thời lượng',    value: `${bookingResult.durationMinutes || duration} phút (~${((bookingResult.durationMinutes || duration) / 60).toFixed(1)} giờ)` },
-              { label: 'Trạng thái',    value: statusCfg.label, chip: true, chipColor: statusCfg.color, chipBg: statusCfg.bg },
+              { label: 'Thời điểm ra', value: `${endTime} (${endDateDisplay})` },
+              { label: 'Thời lượng', value: `${bookingResult.durationMinutes || duration} phút (~${((bookingResult.durationMinutes || duration) / 60).toFixed(1)} giờ)` },
+              { label: 'Trạng thái', value: statusCfg.label, chip: true, chipColor: statusCfg.color, chipBg: statusCfg.bg },
             ].map(r => (
               <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--border-color)' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.label}</span>
@@ -534,20 +542,20 @@ export default function Booking() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
-                { label: 'Biển số',     value: form.licensePlate || '—', mono: true },
-                { label: 'Loại xe',     value: form.vehicleType === 'MOTORBIKE' ? 'Xe máy' : form.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải', icon: VEHICLE_ICON[form.vehicleType] },
-                { label: 'Ngày',        value: form.date ? new Date(form.date).toLocaleDateString('vi-VN') : '—' },
-                { label: 'Giờ vào',     value: form.timeFrom || '—' },
-                { label: 'Giờ ra',      value: form.timeTo   || '—' },
-                { label: 'Chỗ đỗ',      value: form.slotCode || 'Hệ thống tự xếp', highlight: !!form.slotCode },
-                { label: 'Thời lượng',  value: duration > 0 ? `${duration} phút` : '—', color: duration < 15 || duration > 720 ? '#ef4444' : undefined },
+                { label: 'Biển số', value: form.licensePlate || '—', mono: true },
+                { label: 'Loại xe', value: form.vehicleType === 'MOTORBIKE' ? 'Xe máy' : form.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải', icon: VEHICLE_ICON[form.vehicleType] },
+                { label: 'Ngày', value: form.date ? new Date(form.date).toLocaleDateString('vi-VN') : '—' },
+                { label: 'Giờ vào', value: form.timeFrom || '—' },
+                { label: 'Giờ ra', value: form.timeTo || '—' },
+                { label: 'Chỗ đỗ', value: form.slotCode || 'Hệ thống tự xếp', highlight: !!form.slotCode },
+                { label: 'Thời lượng', value: duration > 0 ? `${duration} phút` : '—', color: duration < 15 || duration > 720 ? '#ef4444' : undefined },
               ].map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.label}</span>
-                  <span style={{ 
-                    color: r.color || (r.highlight ? 'var(--accent-primary)' : 'var(--text-primary)'), 
-                    fontWeight: r.highlight || r.mono ? 700 : 500, 
-                    fontSize: '0.9rem', 
+                  <span style={{
+                    color: r.color || (r.highlight ? 'var(--accent-primary)' : 'var(--text-primary)'),
+                    fontWeight: r.highlight || r.mono ? 700 : 500,
+                    fontSize: '0.9rem',
                     fontFamily: r.mono ? 'monospace' : 'inherit',
                     background: r.highlight ? 'rgba(99,102,241,0.1)' : 'transparent',
                     padding: r.highlight ? '2px 8px' : '0',
@@ -606,7 +614,7 @@ export default function Booking() {
                   Khu vực khả dụng
                 </div>
                 {modalLoading && zones.length === 0 ? (
-                   <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải...</div>
+                  <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải...</div>
                 ) : zones.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', padding: '0 20px', fontSize: '0.85rem' }}>Không có khu vực nào.</p>
                 ) : (
@@ -641,11 +649,11 @@ export default function Booking() {
                       <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Tình trạng: {activeZone.name}</span>
                       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                         {[
-                          { label: 'Trống',      color: '#10b981' },
-                          { label: 'Đang chọn',  color: '#3b82f6' },
-                          { label: 'Có xe',      color: '#ef4444' },
-                          { label: 'Đã đặt',     color: '#8b5cf6' },
-                          { label: 'Bảo trì',    color: '#94a3b8' },
+                          { label: 'Trống', color: '#10b981' },
+                          { label: 'Đang chọn', color: '#3b82f6' },
+                          { label: 'Có xe', color: '#ef4444' },
+                          { label: 'Đã đặt', color: '#8b5cf6' },
+                          { label: 'Bảo trì', color: '#94a3b8' },
                         ].map(l => (
                           <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
@@ -670,10 +678,10 @@ export default function Booking() {
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 10, marginBottom: 20 }}>
                         {slots.map(slot => {
-                          const isOccupied    = !!slot.currentSessionId;
+                          const isOccupied = !!slot.currentSessionId;
                           const isMaintenance = slot.maintenanceStatus === 'MAINTENANCE';
-                          const isBooked      = !isOccupied && !isMaintenance && bookedSlotIds.includes(slot.id);
-                          const isSelected    = selectedSlot?.id === slot.id;
+                          const isBooked = !isOccupied && !isMaintenance && bookedSlotIds.includes(slot.id);
+                          const isSelected = selectedSlot?.id === slot.id;
 
                           const isDisabled = isOccupied || isMaintenance || isBooked;
 

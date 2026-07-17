@@ -131,13 +131,14 @@ export default function ManageZones() {
   // Occupancy per zone
   const getOccupancy = (zone) => {
     const total = zone.totalSlots || 0;
-    const avail = zone.availableSlots ?? total;
-    const used = total - avail;
+    const created = zone.createdSlots || 0;
+    const avail = zone.availableSlots || 0;
+    const used = created - avail;
     return { total, used, pct: total > 0 ? Math.round((used / total) * 100) : 0 };
   };
 
   const totalSlots = zones.reduce((s, z) => s + (z.totalSlots || 0), 0);
-  const usedSlots = zones.reduce((s, z) => s + ((z.totalSlots || 0) - ((z.availableSlots ?? z.totalSlots) || 0)), 0);
+  const usedSlots = zones.reduce((s, z) => s + ((z.createdSlots || 0) - (z.availableSlots || 0)), 0);
   const overallOccupancy = totalSlots > 0 ? Math.round((usedSlots / totalSlots) * 100) : 0;
 
   const stats = [

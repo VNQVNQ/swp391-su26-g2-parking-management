@@ -101,7 +101,7 @@ export default function PassesBookings() {
 
   const stats = [
     { label: 'Vé tháng đang hoạt động', value: activePasses.length, icon: CreditCard, color: '#10b981' },
-    { label: 'Chờ xử lý (đặt chỗ)', value: bookings.filter(b => b.status === 'PENDING').length, icon: CalendarCheck, color: '#f59e0b' },
+    { label: 'Chưa vào (đặt chỗ)', value: bookings.filter(b => b.status === 'PENDING').length, icon: CalendarCheck, color: '#f59e0b' },
     { label: 'Vé ô tô', value: carPasses.length, icon: Car, color: '#3b82f6' },
     { label: 'Vé xe máy', value: motorbikePasses.length, icon: Bike, color: '#8b5cf6' },
   ];
@@ -315,7 +315,7 @@ export default function PassesBookings() {
                             <td>{b.endTime ? new Date(b.endTime).toLocaleString('vi-VN') : '—'}</td>
                             <td>
                               <span className={`badge ${b.status === 'CONFIRMED' ? 'badge-success' : b.status === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>
-                                {b.status === 'CONFIRMED' ? 'Đã xác nhận' : b.status === 'PENDING' ? 'Đang chờ' : b.status === 'CANCELLED' ? 'Đã hủy' : b.status === 'EXPIRED' ? 'Hết hạn' : b.status}
+                                {b.status === 'CONFIRMED' ? 'Đã vào' : b.status === 'PENDING' ? 'Chưa vào' : b.status === 'CANCELLED' ? 'Đã hủy' : b.status === 'EXPIRED' ? 'Hết hạn' : b.status}
                               </span>
                             </td>
                             <td>

@@ -2,6 +2,7 @@ package parking_Building_Management_System.entity.enums;
 
 public enum ExceptionStatus {
     PENDING("Pending"),
+    IN_PROGRESS("In Progress"),
     APPROVED("Approved"),
     REJECTED("Rejected"),
     RESOLVED("Resolved");

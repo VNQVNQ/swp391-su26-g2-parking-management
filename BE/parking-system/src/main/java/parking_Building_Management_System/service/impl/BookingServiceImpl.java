@@ -80,8 +80,8 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("Booking start time must be at least 5 minutes from now");
         }
 
-        if (request.getDurationMinutes() < 15 || request.getDurationMinutes() > 720) {
-            throw new IllegalArgumentException("Booking duration must be between 15 minutes and 12 hours");
+        if (request.getDurationMinutes() < 15 || request.getDurationMinutes() > 525600) {
+            throw new IllegalArgumentException("Booking duration must be between 15 minutes and 1 year");
         }
 
         LocalDateTime endTime = request.getStartTime().plusMinutes(request.getDurationMinutes());
@@ -290,6 +290,22 @@ public class BookingServiceImpl implements BookingService {
         
         log.info("Auto-expire bookings process completed. Expired {} bookings", count);
         return count;
+    }
+
+    @Override
+    @Transactional
+    public int autoDeleteCancelledBookings() {
+        log.info("Auto-deleting cancelled/expired bookings older than 15 minutes");
+        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(15);
+        List<Booking> oldBookings = bookingRepository.findByStatusesAndUpdatedAtBeforeAndNotReferencedBySession(
+                java.util.Arrays.asList(BookingStatus.CANCELLED, BookingStatus.EXPIRED), cutoffTime);
+
+        int deletedCount = oldBookings.size();
+        if (deletedCount > 0) {
+            bookingRepository.deleteAll(oldBookings);
+            log.info("Successfully deleted {} old bookings", deletedCount);
+        }
+        return deletedCount;
     }
 
     @Override

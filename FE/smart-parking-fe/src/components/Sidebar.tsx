@@ -1,4 +1,6 @@
+import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import api from '../services/api';
 import {
   LayoutDashboard, LogIn, LogOut, Search,
   DollarSign, CalendarCheck, AlertTriangle,
@@ -62,6 +64,27 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
   const userRole  = user?.role || 'PARKING_STAFF';
   const visibleItems = navItems.filter(item => item.roles.includes(userRole));
 
+  const [exceptionStats, setExceptionStats] = useState({ pending: 0, inProgress: 0 });
+
+  useEffect(() => {
+    if (userRole === 'STAFF' || userRole === 'MANAGER' || userRole === 'PARKING_MANAGER' || userRole === 'PARKING_STAFF' || userRole === 'ADMIN') {
+      const fetchExceptions = async () => {
+        try {
+          const res = await api.get('/api/v1/exceptions');
+          const data = res.data.data || res.data;
+          const pending = data.filter((e: any) => e.status === 'PENDING').length;
+          const inProgress = data.filter((e: any) => e.status === 'IN_PROGRESS').length;
+          setExceptionStats({ pending, inProgress });
+        } catch (error) {
+          console.error("Error fetching exception stats", error);
+        }
+      };
+      fetchExceptions();
+      const interval = setInterval(fetchExceptions, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole]);
+
   const groupedItems = visibleItems.reduce((acc, item) => {
     const g = item.group || 'OTHER';
     if (!acc[g]) acc[g] = [];
@@ -108,19 +131,26 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
               // Fix: location.pathname.startsWith(item.to + '/') ensures exact match or sub-route
               const isActive = location.pathname === item.to ||
                 (item.to !== '/' && location.pathname.startsWith(item.to + '/'));
-              // TODO: Fetch real exception count from API. Set to 0 for now so it doesn't show randomly.
-              const exceptionCount = 0;
-              const showBadge = item.label === 'Xử lý Ngoại lệ' && exceptionCount > 0;
+              const isExceptionTab = item.label === 'Xử lý Ngoại lệ';
               return (
                 <NavLink key={item.to} to={item.to}
                   className={`nav-item ${isActive ? 'active' : ''}`}
                   title={collapsed ? item.label : undefined}>
                   <Icon />
                   <span className="nav-label">{item.label}</span>
-                  {!collapsed && showBadge && (
-                    <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
-                      {exceptionCount}
-                    </span>
+                  {!collapsed && isExceptionTab && (
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                      {exceptionStats.pending > 0 && (
+                        <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '12px', boxShadow: '0 0 10px rgba(239,68,68,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px' }}>
+                          {exceptionStats.pending}
+                        </span>
+                      )}
+                      {exceptionStats.inProgress > 0 && (
+                        <span style={{ background: '#f59e0b', color: '#fff', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '12px', boxShadow: '0 0 10px rgba(245,158,11,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px' }}>
+                          {exceptionStats.inProgress}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </NavLink>
               );

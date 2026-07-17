@@ -156,7 +156,7 @@ public class ParkingExceptionController {
 
     // ─── POST /api/v1/exceptions ────────────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN', 'DRIVER')")
     public ResponseEntity<?> createException(@RequestBody Map<String, String> request) {
         try {
             String sessionId = request.get("sessionId");
@@ -223,12 +223,18 @@ public class ParkingExceptionController {
 
             exception.setResolution(resolution);
             if (status != null) {
-                exception.setStatus(ExceptionStatus.valueOf(status));
+                ExceptionStatus newStatus = ExceptionStatus.valueOf(status);
+                exception.setStatus(newStatus);
+                if (newStatus == ExceptionStatus.RESOLVED || newStatus == ExceptionStatus.APPROVED || newStatus == ExceptionStatus.REJECTED) {
+                    exception.setResolvedAt(LocalDateTime.now());
+                } else if (newStatus == ExceptionStatus.IN_PROGRESS) {
+                    exception.setResolvedAt(null); // Clear resolved time if moving back to in progress
+                }
             } else {
                 exception.setStatus(ExceptionStatus.RESOLVED);
+                exception.setResolvedAt(LocalDateTime.now());
             }
             exception.setApprovedBy(user);
-            exception.setResolvedAt(LocalDateTime.now());
 
             parkingExceptionRepository.save(exception);
             return ResponseEntity.ok(Map.of("message", "Exception resolved successfully"));
