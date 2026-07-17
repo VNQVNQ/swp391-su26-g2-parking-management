@@ -92,7 +92,7 @@ public class ParkingExceptionController {
 
     // ─── GET /api/v1/exceptions ─────────────────────────────────────────────────
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
     public ResponseEntity<?> getAllExceptions(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
@@ -126,7 +126,7 @@ public class ParkingExceptionController {
 
     // ─── GET /api/v1/exceptions/{id} ────────────────────────────────────────────
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
     public ResponseEntity<?> getExceptionById(@PathVariable UUID id) {
         try {
             ParkingException ex = parkingExceptionRepository.findById(id)
@@ -140,7 +140,7 @@ public class ParkingExceptionController {
 
     // ─── GET /api/v1/exceptions/by-plate/{licensePlate} ─────────────────────────
     @GetMapping("/by-plate/{licensePlate}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
     public ResponseEntity<?> getExceptionsByPlate(@PathVariable String licensePlate) {
         try {
             List<ParkingException> exceptions = parkingExceptionRepository.findByVehicleLicensePlate(licensePlate);
@@ -156,7 +156,7 @@ public class ParkingExceptionController {
 
     // ─── POST /api/v1/exceptions ────────────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN', 'DRIVER')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN', 'DRIVER')")
     public ResponseEntity<?> createException(@RequestBody Map<String, String> request) {
         try {
             String sessionId = request.get("sessionId");
@@ -208,7 +208,7 @@ public class ParkingExceptionController {
     // ─── PUT /api/v1/exceptions/{id}/resolve ─────────────────────────────────────
     // Manager resolve (APPROVED/REJECTED/RESOLVED)
     @PutMapping("/{id}/resolve")
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
     public ResponseEntity<?> resolveException(@PathVariable UUID id, @RequestBody Map<String, String> request) {
         try {
             ParkingException exception = parkingExceptionRepository.findById(id)
@@ -247,7 +247,7 @@ public class ParkingExceptionController {
     // ─── POST /api/v1/exceptions/staff-handle ────────────────────────────────────
     // Staff tự xử lý ngoại lệ ngay lập tức (RESOLVED), không cần chờ Manager
     @PostMapping("/staff-handle")
-    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
     public ResponseEntity<?> staffHandleException(@RequestBody Map<String, String> request) {
         try {
             String sessionId = request.get("sessionId");

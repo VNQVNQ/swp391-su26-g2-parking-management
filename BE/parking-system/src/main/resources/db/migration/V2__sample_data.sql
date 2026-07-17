@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- PARKING BUILDING MANAGEMENT SYSTEM — Sample Data v1.0
 -- SWP391 · SU26SWP07
 -- Sample/Test data for development environment
@@ -110,7 +110,7 @@ VALUES
     'driver01@gmail.com',
     '0912000001',
     '001300000001',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '200 Lý Thường Kiệt, Q.10, TP.HCM',
     '1993-04-12',
     'MALE',
@@ -122,7 +122,7 @@ VALUES
     'driver02@gmail.com',
     '0912000002',
     '001300000002',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '15 Điện Biên Phủ, Q.Bình Thạnh, TP.HCM',
     '1995-08-22',
     'FEMALE',
@@ -134,7 +134,7 @@ VALUES
     'driver03@gmail.com',
     '0912000003',
     '001300000003',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '456 Nguyễn Huệ, Q.1, TP.HCM',
     '1988-12-05',
     'MALE',
@@ -146,7 +146,7 @@ VALUES
     'driver04@gmail.com',
     '0912000004',
     '001300000004',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '78 Lê Văn Sỹ, Q.3, TP.HCM',
     '1991-02-17',
     'MALE',
@@ -158,7 +158,7 @@ VALUES
     'driver05@gmail.com',
     '0912000005',
     '001300000005',
-    '$2a$10$slYQmyNdGzin7olVAklrue86.OJGSLByyL2L.BT1ZvqWnz.74iEm',
+    '$2a$10$wi1hoLfJzrT5QWecLxm0/eHOOv0kboMDlXVkjRUGMkq1LD74Jwm6i',
     '12 Tôn Đức Thắng, Q.1, TP.HCM',
     '1994-06-28',
     'FEMALE',
@@ -321,18 +321,18 @@ FROM generate_series(1, 20) AS g(counter);
 INSERT INTO vehicles (id, user_id, license_plate, vehicle_type, has_monthly_pass, monthly_pass_expiry, is_active)
 VALUES
 -- Motors
-(gen_random_uuid(), NULL, '59A1-20001', 'MOTORBIKE', false, NULL, true),
-(gen_random_uuid(), NULL, '59A1-20002', 'MOTORBIKE', false, NULL, true),
-(gen_random_uuid(), NULL, '59A1-20003', 'MOTORBIKE', true, CURRENT_DATE + INTERVAL '30 days', true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver01@gmail.com'), '59A1-20001', 'MOTORBIKE', false, NULL, true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver02@gmail.com'), '59A1-20002', 'MOTORBIKE', false, NULL, true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver03@gmail.com'), '59A1-20003', 'MOTORBIKE', true, CURRENT_DATE + INTERVAL '30 days', true),
 
 -- Cars
-(gen_random_uuid(), NULL, '51A-12345', 'CAR', false, NULL, true),
-(gen_random_uuid(), NULL, '51A-12346', 'CAR', false, NULL, true),
-(gen_random_uuid(), NULL, '51A-12347', 'CAR', true, CURRENT_DATE + INTERVAL '15 days', true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver04@gmail.com'), '51A-12345', 'CAR', false, NULL, true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver05@gmail.com'), '51A-12346', 'CAR', false, NULL, true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver01@gmail.com'), '51A-12347', 'CAR', true, CURRENT_DATE + INTERVAL '15 days', true),
 (gen_random_uuid(), NULL, '51A-12348', 'CAR', false, NULL, true),
 
 -- Trucks
-(gen_random_uuid(), NULL, '51A-99001', 'TRUCK', false, NULL, true),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'driver02@gmail.com'), '51A-99001', 'TRUCK', false, NULL, true),
 (gen_random_uuid(), NULL, '51A-99002', 'TRUCK', true, CURRENT_DATE + INTERVAL '45 days', true);
 
 -- ============================================================
@@ -388,17 +388,27 @@ WHERE v.has_monthly_pass = true
 
 -- Sample bookings for next 2 days
 INSERT INTO bookings (vehicle_id, slot_id, booking_code, start_time, end_time, booking_expiry_at, status)
+WITH v_cte AS (
+    SELECT id, ROW_NUMBER() OVER (ORDER BY RANDOM()) as rn
+    FROM vehicles
+    WHERE user_id IS NOT NULL
+),
+s_cte AS (
+    SELECT id, ROW_NUMBER() OVER (ORDER BY RANDOM()) as rn
+    FROM parking_slots
+    WHERE maintenance_status = 'AVAILABLE'
+)
 SELECT
     v.id,
-    ps.id,
+    s.id,
     'BR-' || UPPER(SUBSTR(MD5(RANDOM()::text || v.id::text), 1, 8)),
     CURRENT_TIMESTAMP + INTERVAL '1 day',
     CURRENT_TIMESTAMP + INTERVAL '1 day 2 hours',
     CURRENT_TIMESTAMP + INTERVAL '1 day 30 minutes',
     'PENDING'
-FROM (SELECT id FROM vehicles ORDER BY RANDOM() LIMIT 5) v
-CROSS JOIN (SELECT id FROM parking_slots WHERE maintenance_status = 'AVAILABLE' ORDER BY RANDOM() LIMIT 5) ps
-LIMIT 5;
+FROM v_cte v
+JOIN s_cte s ON v.rn = s.rn
+WHERE v.rn <= 5;
 
 -- ============================================================
 -- 9. SEED PARKING SESSIONS

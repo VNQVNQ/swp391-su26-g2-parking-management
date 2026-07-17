@@ -48,7 +48,7 @@ public class PenaltyConfigController {
     // ─── GET /api/v1/penalty-configs ─────────────────────────────────────────────
     // Lấy tất cả cấu hình phí phạt (admin + staff xem được)
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF')")
     public ResponseEntity<?> getAllPenaltyConfigs(
             @RequestParam(required = false) Boolean activeOnly) {
         try {
@@ -70,7 +70,7 @@ public class PenaltyConfigController {
     // ─── GET /api/v1/penalty-configs/lookup ──────────────────────────────────────
     // Tra cứu mức phạt theo vehicleType + exceptionType (staff dùng khi xử lý ngoại lệ)
     @GetMapping("/lookup")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'PARKING_MANAGER', 'PARKING_STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF')")
     public ResponseEntity<?> lookupPenalty(
             @RequestParam String vehicleType,
             @RequestParam String exceptionType) {
@@ -103,7 +103,7 @@ public class PenaltyConfigController {
     // ─── POST /api/v1/penalty-configs ────────────────────────────────────────────
     // Admin tạo/cập nhật cấu hình phí phạt
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'PARKING_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARKING_MANAGER')")
     public ResponseEntity<?> createPenaltyConfig(@RequestBody Map<String, Object> request) {
         try {
             String vehicleTypeStr = (String) request.get("vehicleType");
@@ -154,7 +154,7 @@ public class PenaltyConfigController {
     // ─── PUT /api/v1/penalty-configs/{id} ────────────────────────────────────────
     // Admin cập nhật cấu hình phí phạt
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'PARKING_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARKING_MANAGER')")
     public ResponseEntity<?> updatePenaltyConfig(
             @PathVariable UUID id,
             @RequestBody Map<String, Object> request) {
@@ -187,7 +187,7 @@ public class PenaltyConfigController {
     // ─── DELETE /api/v1/penalty-configs/{id} ─────────────────────────────────────
     // Admin xóa cấu hình phí phạt (soft delete → isActive = false)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'PARKING_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARKING_MANAGER')")
     public ResponseEntity<?> deletePenaltyConfig(@PathVariable UUID id) {
         try {
             PenaltyConfig config = penaltyConfigRepository.findById(id)
