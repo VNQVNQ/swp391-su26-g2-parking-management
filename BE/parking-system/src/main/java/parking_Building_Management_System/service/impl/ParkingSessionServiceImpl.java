@@ -228,6 +228,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         // Phase 4: If we have a booked slot, put it first
         List<AvailableSlotsForEntryResponse> result;
         final ParkingSlot finalBookedSlot = bookedSlot;
+
         if (finalBookedSlot != null && availableSlots.contains(finalBookedSlot)) {
             result = new java.util.ArrayList<>();
             result.add(parkingSessionMapper.toAvailableSlotResponse(
@@ -235,7 +236,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     availableCount,
                     occupiedCount,
                     (long) zone.getTotalSlots()));
-            
+
             availableSlots.stream()
                     .filter(slot -> !slot.getId().equals(finalBookedSlot.getId()))
                     .forEach(slot -> result.add(parkingSessionMapper.toAvailableSlotResponse(
@@ -434,9 +435,10 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             boolean hasPass = session.getTicketType() == TicketType.MONTHLY;
             boolean hasBooking = session.getBooking() != null;
             String bookingCode = hasBooking ? session.getBooking().getBookingCode() : null;
-            
+
             return ActiveSessionResponse.builder()
                     .id(session.getId())
+                    .vehicleId(session.getVehicle().getId())
                     .licensePlate(licensePlate)
                     .vehicleType(type)
                     .slotCode(slotCode)

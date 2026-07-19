@@ -10,6 +10,7 @@ import java.util.UUID;
 @Builder
 public class ActiveSessionResponse {
     private UUID id;
+    private UUID vehicleId;
     
     // Flattened fields for easy frontend consumption
     private String licensePlate;

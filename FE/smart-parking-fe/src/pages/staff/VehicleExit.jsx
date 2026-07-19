@@ -649,6 +649,10 @@ export default function VehicleExit() {
   const [sessionExceptions, setSessionExceptions] = useState([]);
   const [exceptionInitialType, setExceptionInitialType] = useState(null);
   const [exceptionInitialNotes, setExceptionInitialNotes] = useState('');
+  const [sortBy, setSortBy] = useState('duration_desc');
+  const [filterVehicleType, setFilterVehicleType] = useState('ALL');
+  const [filterSpecial, setFilterSpecial] = useState('ALL');
+  const [monthlyPassInfo, setMonthlyPassInfo] = useState(null);
 
   const pendingWrongZoneList = sessionExceptions.filter(ex => 
     (ex.exceptionType === 'WRONG_ZONE' || ex.exceptionType === 'WRONG_SPOT') && ex.status === 'PENDING'
@@ -687,6 +691,7 @@ export default function VehicleExit() {
     setFeeLoading(true);
     setExceptionInitialType(null);
     setExceptionInitialNotes('');
+    setMonthlyPassInfo(null);
     try {
       const exRes = await api.get('/api/v1/exceptions', { params: { sessionId: session.id } });
       setSessionExceptions(exRes.data?.data || []);
@@ -696,6 +701,12 @@ export default function VehicleExit() {
       setFeeInfo(fee);
     } catch { setFeeInfo({ totalFee: 0, durationMinutes: 0 }); }
     finally { setFeeLoading(false); }
+    if (session.hasMonthlyPass && session.vehicleId) {
+      try {
+        const passRes = await api.get(`/api/v1/monthly-passes/vehicle/${session.vehicleId}/active`);
+        setMonthlyPassInfo(passRes.data?.data || null);
+      } catch { setMonthlyPassInfo(null); }
+    }
     setStep('info');
   };
 
@@ -721,7 +732,27 @@ export default function VehicleExit() {
     setSelectedSession(null); setFeeInfo(null); setError('');
     setExitResult(null); setPayMethod('CASH');
     setSessionExceptions([]); setExceptionInitialType(null); setExceptionInitialNotes('');
+    setMonthlyPassInfo(null);
   };
+
+  const displayResults = (searchResults || [])
+      .filter(s => {
+        const type = s.vehicleType || s.vehicle?.vehicleType || 'CAR';
+        if (filterVehicleType !== 'ALL' && type !== filterVehicleType) return false;
+        const hasPass = s.hasMonthlyPass === true || s.ticketType === 'MONTHLY' || s.ticketType === 'Vé tháng' || s.ticketType === 'Monthly';
+        const hasBooking = s.hasBooking === true || s.bookingCode != null;
+        if (filterSpecial === 'MONTHLY' && !hasPass) return false;
+        if (filterSpecial === 'BOOKING' && !hasBooking) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'plate_asc') {
+          return (a.licensePlate || a.vehicle?.licensePlate || '').localeCompare(b.licensePlate || b.vehicle?.licensePlate || '');
+        }
+        const ta = a.entryTime ? new Date(a.entryTime).getTime() : 0;
+        const tb = b.entryTime ? new Date(b.entryTime).getTime() : 0;
+        return sortBy === 'duration_desc' ? ta - tb : tb - ta;
+      });
 
   const plate = selectedSession?.licensePlate || selectedSession?.vehicle?.licensePlate || '';
   const vtype = selectedSession?.vehicleType  || selectedSession?.vehicle?.vehicleType  || 'CAR';
@@ -737,7 +768,7 @@ export default function VehicleExit() {
 
       {/* ── BƯỚC 1: TÌM XE ── */}
       {step === 'search' && (
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div className="card" style={{ padding: 32, borderRadius: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
             <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, fontSize: '1.1rem' }}>🔍 Nhập biển số xe cần tìm</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>Nhập biển số (một phần hoặc toàn bộ) để tìm xe đang đỗ trong bãi</p>
@@ -757,77 +788,128 @@ export default function VehicleExit() {
             </div>
 
             {searchResults && (
-              searchResults.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
-                  <p style={{ fontSize: '2.5rem', marginBottom: 8 }}>🔎</p>
-                  <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {searchQuery ? `Không tìm thấy xe "${searchQuery}"` : 'Không có xe nào đang đỗ trong bãi'}
-                  </p>
-                  <p style={{ fontSize: '0.82rem', marginTop: 4 }}>Kiểm tra lại biển số hoặc làm mới danh sách</p>
-                  <button onClick={() => setShowException(true)}
-                    style={{ marginTop: 16, padding: '8px 20px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <AlertTriangle size={14} /> Xử lý ngoại lệ
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-                    {searchQuery ? `Tìm thấy ${searchResults.length} xe khớp` : `Danh sách ${searchResults.length} xe đang đỗ`}
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    {searchResults.map(session => {
-                      const p    = session.licensePlate || session.vehicle?.licensePlate || '—';
-                      const slot = session.slotCode     || session.slot?.slotCode        || '—';
-                      const type = session.vehicleType  || session.vehicle?.vehicleType  || 'CAR';
-                      const hasFace = !!loadFaceDescriptor(session.id);
-                      
-                      const hasPass = session.hasMonthlyPass === true 
-                                   || session.ticketType === 'MONTHLY' 
-                                   || session.ticketType === 'Vé tháng'
-                                   || session.ticketType === 'Monthly';
-                      
-                      const hasBooking = session.hasBooking === true || session.bookingCode != null;
+                searchResults.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)' }}>
+                      <p style={{ fontSize: '2.5rem', marginBottom: 8 }}>🔎</p>
+                      <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {searchQuery ? `Không tìm thấy xe "${searchQuery}"` : 'Không có xe nào đang đỗ trong bãi'}
+                      </p>
+                      <p style={{ fontSize: '0.82rem', marginTop: 4 }}>Kiểm tra lại biển số hoặc làm mới danh sách</p>
+                      <button onClick={() => setShowException(true)}
+                              style={{ marginTop: 16, padding: '8px 20px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={14} /> Xử lý ngoại lệ
+                      </button>
+                    </div>
+                ) : (
+                    <>
+                      {/* Filter + Sort bar */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+                        <select value={filterVehicleType} onChange={e => setFilterVehicleType(e.target.value)}
+                                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                          <option value="ALL">Tất cả loại xe</option>
+                          <option value="MOTORBIKE">🏍️ Xe máy</option>
+                          <option value="CAR">🚗 Ô tô</option>
+                          <option value="TRUCK">🚛 Xe tải</option>
+                        </select>
+                        <select value={filterSpecial} onChange={e => setFilterSpecial(e.target.value)}
+                                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.82rem' }}>
+                          <option value="ALL">Tất cả trạng thái</option>
+                          <option value="MONTHLY">🎫 Vé tháng</option>
+                          <option value="BOOKING">📅 Đặt chỗ trước</option>
+                        </select>
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.82rem', marginLeft: 'auto' }}>
+                          <option value="duration_desc">⏱️ Xe đỗ lâu nhất → mới vào</option>
+                          <option value="duration_asc">⏱️ Xe mới vào → đỗ lâu nhất</option>
+                          <option value="plate_asc">🔤 Biển số: A → Z</option>
+                        </select>
+                      </div>
 
-                      return (
-                        <button key={session.id} onClick={() => handleSelectSession(session)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px', borderRadius: 14, cursor: 'pointer', background: 'var(--bg-secondary)', border: '2px solid var(--border-color)', textAlign: 'left', transition: 'all 0.15s', width: '100%', position: 'relative' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.background = 'rgba(16,185,129,0.05)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-secondary)'; }}>
-                          
-                          {/* Badges */}
-                          <div style={{ position: 'absolute', top: -8, right: 10, display: 'flex', gap: 6 }}>
-                            {hasBooking && (
-                              <div style={{ background: '#f59e0b', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: 10, fontWeight: 700, boxShadow: '0 2px 4px rgba(245,158,11,0.3)' }}>
-                                ĐẶT CHỖ
-                              </div>
-                            )}
-                            {hasPass && (
-                              <div style={{ background: '#8b5cf6', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: 10, fontWeight: 700, boxShadow: '0 2px 4px rgba(139,92,246,0.3)' }}>
-                                VÉ THÁNG
-                              </div>
-                            )}
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                        {searchQuery ? `Tìm thấy ${displayResults.length} xe khớp` : `Danh sách ${displayResults.length} xe đang đỗ`}
+                      </p>
+
+                      {displayResults.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            Không có xe nào khớp bộ lọc hiện tại
                           </div>
-                          
-                          <span style={{ fontSize: 28, flexShrink: 0 }}>{VEHICLE_ICON[type] || '🚗'}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '1px' }}>{p}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <MapPin size={10} />{slot}
-                              <span style={{ marginLeft: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Clock size={10} />{session.entryTime ? calcDuration(session.entryTime) : '—'}
-                              </span>
-                            </p>
+                      ) : (
+                          <div style={{ overflowX: 'auto', borderRadius: 14, border: '1px solid var(--border-color)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                              <thead>
+                              <tr style={{ background: 'var(--bg-secondary)' }}>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', verticalAlign: 'middle' }}>Biển số /<br/>Loại xe</th>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', verticalAlign: 'middle' }}>Vị trí</th>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', verticalAlign: 'middle' }}>Giờ vào</th>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', verticalAlign: 'middle' }}>Thời gian đỗ</th>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', verticalAlign: 'middle' }}>Trạng thái</th>
+                                <th style={{ textAlign: 'center', padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Xác thực<br/>khuôn mặt</th>
+                                <th style={{ verticalAlign: 'middle' }}></th>
+                              </tr>
+                              </thead>
+                              <tbody>
+                              {displayResults.map((session) => {
+                                const p    = session.licensePlate || session.vehicle?.licensePlate || '—';
+                                const slot = session.slotCode     || session.slot?.slotCode        || '—';
+                                const type = session.vehicleType  || session.vehicle?.vehicleType  || 'CAR';
+                                const hasFace = !!loadFaceDescriptor(session.id);
+                                const hasPass = session.hasMonthlyPass === true
+                                    || session.ticketType === 'MONTHLY'
+                                    || session.ticketType === 'Vé tháng'
+                                    || session.ticketType === 'Monthly';
+                                const hasBooking = session.hasBooking === true || session.bookingCode != null;
+
+                                return (
+                                    <tr key={session.id} onClick={() => handleSelectSession(session)}
+                                        style={{ cursor: 'pointer', borderTop: '1px solid var(--border-color)', transition: 'background 0.15s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(16,185,129,0.06)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                          <span style={{ fontSize: 20 }}>{VEHICLE_ICON[type] || '🚗'}</span>
+                                          <div>
+                                            <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>{p}</div>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{VEHICLE_LABEL[type]}</div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} />{slot}</span>
+                                      </td>
+                                      <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                        {session.entryTime ? formatTime(session.entryTime) : '—'}
+                                      </td>
+                                      <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Clock size={12} />{session.entryTime ? calcDuration(session.entryTime) : '—'}</span>
+                                      </td>
+                                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                          {hasBooking && (
+                                              <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>ĐẶT CHỖ</span>
+                                          )}
+                                          {hasPass && (
+                                              <span style={{ background: 'rgba(139,92,246,0.15)', color: '#8b5cf6', fontSize: '0.68rem', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>VÉ THÁNG</span>
+                                          )}
+                                          {!hasBooking && !hasPass && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>}
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600, background: hasFace ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: hasFace ? '#10b981' : '#f59e0b' }}>
+                        {hasFace ? '🔐' : '⚠️'}
+                      </span>
+                                      </td>
+                                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                        <ArrowRight size={16} style={{ color: 'var(--text-muted)' }} />
+                                      </td>
+                                    </tr>
+                                );
+                              })}
+                              </tbody>
+                            </table>
                           </div>
-                          {/* Face indicator */}
-                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600, background: hasFace ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: hasFace ? '#10b981' : '#f59e0b', flexShrink: 0 }}>
-                            {hasFace ? '🔐 Face' : '⚠️ No face'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )
+                      )}
+                    </>
+                )
             )}
           </div>
 
@@ -930,6 +1012,43 @@ export default function VehicleExit() {
             </div>
           </div>
 
+          {monthlyPassInfo && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(139,92,246,0.12))',
+              border: '1px solid rgba(139,92,246,0.25)', borderRadius: 16, padding: '18px 20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: '1.1rem' }}>🎫</span>
+                <p style={{ margin: 0, fontWeight: 700, color: '#8b5cf6', fontSize: '0.88rem' }}>Vé tháng đang áp dụng</p>
+                {monthlyPassInfo.isExpiring && (
+                  <span style={{ marginLeft: 'auto', fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', borderRadius: 10, fontWeight: 700 }}>
+                    ⚠️ Sắp hết hạn
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 2 }}>Ngày bắt đầu</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{new Date(monthlyPassInfo.startDate).toLocaleDateString('vi-VN')}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 2 }}>Ngày hết hạn</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem', color: monthlyPassInfo.isExpiring ? '#f59e0b' : 'var(--text-primary)' }}>{new Date(monthlyPassInfo.endDate).toLocaleDateString('vi-VN')}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 2 }}>Còn lại</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{monthlyPassInfo.remainingDays} ngày</p>
+                </div>
+              </div>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(139,92,246,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Phí vé tháng: ₫{(monthlyPassInfo.fee || 0).toLocaleString('vi-VN')}</span>
+                <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: monthlyPassInfo.paymentStatus === 'PAID' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: monthlyPassInfo.paymentStatus === 'PAID' ? '#10b981' : '#ef4444' }}>
+                  {monthlyPassInfo.paymentStatus === 'PAID' ? 'Đã thanh toán' : monthlyPassInfo.paymentStatus}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.05), rgba(16,185,129,0.12))', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 16, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>💰 Phí tạm tính</p>
@@ -993,23 +1112,39 @@ export default function VehicleExit() {
             </div>
 
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Phương thức thanh toán</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
               {[
                 { key: 'CASH', label: 'Tiền mặt', icon: <Banknote size={20} />,   color: '#10b981' },
-                { key: 'CARD', label: 'Thẻ / QR', icon: <CreditCard size={20} />, color: '#6366f1' },
+                { key: 'CARD', label: 'Thẻ',      icon: <CreditCard size={20} />, color: '#6366f1' },
+                { key: 'QR',   label: 'QR Code',  icon: <span style={{fontSize:20}}>📱</span>, color: '#f59e0b' },
               ].map(m => (
-                <button key={m.key} onClick={() => setPayMethod(m.key)} style={{
-                  padding: '16px', borderRadius: 12, cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
-                  border: `2px solid ${payMethod === m.key ? m.color : 'var(--border-color)'}`,
-                  background: payMethod === m.key ? `${m.color}18` : 'var(--bg-secondary)',
-                  color: payMethod === m.key ? m.color : 'var(--text-secondary)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s',
-                }}>
-                  {m.icon}{m.label}
-                  {payMethod === m.key && <CheckCircle size={14} color={m.color} />}
-                </button>
+                  <button key={m.key} onClick={() => setPayMethod(m.key)} style={{
+                    padding: '16px', borderRadius: 12, cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+                    border: `2px solid ${payMethod === m.key ? m.color : 'var(--border-color)'}`,
+                    background: payMethod === m.key ? `${m.color}18` : 'var(--bg-secondary)',
+                    color: payMethod === m.key ? m.color : 'var(--text-secondary)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s',
+                  }}>
+                    {m.icon}{m.label}
+                    {payMethod === m.key && <CheckCircle size={14} color={m.color} />}
+                  </button>
               ))}
             </div>
+
+            {payMethod === 'QR' && (
+                <div style={{ textAlign: 'center', marginBottom: 24, padding: '20px', background: 'var(--bg-secondary)', borderRadius: 16 }}>
+                  <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                          `THANH TOAN VE XE\nBien so: ${plate}\nSo tien: ${(feeInfo?.totalFee || 0).toLocaleString('vi-VN')}d`
+                      )}`}
+                      alt="QR thanh toán"
+                      style={{ width: 180, height: 180, borderRadius: 12, background: '#fff', padding: 8 }}
+                  />
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 10 }}>
+                    Quét mã để xác nhận thanh toán
+                  </p>
+                </div>
+            )}
 
             {error && (
               <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem', marginBottom: 16 }}>
@@ -1056,7 +1191,8 @@ export default function VehicleExit() {
                 { label: 'Loại xe',      value: VEHICLE_LABEL[exitResult.session?.vehicleType || exitResult.session?.vehicle?.vehicleType] || '—' },
                 { label: 'Thời gian đỗ',value: exitResult.fee?.durationMinutes ? `${exitResult.fee.durationMinutes} phút` : '—' },
                 { label: 'Tổng phí',     value: `₫${(exitResult.fee?.totalFee || 0).toLocaleString('vi-VN')}`, highlight: true },
-                { label: 'Thanh toán',   value: exitResult.payMethod === 'CASH' ? 'Tiền mặt' : 'Thẻ / QR' },
+                { label: 'Thanh toán',   value: exitResult.payMethod === 'CASH' ? 'Tiền mặt' : exitResult.payMethod === 'QR' ? 'QR Code' : 'Thẻ' },
+                ...(monthlyPassInfo ? [{ label: 'Vé tháng', value: `Còn hạn đến ${new Date(monthlyPassInfo.endDate).toLocaleDateString('vi-VN')} (${monthlyPassInfo.remainingDays} ngày)` }] : []),
               ].map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                   <span style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>{r.label}</span>
