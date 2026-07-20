@@ -757,6 +757,125 @@ function WrongPositionModal({ onClose, onSuccess }) {
   );
 }
 
+// ─── MODAL: Tạo ngoại lệ Nợ phí ──────────────────────────────────────────────
+function UnpaidExitModal({ onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    licensePlate: '',
+    penaltyFee: '',
+    reason: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.licensePlate.trim()) { alert('Vui lòng nhập biển số xe'); return; }
+    if (!form.penaltyFee || Number(form.penaltyFee) <= 0) { alert('Vui lòng nhập số tiền còn thiếu'); return; }
+    if (!form.reason.trim()) { alert('Vui lòng nhập mô tả sự việc'); return; }
+    setSubmitting(true);
+    try {
+      await api.post('/api/v1/exceptions', {
+        exceptionType: 'UNPAID_EXIT',
+        licensePlate: form.licensePlate.trim().toUpperCase(),
+        reason: form.reason,
+        penaltyFee: form.penaltyFee,
+      });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi khi tạo ngoại lệ');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+      <ModalOverlay onClose={onClose}>
+        <ModalHeader title="💰 Ghi nhận nợ phí" onClose={onClose} />
+
+        <div style={{ padding: '24px' }}>
+          <div style={{
+            background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)',
+            borderRadius: 10, padding: '10px 14px', marginBottom: 18, fontSize: '0.82rem', color: '#8b5cf6',
+          }}>
+            💡 Xe sẽ bị chặn vào bãi lần sau cho tới khi khoản nợ này được đánh dấu đã xử lý.
+          </div>
+
+          {/* Biển số xe */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary, #aaa)' }}>
+              Biển số xe <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Car size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #666)' }} />
+              <input
+                  style={{ ...inputSt, paddingLeft: 36, textTransform: 'uppercase', letterSpacing: 1 }}
+                  value={form.licensePlate}
+                  onChange={e => setForm(p => ({ ...p, licensePlate: e.target.value }))}
+                  placeholder="51A-12345"
+              />
+            </div>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted, #666)', marginTop: 5 }}>
+              Xe phải đang có phiên đỗ hoạt động hoặc vừa mới ra bãi.
+            </p>
+          </div>
+
+          {/* Số tiền còn thiếu */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary, #aaa)' }}>
+              Số tiền còn thiếu (VNĐ) <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input
+                type="number"
+                min="0"
+                step="1000"
+                style={{ ...inputSt, fontFamily: 'monospace', fontWeight: 700 }}
+                value={form.penaltyFee}
+                onChange={e => setForm(p => ({ ...p, penaltyFee: e.target.value }))}
+                placeholder="Ví dụ: 50000"
+            />
+          </div>
+
+          {/* Mô tả */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-secondary, #aaa)' }}>
+              Mô tả sự việc <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <textarea
+                style={{ ...inputSt, minHeight: 90, resize: 'vertical' }}
+                value={form.reason}
+                onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
+                placeholder="Mô tả lý do khách chưa thanh toán đủ..."
+            />
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+          padding: '16px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
+        }}>
+          <button onClick={onClose} style={{
+            padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border-color, #2a2a4a)',
+            background: 'transparent', color: 'var(--text-secondary, #aaa)', cursor: 'pointer', fontSize: '0.88rem',
+          }}>
+            Hủy
+          </button>
+          <button
+              onClick={handleSubmit}
+              disabled={submitting || !form.licensePlate.trim() || !form.penaltyFee || !form.reason.trim()}
+              style={{
+                padding: '9px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: '#8b5cf6', color: '#fff', fontWeight: 700,
+                fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 6,
+                opacity: submitting || !form.licensePlate.trim() || !form.penaltyFee || !form.reason.trim() ? 0.5 : 1,
+              }}
+          >
+            {submitting ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <span>💰</span>}
+            Ghi nhận nợ phí
+          </button>
+        </div>
+      </ModalOverlay>
+  );
+}
+
 // ─── MODAL: Chi tiết ngoại lệ ─────────────────────────────────────────────────
 function DetailModal({ ex, onClose, onResolve, isManager }) {
   if (!ex) return null;
@@ -962,6 +1081,7 @@ export default function Exceptions() {
   // Modals
   const [showLostTicketModal, setShowLostTicketModal] = useState(false);
   const [showWrongPositionModal, setShowWrongPositionModal] = useState(false);
+  const [showUnpaidExitModal, setShowUnpaidExitModal] = useState(false);
   const [detailException, setDetailException] = useState(null);
   const [resolveTarget, setResolveTarget] = useState(null); // { ex, status }
 
@@ -1027,6 +1147,7 @@ export default function Exceptions() {
     { key: 'LOST_TICKET', label: '🎫 Mất vé', count: exceptions.filter(e => e.exceptionType === 'LOST_TICKET').length },
     { key: 'WRONG_ZONE', label: '📍 Sai vị trí', count: exceptions.filter(e => e.exceptionType === 'WRONG_ZONE').length },
     { key: 'OVERSTAY', label: '⏰ Quá giờ', count: exceptions.filter(e => e.exceptionType === 'OVERSTAY').length },
+    { key: 'UNPAID_EXIT', label: '💰 Nợ phí', count: exceptions.filter(e => e.exceptionType === 'UNPAID_EXIT').length },
   ];
 
   return (
@@ -1061,6 +1182,17 @@ export default function Exceptions() {
             onClick={() => setShowWrongPositionModal(true)}
           >
             <MapPin size={15} /> Sai vị trí
+          </button>
+          <button
+              className="btn-sm"
+              style={{
+                padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(139,92,246,0.12)', color: '#8b5cf6',
+                border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, cursor: 'pointer',
+              }}
+              onClick={() => setShowUnpaidExitModal(true)}
+          >
+            💰 Nợ phí
           </button>
           <button
             className="btn-sm btn-sm-primary"
@@ -1310,10 +1442,16 @@ export default function Exceptions() {
         />
       )}
       {showWrongPositionModal && (
-        <WrongPositionModal
-          onClose={() => setShowWrongPositionModal(false)}
-          onSuccess={loadExceptions}
-        />
+          <WrongPositionModal
+              onClose={() => setShowWrongPositionModal(false)}
+              onSuccess={loadExceptions}
+          />
+      )}
+      {showUnpaidExitModal && (
+          <UnpaidExitModal
+              onClose={() => setShowUnpaidExitModal(false)}
+              onSuccess={loadExceptions}
+          />
       )}
       {detailException && (
         <DetailModal

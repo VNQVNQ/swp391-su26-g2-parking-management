@@ -27,7 +27,14 @@ public interface ParkingExceptionRepository extends JpaRepository<ParkingExcepti
     List<ParkingException> findByVehicleId(@Param("vehicleId") UUID vehicleId);
 
     List<ParkingException> findByStatusAndResolvedAtBefore(ExceptionStatus status, java.time.LocalDateTime cutoffTime);
+
+    @Query("SELECT COUNT(e) FROM ParkingException e WHERE e.session.vehicle.id = :vehicleId AND e.exceptionType = 'UNPAID_EXIT' AND e.status = 'PENDING'")
+    long countUnpaidDebtByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    @Query("SELECT e FROM ParkingException e WHERE e.session.vehicle.id = :vehicleId AND e.exceptionType = 'UNPAID_EXIT' AND e.status = 'PENDING' ORDER BY e.createdAt ASC")
+    List<ParkingException> findUnpaidDebtsByVehicleId(@Param("vehicleId") UUID vehicleId);
 }
+
 
 
 

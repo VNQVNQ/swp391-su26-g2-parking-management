@@ -103,6 +103,34 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
                     .build();
         }
 
+        long unpaidCount = parkingExceptionRepository.countUnpaidDebtByVehicleId(vehicle.getId());
+        if (unpaidCount > 0) {
+            List<ParkingException> debts = parkingExceptionRepository.findUnpaidDebtsByVehicleId(vehicle.getId());
+            BigDecimal totalUnpaid = debts.stream()
+                    .map(ParkingException::getPenaltyFee)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            boolean blacklisted = unpaidCount >= 2;
+
+            log.warn("Vehicle {} has {} unpaid debt(s), total: {}, blacklisted: {}",
+                    licensePlate, unpaidCount, totalUnpaid, blacklisted);
+
+            return EntryValidationResponse.builder()
+                    .valid(false)
+                    .foundVehicle(true)
+                    .vehicleId(vehicle.getId())
+                    .licensePlate(vehicle.getLicensePlate())
+                    .totalUnpaidAmount(totalUnpaid)
+                    .unpaidDebtCount((int) unpaidCount)
+                    .isBlacklisted(blacklisted)
+                    .message(blacklisted
+                            ? "Xe trong danh sách đen — còn " + unpaidCount + " khoản nợ chưa thanh toán, tổng: " + totalUnpaid + " VNĐ"
+                            : "Xe còn nợ phí lần trước: " + totalUnpaid + " VNĐ — vui lòng thanh toán trước khi vào bãi")
+                    .errorCode(blacklisted ? "VEHICLE_BLACKLISTED" : "VEHICLE_HAS_UNPAID_DEBT")
+                    .build();
+        }
+
         Optional<ParkingSession> activeSession = parkingSessionRepository.findActiveSessionByVehicleId(vehicle.getId());
         if (activeSession.isPresent()) {
             log.warn("Vehicle already has an active session: {}", licensePlate);

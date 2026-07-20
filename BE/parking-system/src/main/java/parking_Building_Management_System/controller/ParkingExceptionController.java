@@ -335,9 +335,12 @@ public class ParkingExceptionController {
                 exception.setCreatedBy(user);
             }
             exception.setApprovedBy(user);
-            exception.setStatus(ExceptionStatus.RESOLVED);
-            exception.setResolvedAt(LocalDateTime.now());
-
+            if (ExceptionType.valueOf(type) == ExceptionType.UNPAID_EXIT) {
+                exception.setStatus(ExceptionStatus.PENDING);
+            } else {
+                exception.setStatus(ExceptionStatus.RESOLVED);
+                exception.setResolvedAt(LocalDateTime.now());
+            }
             parkingExceptionRepository.save(exception);
 
             if (session != null) {
@@ -360,6 +363,50 @@ public class ParkingExceptionController {
             ));
         } catch (Exception e) {
             log.error("Error handling exception by staff: ", e);
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/settle-debt")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'PARKING_STAFF', 'ADMIN')")
+    public ResponseEntity<?> settleDebt(@RequestBody Map<String, String> request) {
+        try {
+            String vehicleIdStr = request.get("vehicleId");
+            if (vehicleIdStr == null || vehicleIdStr.isEmpty()) {
+                throw new RuntimeException("vehicleId is required");
+            }
+            UUID vehicleId = UUID.fromString(vehicleIdStr);
+
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            var user = userRepository.findByEmail(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            List<ParkingException> debts = parkingExceptionRepository.findUnpaidDebtsByVehicleId(vehicleId);
+            if (debts.isEmpty()) {
+                throw new RuntimeException("No unpaid debt found for this vehicle");
+            }
+
+            BigDecimal totalSettled = BigDecimal.ZERO;
+            for (ParkingException debt : debts) {
+                debt.setStatus(ExceptionStatus.RESOLVED);
+                debt.setResolvedAt(LocalDateTime.now());
+                debt.setApprovedBy(user);
+                if (debt.getPenaltyFee() != null) {
+                    totalSettled = totalSettled.add(debt.getPenaltyFee());
+                }
+                parkingExceptionRepository.save(debt);
+            }
+
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("settledCount", debts.size());
+            responseData.put("totalSettled", totalSettled);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Đã xác nhận thu " + debts.size() + " khoản nợ, tổng " + totalSettled + " VNĐ",
+                    "data", responseData
+            ));
+        } catch (Exception e) {
+            log.error("Error settling debt: ", e);
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }

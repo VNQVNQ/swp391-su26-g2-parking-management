@@ -101,8 +101,9 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
                      || session?.ticketType === 'Monthly';
 
   const TYPES = [
-    { value: 'LOST_TICKET', label: '🎫 Mất vé',    color: '#f59e0b' },
-    { value: 'WRONG_ZONE',  label: '📍 Sai vị trí', color: '#8b5cf6' },
+    { value: 'LOST_TICKET',  label: '🎫 Mất vé',      color: '#f59e0b' },
+    { value: 'WRONG_ZONE',   label: '📍 Sai vị trí',   color: '#8b5cf6' },
+    { value: 'UNPAID_EXIT',  label: '💰 Thiếu tiền',  color: '#ef4444' },
   ];
 
   // Normalize vehicleType sang UPPERCASE enum value
@@ -178,7 +179,12 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
   const handleTypeChange = (newType) => {
     if (appliedTypes.includes(newType)) return;
     setType(newType);
-    fetchPenaltyFee(newType);
+    if (newType === 'UNPAID_EXIT') {
+      setPenaltyFee('');
+      setPenaltySrc('none');
+    } else {
+      fetchPenaltyFee(newType);
+    }
   };
 
   const handleSubmit = async () => {
@@ -287,7 +293,7 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
               <span>💡 Hệ thống đã tự động tính phí đỗ quá giờ. Xử lý ngoại lệ tại quầy chỉ gồm: <b>Mất vé/thẻ</b> và <b>Đỗ sai vị trí</b>.</span>
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Loại ngoại lệ</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
               {TYPES.map(t => {
                 const isApplied = appliedTypes.includes(t.value);
                 const isSelected = type === t.value && !isApplied;
@@ -314,30 +320,49 @@ function ExceptionPanel({ session, onClose, onPenaltyApplied, initialType, initi
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Phí phạt áp dụng (VNĐ)
+                  {type === 'UNPAID_EXIT' ? 'Số tiền còn thiếu (VNĐ)' : 'Phí phạt áp dụng (VNĐ)'}
                 </p>
-                {loadingFee ? (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>⏳ Đang tra cứu...</span>
+                {type === 'UNPAID_EXIT' ? (
+                    <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 600 }}>✍️ Nhập thủ công</span>
+                ) : loadingFee ? (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>⏳ Đang tra cứu...</span>
                 ) : penaltyFee && Number(penaltyFee) > 0 ? (
-                  <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(16,185,129,0.12)', color: '#10b981', fontWeight: 600 }}>
-                    ✓ Tự động theo Admin
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Chưa có cấu hình (0 VNĐ)</span>
-                )}
+                    <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(16,185,129,0.12)', color: '#10b981', fontWeight: 600 }}>
+                      ✓ Tự động theo Admin
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Chưa có cấu hình (0 VNĐ)</span>
+                  )}
               </div>
-              <input
-                type="text"
-                readOnly
-                disabled
-                value={loadingFee ? 'Đang tải...' : penaltyFee && Number(penaltyFee) > 0 ? `${Number(penaltyFee).toLocaleString('vi-VN')} VNĐ` : '0 VNĐ (Chưa cấu hình)'}
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 10,
-                  border: penaltyFee && Number(penaltyFee) > 0 ? '1.5px solid rgba(16,185,129,0.5)' : '1px solid var(--border-color)',
-                  background: penaltyFee && Number(penaltyFee) > 0 ? 'rgba(16,185,129,0.06)' : 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem',
-                  fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box', outline: 'none', cursor: 'not-allowed' }}
-              />
+              {type === 'UNPAID_EXIT' ? (
+                  <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={penaltyFee}
+                      onChange={e => setPenaltyFee(e.target.value)}
+                      placeholder="Nhập số tiền khách còn nợ..."
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: 10,
+                        border: '1.5px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.05)',
+                        color: 'var(--text-primary)', fontSize: '1rem', fontFamily: 'monospace', fontWeight: 700,
+                        boxSizing: 'border-box', outline: 'none' }}
+                  />
+              ) : (
+                  <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={loadingFee ? 'Đang tải...' : penaltyFee && Number(penaltyFee) > 0 ? `${Number(penaltyFee).toLocaleString('vi-VN')} VNĐ` : '0 VNĐ (Chưa cấu hình)'}
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: 10,
+                        border: penaltyFee && Number(penaltyFee) > 0 ? '1.5px solid rgba(16,185,129,0.5)' : '1px solid var(--border-color)',
+                        background: penaltyFee && Number(penaltyFee) > 0 ? 'rgba(16,185,129,0.06)' : 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '1rem',
+                        fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box', outline: 'none', cursor: 'not-allowed' }}
+                  />
+              )}
               <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 5 }}>
-                💡 Mức phí phạt được tra cứu và áp dụng tự động theo bảng cấu hình của Admin (không nhập thủ công)
+                {type === 'UNPAID_EXIT'
+                    ? '⚠️ Ghi nhận nợ — xe sẽ bị chặn vào lại lần sau cho tới khi thanh toán đủ.'
+                    : '💡 Mức phí phạt được tra cứu và áp dụng tự động theo bảng cấu hình của Admin (không nhập thủ công)'}
               </p>
             </div>
 
@@ -710,16 +735,33 @@ export default function VehicleExit() {
     setStep('info');
   };
 
+  const handleSkipViolation = async () => {
+    if (pendingWrongZoneList.length === 0) return;
+    try {
+      await Promise.all(pendingWrongZoneList.map(ex =>
+          api.put(`/api/v1/exceptions/${ex.id}/resolve`, {
+            resolution: 'Bỏ qua bởi nhân viên — không áp dụng phí phạt',
+            status: 'REJECTED',
+          })
+      ));
+      const exRes = await api.get('/api/v1/exceptions', { params: { sessionId: selectedSession.id } });
+      setSessionExceptions(exRes.data?.data || []);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không thể bỏ qua vi phạm. Thử lại.');
+    }
+  };
+
   const handleConfirmPayment = async () => {
     setError(''); setProcessing(true);
     try {
       const slotId = selectedSession.slotId || selectedSession.slot?.id;
+      const pendingDebt = sessionExceptions.find(ex => ex.exceptionType === 'UNPAID_EXIT' && ex.status === 'PENDING');
       await exitSession(selectedSession.id, slotId);
-      if (feeInfo?.totalFee > 0) {
+      if (!pendingDebt && feeInfo?.totalFee > 0) {
         await processPayment(selectedSession.id, feeInfo.totalFee, payMethod);
       }
       setReceiptId(String(Math.floor(Math.random() * 90000000 + 10000000)));
-      setExitResult({ session: selectedSession, fee: feeInfo, payMethod });
+      setExitResult({ session: selectedSession, fee: feeInfo, payMethod, skippedPayment: !!pendingDebt });
       setSessions(prev => prev.filter(s => s.id !== selectedSession.id));
       setStep('done');
     } catch (err) {
@@ -966,20 +1008,31 @@ export default function VehicleExit() {
                 <span style={{ fontSize: '0.84rem', color: '#ef4444', fontWeight: 600 }}>
                   👉 Vui lòng xử lý phụ phí vi phạm sai vị trí trước khi cho xe ra bãi!
                 </span>
-                <button
-                  onClick={() => {
-                    setExceptionInitialType('WRONG_ZONE');
-                    setExceptionInitialNotes(pendingWrongZoneList[0]?.reason || 'Xử lý vi phạm sai vị trí');
-                    setShowException(true);
-                  }}
-                  style={{
-                    padding: '10px 20px', background: '#ef4444', border: 'none', borderRadius: 10,
-                    color: '#fff', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 14px rgba(239,68,68,0.35)'
-                  }}
-                >
-                  <AlertTriangle size={16} /> Xử lý vi phạm ngay
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                      onClick={handleSkipViolation}
+                      style={{
+                        padding: '10px 16px', background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 10,
+                        color: '#ef4444', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+                      }}
+                  >
+                    Bỏ qua vi phạm này
+                  </button>
+                  <button
+                      onClick={() => {
+                        setExceptionInitialType('WRONG_ZONE');
+                        setExceptionInitialNotes(pendingWrongZoneList[0]?.reason || 'Xử lý vi phạm sai vị trí');
+                        setShowException(true);
+                      }}
+                      style={{
+                        padding: '10px 20px', background: '#ef4444', border: 'none', borderRadius: 10,
+                        color: '#fff', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 14px rgba(239,68,68,0.35)'
+                      }}
+                  >
+                    <AlertTriangle size={16} /> Xử lý vi phạm ngay
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1101,15 +1154,31 @@ export default function VehicleExit() {
               <span style={{ marginLeft: 'auto', fontSize: '0.7rem', padding: '3px 8px', background: 'rgba(16,185,129,0.15)', color: '#10b981', borderRadius: 12, fontWeight: 600 }}>🔐 Đã xác thực</span>
             </div>
 
-            <div style={{ textAlign: 'center', marginBottom: 28, padding: '20px', background: 'var(--bg-secondary)', borderRadius: 16 }}>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Tổng phí cần thanh toán</p>
-              <p style={{ fontWeight: 900, fontSize: '3rem', color: 'var(--accent-primary)', letterSpacing: '-2px', lineHeight: 1 }}>
-                ₫{(feeInfo?.totalFee || 0).toLocaleString('vi-VN')}
-              </p>
-              {feeInfo?.durationMinutes && (
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 6 }}>{feeInfo.durationMinutes} phút đỗ xe</p>
-              )}
-            </div>
+            {(() => {
+              const pendingDebt = sessionExceptions.find(ex => ex.exceptionType === 'UNPAID_EXIT' && ex.status === 'PENDING');
+              return pendingDebt ? (
+                  <div style={{ textAlign: 'center', marginBottom: 28, padding: '20px', background: 'rgba(139,92,246,0.08)', border: '1.5px solid rgba(139,92,246,0.3)', borderRadius: 16 }}>
+                    <p style={{ fontSize: '1.6rem', marginBottom: 6 }}>💰</p>
+                    <p style={{ fontWeight: 700, fontSize: '1rem', color: '#8b5cf6', marginBottom: 6 }}>Đã ghi nhận nợ phí — không cần thu tiền lúc này</p>
+                    <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#8b5cf6', marginBottom: 8 }}>
+                      ₫{Number(pendingDebt.penaltyFee || 0).toLocaleString('vi-VN')}
+                    </p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      ⚠️ Nhắc khách hàng thanh toán khoản nợ này — xe sẽ <strong>không được vào bãi ở lần đỗ tiếp theo</strong> cho tới khi thanh toán đủ.
+                    </p>
+                  </div>
+              ) : (
+                  <div style={{ textAlign: 'center', marginBottom: 28, padding: '20px', background: 'var(--bg-secondary)', borderRadius: 16 }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Tổng phí cần thanh toán</p>
+                    <p style={{ fontWeight: 900, fontSize: '3rem', color: 'var(--accent-primary)', letterSpacing: '-2px', lineHeight: 1 }}>
+                      ₫{(feeInfo?.totalFee || 0).toLocaleString('vi-VN')}
+                    </p>
+                    {feeInfo?.durationMinutes && (
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 6 }}>{feeInfo.durationMinutes} phút đỗ xe</p>
+                    )}
+                  </div>
+              );
+            })()}
 
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Phương thức thanh toán</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
@@ -1211,26 +1280,34 @@ export default function VehicleExit() {
 
       {/* ── MODAL: NGOẠI LỆ ── */}
       {showException && (
-        <ExceptionPanel 
-          session={selectedSession} 
-          onClose={async () => {
-            setShowException(false);
-            if (selectedSession) {
-              try {
-                const fee = await calculateFee(selectedSession.id);
-                setFeeInfo(fee);
-              } catch (err) {}
-            }
-          }}
-          onPenaltyApplied={async (penaltyFee) => {
-            if (selectedSession) {
-              try {
-                const fee = await calculateFee(selectedSession.id);
-                setFeeInfo(fee);
-              } catch (err) {}
-            }
-          }}
-        />
+          <ExceptionPanel
+              session={selectedSession}
+              onClose={async () => {
+                setShowException(false);
+                if (selectedSession) {
+                  try {
+                    const fee = await calculateFee(selectedSession.id);
+                    setFeeInfo(fee);
+                  } catch (err) {}
+                  try {
+                    const exRes = await api.get('/api/v1/exceptions', { params: { sessionId: selectedSession.id } });
+                    setSessionExceptions(exRes.data?.data || []);
+                  } catch (err) {}
+                }
+              }}
+              onPenaltyApplied={async (penaltyFee) => {
+                if (selectedSession) {
+                  try {
+                    const fee = await calculateFee(selectedSession.id);
+                    setFeeInfo(fee);
+                  } catch (err) {}
+                  try {
+                    const exRes = await api.get('/api/v1/exceptions', { params: { sessionId: selectedSession.id } });
+                    setSessionExceptions(exRes.data?.data || []);
+                  } catch (err) {}
+                }
+              }}
+          />
       )}
     </div>
   );
