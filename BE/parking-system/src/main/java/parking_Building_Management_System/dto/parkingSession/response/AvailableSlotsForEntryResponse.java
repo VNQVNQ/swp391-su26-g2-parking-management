@@ -19,7 +19,6 @@ import java.util.UUID;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AvailableSlotsForEntryResponse {
-    
     UUID slotId;
     String slotCode;
     UUID floorId;
@@ -28,10 +27,6 @@ public class AvailableSlotsForEntryResponse {
     String zoneCode;
     String zoneName;
     VehicleType vehicleType;
-    
-    /**
-     * Số slot còn trống trong zone
-     */
     Long availableCount;
     Long occupiedCount;
     Long totalSlots;

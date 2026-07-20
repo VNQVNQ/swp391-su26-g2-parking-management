@@ -17,11 +17,11 @@ public class ParkingSessionMapper {
      * Map ParkingSlot to AvailableSlotsForEntryResponse
      */
     public AvailableSlotsForEntryResponse toAvailableSlotResponse(
-            ParkingSlot slot, 
-            Long availableCount, 
-            Long occupiedCount, 
+            ParkingSlot slot,
+            Long availableCount,
+            Long occupiedCount,
             Long totalSlots) {
-        
+
         return AvailableSlotsForEntryResponse.builder()
                 .slotId(slot.getId())
                 .slotCode(slot.getSlotCode())
