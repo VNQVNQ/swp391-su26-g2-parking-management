@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { validateVehicle, getZones, getAvailableSlots, createSession } from '../../services/sessionApi';
 import { Car, Camera, Check, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Info, RefreshCw } from 'lucide-react';
 import useFaceApi, { saveFaceDescriptor } from '../../hooks/useFaceApi';
+import api from '../../services/api';
 
 const STEPS = [
   { num: 1, label: 'Thông tin xe'  },
@@ -26,6 +27,7 @@ export default function VehicleEntry() {
   const [sessionResult,  setSessionResult]  = useState(null);
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState('');
+  const [debtInfo, setDebtInfo] = useState(null);
   const [camError,       setCamError]       = useState('');
 
   // Face-step states
@@ -108,7 +110,7 @@ export default function VehicleEntry() {
   // ── Step 1: Validate biển số ──────────────────────────────────────────────
   const handleValidate = async () => {
     if (!plate.trim()) { setError('Vui lòng nhập biển số xe'); return; }
-    setError(''); setLoading(true);
+    setError(''); setDebtInfo(null); setLoading(true);
     try {
       const cleanPlate = plate.trim().toUpperCase();
       const plateRegex = /^[0-9]{2}[A-Z]{1,2}[0-9]?-[0-9]{4,5}$/;
@@ -122,8 +124,13 @@ export default function VehicleEntry() {
           setError('Xe đã có trong hệ thống (đang đỗ trong bãi) — không thể tiếp tục cho xe vào');
           return;
         }
-        if (result.errorCode === 'UNPAID_FEE') {
-          setError('Xe còn nợ phí — không thể vào bãi (BR-03)');
+        if (result.errorCode === 'VEHICLE_BLACKLISTED') {
+          setError(`🚫 XE TRONG DANH SÁCH ĐEN — ${result.unpaidDebtCount} khoản nợ chưa thanh toán, tổng ₫${Number(result.totalUnpaidAmount || 0).toLocaleString('vi-VN')}. Không được phép vào bãi.`);
+          return;
+        }
+        if (result.errorCode === 'VEHICLE_HAS_UNPAID_DEBT') {
+          setError(`⚠️ Xe còn nợ phí lần trước: ₫${Number(result.totalUnpaidAmount || 0).toLocaleString('vi-VN')}`);
+          setDebtInfo({ vehicleId: result.vehicleId, totalUnpaidAmount: result.totalUnpaidAmount, unpaidDebtCount: result.unpaidDebtCount });
           return;
         }
         setError(result.message || 'Xe không đủ điều kiện vào bãi');
@@ -133,13 +140,19 @@ export default function VehicleEntry() {
       setStep(2);
     } catch (err) {
       const errCode = err?.response?.data?.data?.errorCode || err?.response?.data?.errorCode;
+      const errData = err?.response?.data?.data || err?.response?.data || {};
       const errMsg = err?.response?.data?.message || err?.message || '';
       if (errCode === 'VEHICLE_ALREADY_IN_PARKING' || errMsg.includes('ở trong bãi') || errMsg.includes('Parking Session hoạt động')) {
         setError('Xe đã có trong hệ thống (đang đỗ trong bãi) — không thể tiếp tục cho xe vào');
         return;
       }
-      if (errCode === 'UNPAID_FEE') {
-        setError('Xe còn nợ phí — không thể vào bãi (BR-03)');
+      if (errCode === 'VEHICLE_BLACKLISTED') {
+        setError(`🚫 XE TRONG DANH SÁCH ĐEN — ${errData.unpaidDebtCount || 0} khoản nợ chưa thanh toán, tổng ₫${Number(errData.totalUnpaidAmount || 0).toLocaleString('vi-VN')}. Không được phép vào bãi.`);
+        return;
+      }
+      if (errCode === 'VEHICLE_HAS_UNPAID_DEBT') {
+        setError(`⚠️ Xe còn nợ phí lần trước: ₫${Number(errData.totalUnpaidAmount || 0).toLocaleString('vi-VN')}`);
+        setDebtInfo({ vehicleId: errData.vehicleId, totalUnpaidAmount: errData.totalUnpaidAmount, unpaidDebtCount: errData.unpaidDebtCount });
         return;
       }
       if (err?.response?.status === 400 && errMsg) {
@@ -149,6 +162,21 @@ export default function VehicleEntry() {
       setVehicleInfo({ valid: true, licensePlate: plate.trim(), foundVehicle: false });
       setStep(2);
     } finally { setLoading(false); }
+  };
+
+  const handleSettleDebt = async () => {
+    if (!debtInfo?.vehicleId) return;
+    setLoading(true);
+    try {
+      await api.post('/api/v1/exceptions/settle-debt', { vehicleId: debtInfo.vehicleId });
+      setDebtInfo(null);
+      setError('');
+      await handleValidate();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Không thể xác nhận thu nợ. Thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Step 2: Chọn zone ─────────────────────────────────────────────────────
@@ -254,9 +282,16 @@ export default function VehicleEntry() {
             <div className="card animate-slide-up">
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 24, color: 'var(--text-primary)' }}>1. Nhập thông tin xe</h3>
               {error && (
-                <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <AlertCircle size={18} /><span>{error}</span>
-                </div>
+                  <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 10, marginBottom: debtInfo ? 10 : 20 }}>
+                    <AlertCircle size={18} /><span>{error}</span>
+                  </div>
+              )}
+
+              {debtInfo && (
+                  <button onClick={handleSettleDebt} disabled={loading}
+                          style={{ width: '100%', padding: '12px 16px', marginBottom: 20, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 8, color: '#10b981', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: '0.92rem' }}>
+                    {loading ? <span className="spinner" /> : <>💰 Thu nợ & Cho vào (₫{Number(debtInfo.totalUnpaidAmount || 0).toLocaleString('vi-VN')})</>}
+                  </button>
               )}
               <div className="form-group" style={{ marginBottom: 32 }}>
                 <label className="form-label" style={{ fontSize: '0.95rem' }}>Biển số xe <span style={{ color: '#ef4444' }}>*</span></label>

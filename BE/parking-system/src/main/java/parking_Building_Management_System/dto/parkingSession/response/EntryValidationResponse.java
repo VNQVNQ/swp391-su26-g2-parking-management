@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 /**
  * DTO for validation response before creating parking session
@@ -44,5 +45,11 @@ public class EntryValidationResponse {
 
     // Nếu có vấn đề
     String errorCode;
+
+    // BR-03: Unpaid debt check
+    BigDecimal totalUnpaidAmount;
+    int unpaidDebtCount;
+    boolean isBlacklisted;
 }
+
 
