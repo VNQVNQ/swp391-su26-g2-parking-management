@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Car, Shield, BarChart3, Clock, MapPin, CreditCard, ChevronRight, CheckCircle, Star, Zap, Users, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const FEATURES = [
   {
@@ -76,14 +78,34 @@ const STEPS = [
   },
 ];
 
-const STATS = [
-  { value: '220+', label: 'Chỗ đỗ xe', icon: MapPin, color: '#4f46e5' },
-  { value: '3', label: 'Tầng đỗ xe', icon: TrendingUp, color: '#10b981' },
-  { value: '6', label: 'Khu vực', icon: Shield, color: '#f59e0b' },
-  { value: '24/7', label: 'Hoạt động', icon: Clock, color: '#8b5cf6' },
+const DEFAULT_STATS = [
+  { id: 'slots', value: '220+', label: 'Chỗ đỗ xe', icon: MapPin, color: '#4f46e5' },
+  { id: 'floors', value: '3', label: 'Tầng đỗ xe', icon: TrendingUp, color: '#10b981' },
+  { id: 'zones', value: '6', label: 'Khu vực', icon: Shield, color: '#f59e0b' },
+  { id: 'uptime', value: '24/7', label: 'Hoạt động', icon: Clock, color: '#8b5cf6' },
 ];
 
 export default function LandingPage() {
+  const [statsData, setStatsData] = useState(DEFAULT_STATS);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await axios.get('http://localhost:8080/api/v1/public/stats');
+        const { totalFloors, totalZones, totalSlots } = response.data;
+        setStatsData([
+          { id: 'slots', value: `${totalSlots}+`, label: 'Chỗ đỗ xe', icon: MapPin, color: '#4f46e5' },
+          { id: 'floors', value: `${totalFloors}`, label: 'Tầng đỗ xe', icon: TrendingUp, color: '#10b981' },
+          { id: 'zones', value: `${totalZones}`, label: 'Khu vực', icon: Shield, color: '#f59e0b' },
+          { id: 'uptime', value: '24/7', label: 'Hoạt động', icon: Clock, color: '#8b5cf6' },
+        ]);
+      } catch (err) {
+        console.error('Failed to fetch public stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a', fontFamily: "'Inter', sans-serif", overflowX: 'hidden' }}>
 
@@ -241,10 +263,10 @@ export default function LandingPage() {
       {/* ── STATS ── */}
       <section style={{ padding: '60px 5%', background: '#f8fafc', borderTop: '1px solid rgba(0,0,0,0.05)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32 }}>
-          {STATS.map((s, i) => {
+          {statsData.map((s) => {
             const Icon = s.icon;
             return (
-              <div key={i} style={{ textAlign: 'center', padding: '32px 20px', background: '#ffffff', borderRadius: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.03)' }}>
+              <div key={s.id} style={{ textAlign: 'center', padding: '32px 20px', background: '#ffffff', borderRadius: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.03)' }}>
                 <div style={{
                   width: 56, height: 56, borderRadius: 16,
                   background: `linear-gradient(135deg, ${s.color}15, ${s.color}05)`,

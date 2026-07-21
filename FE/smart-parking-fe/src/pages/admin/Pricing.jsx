@@ -1,4 +1,4 @@
-import { DollarSign, Clock, Settings, Shield, Plus, X, AlertTriangle, Trash2, Edit2 } from 'lucide-react';
+import { DollarSign, Clock, Settings, Shield, Plus, X, AlertTriangle, Trash2, Edit2, Car, Bike, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useParkingStore } from '../../store/parkingStore';
 import api from '../../services/api';
@@ -145,10 +145,15 @@ function PenaltySection() {
               {activePenalties.map(p => (
                 <tr key={p.id}>
                   <td>
-                    <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700,
+                    <span style={{ 
+                      display: 'inline-flex', alignItems: 'center', gap: '6px', 
+                      padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600,
                       background: p.exceptionType === 'WRONG_SPOT' || p.exceptionType === 'OVERSTAY' ? 'rgba(139,92,246,0.12)' : (p.vehicleType === 'CAR' ? 'rgba(59,130,246,0.12)' : p.vehicleType === 'MOTORBIKE' ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'),
                       color: p.exceptionType === 'WRONG_SPOT' || p.exceptionType === 'OVERSTAY' ? '#8b5cf6' : (p.vehicleType === 'CAR' ? '#3b82f6' : p.vehicleType === 'MOTORBIKE' ? '#10b981' : '#f59e0b'),
                     }}>
+                      {p.vehicleType === 'CAR' && <Car size={14} />}
+                      {p.vehicleType === 'MOTORBIKE' && <Bike size={14} />}
+                      {p.vehicleType === 'TRUCK' && <Truck size={14} />}
                       {VEHICLE_TYPE_LABELS[p.vehicleType] || p.vehicleType}
                     </span>
                   </td>
@@ -403,7 +408,19 @@ export default function Pricing() {
               return (
               <tr key={p.id}>
                 <td style={{ fontWeight: 600 }}>{p.name}</td>
-                <td>{VEHICLE_TYPE_LABELS[vType] || p.vehicleType}</td>
+                <td>
+                  <span style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: '6px', 
+                    padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 600,
+                    background: vType === 'CAR' ? 'rgba(59,130,246,0.1)' : vType === 'MOTORBIKE' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                    color: vType === 'CAR' ? '#3b82f6' : vType === 'MOTORBIKE' ? '#10b981' : '#f59e0b'
+                  }}>
+                    {vType === 'CAR' && <Car size={14} />}
+                    {vType === 'MOTORBIKE' && <Bike size={14} />}
+                    {vType === 'TRUCK' && <Truck size={14} />}
+                    {VEHICLE_TYPE_LABELS[vType] || p.vehicleType}
+                  </span>
+                </td>
                 <td>
                   {tType === 'MONTHLY' ? (
                     <>

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
   LayoutDashboard, LogIn, LogOut, Search,
   DollarSign, CalendarCheck, AlertTriangle,
   BarChart3, Settings as SettingsIcon,
   ChevronLeft, ChevronRight, Car, Power,
-  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket, History, SquareParking,
+  BookOpen, MapPin, Calendar, Building2, Grid3x3, Ticket, History, SquareParking, Layers, UserCircle,
 } from 'lucide-react';
 
 // ── Role-based navigation items ──────────────────────────────────────────────
 const navItems = [
+  // ALL (Shared)
   // ADMIN (System Administrator)
   { to: '/admin/dashboard', label: 'Tổng quan',  icon: LayoutDashboard, roles: ['ADMIN'], group: 'MAIN' },
   { to: '/admin/pricing',   label: 'Bảng giá',    icon: DollarSign,      roles: ['ADMIN'], group: 'MANAGEMENT' },
@@ -19,6 +20,7 @@ const navItems = [
   // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
   { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'], group: 'MAIN' },
   { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
+  { to: '/building-overview',       label: 'Mặt cắt tòa nhà',      icon: Layers,          roles: ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF'], group: 'MONITOR' },
   { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: Search,       roles: ['PARKING_MANAGER'], group: 'MONITOR' },
@@ -58,6 +60,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }: any) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const displayName = user?.fullName || user?.name || 'User';
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
@@ -162,7 +165,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
       {/* Footer */}
       <div className="sidebar-footer">
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="user-card hover-lift" style={{ padding: '4px' }}>
+          <div className="user-card hover-lift" onClick={() => navigate('/profile')} style={{ padding: '4px', cursor: 'pointer' }} title="Xem hồ sơ cá nhân">
             <div className="user-avatar">{initials}</div>
             <div className="user-info">
               <h4 style={{ color: '#f1f5f9' }}>{displayName}</h4>

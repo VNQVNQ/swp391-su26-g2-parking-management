@@ -63,6 +63,8 @@ export default function ManageZones() {
   const [zones, setZones] = useState([]);
   const [floors, setFloors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterFloor, setFilterFloor] = useState(floorIdFromUrl);
@@ -87,6 +89,10 @@ export default function ManageZones() {
     setFilterFloor(floorIdFromUrl);
     if (floorIdFromUrl) setForm(f => ({ ...f, floorId: floorIdFromUrl }));
   }, [floorIdFromUrl]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterFloor, filterVehicleType]);
 
   const loadData = async () => {
     setLoading(true);
@@ -167,6 +173,9 @@ export default function ManageZones() {
     return matchSearch && matchFloor && matchVehicleType;
   });
 
+  const totalPages = Math.ceil(filteredZones.length / PAGE_SIZE) || 1;
+  const pagedZones = filteredZones.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   // Occupancy per zone
   const getOccupancy = (zone) => {
     const total = zone.totalSlots || 0;
@@ -203,10 +212,6 @@ export default function ManageZones() {
           <h2>📍 Quản lý Khu vực</h2>
           <p>Tạo, sửa, xóa các phân khu — click vào khu vực để xem chỗ đỗ</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(true)}
-          style={{ padding: '10px 20px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-          <Plus size={16} /> Thêm khu vực
-        </button>
       </div>
 
       {/* Stats */}
@@ -237,25 +242,38 @@ export default function ManageZones() {
 
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
 
-      {/* Filter bar - compact single row */}
-      <div className="card" style={{ padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input type="text" className="form-input" placeholder="Tìm tên khu vực..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: 36, width: '100%', padding: '8px 12px 8px 36px' }} />
+      {/* Filter bar */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', flex: 2, minWidth: '400px' }}>
+          <div className="form-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
+            <Search className="input-icon" size={18} />
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Tìm tên khu vực..."
+              style={{ padding: '10px 14px 10px 40px', width: '100%' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select className="form-select" value={filterFloor}
+            onChange={e => { setFilterFloor(e.target.value); setSearchParams(e.target.value ? { floorId: e.target.value } : {}); }}
+            style={{ minWidth: 160, padding: '10px 14px' }}>
+            <option value="">Tất cả tầng</option>
+            {floors.map(floor => <option key={floor.id} value={floor.id}>Tầng {floor.levelNumber}: {floor.name}</option>)}
+          </select>
+          <select className="form-select" value={filterVehicleType} onChange={e => setFilterVehicleType(e.target.value)} style={{ minWidth: 140, padding: '10px 14px' }}>
+            <option value="">Tất cả loại xe</option>
+            {VEHICLE_TYPES.map(type => <option key={type} value={type}>{vehicleTypeLabel(type)}</option>)}
+          </select>
         </div>
-        <select className="form-select" value={filterFloor}
-          onChange={e => { setFilterFloor(e.target.value); setSearchParams(e.target.value ? { floorId: e.target.value } : {}); }}
-          style={{ minWidth: 160, padding: '8px 12px' }}>
-          <option value="">Tất cả tầng</option>
-          {floors.map(floor => <option key={floor.id} value={floor.id}>Tầng {floor.levelNumber}: {floor.name}</option>)}
-        </select>
-        <select className="form-select" value={filterVehicleType} onChange={e => setFilterVehicleType(e.target.value)} style={{ minWidth: 140, padding: '8px 12px' }}>
-          <option value="">Tất cả loại xe</option>
-          {VEHICLE_TYPES.map(type => <option key={type} value={type}>{vehicleTypeLabel(type)}</option>)}
-        </select>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{filteredZones.length}/{zones.length} khu vực</span>
+        
+        <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <button onClick={() => setShowForm(true)}
+            style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', color: '#fff', boxShadow: '0 4px 12px rgba(79,70,229,0.3)', whiteSpace: 'nowrap' }}>
+            <Plus size={16} /> Thêm khu vực
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -287,7 +305,7 @@ export default function ManageZones() {
               </tr>
             </thead>
             <tbody>
-              {filteredZones.map(zone => {
+              {pagedZones.map(zone => {
                 const vts = vehicleTypeStyle(zone.vehicleType);
                 const occ = getOccupancy(zone);
                 const barColor = occ.pct > 80 ? '#ef4444' : occ.pct > 60 ? '#f59e0b' : '#10b981';
@@ -335,6 +353,18 @@ export default function ManageZones() {
               })}
             </tbody>
           </table>
+          
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+              <button className="btn-sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', padding: '6px 12px', opacity: currentPage === 1 ? 0.5 : 1 }}>Trước</button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, padding: '6px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 6 }}>
+                Trang {currentPage} / {totalPages}
+              </span>
+              <button className="btn-sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', padding: '6px 12px', opacity: currentPage === totalPages ? 0.5 : 1 }}>Sau</button>
+            </div>
+          )}
         </div>
       )}
 

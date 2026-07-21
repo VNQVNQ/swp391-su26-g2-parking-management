@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Search, Grid3x3, List, Car, Bike, AlertTriangle, Layers, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, Grid3x3, List, Car, Bike, AlertTriangle, Layers, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { compareSlotCodes } from '../../utils/slotHelper';
@@ -110,6 +110,12 @@ export default function ManageParkingSlots() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, slotCode }
   const [exceptionConfirmed, setExceptionConfirmed] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterZone, filterStatus]);
 
   // Bulk Create State
   const [showBulkForm, setShowBulkForm] = useState(false);
@@ -228,6 +234,9 @@ export default function ManageParkingSlots() {
     return matchSearch && matchZone && matchStatus;
   }).sort(compareSlotCodes);
 
+  const totalPages = Math.ceil(filteredSlots.length / PAGE_SIZE) || 1;
+  const pagedSlots = filteredSlots.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   // Stats
   const available = slots.filter(s => s.maintenanceStatus === 'AVAILABLE' && !s.currentSessionId).length;
   const occupied = slots.filter(s => !!s.currentSessionId).length;
@@ -262,32 +271,11 @@ export default function ManageParkingSlots() {
         {!currentZone && <><ChevronRight size={14} /><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Tất cả Chỗ đỗ</span></>}
       </div>
 
-      {/* Header + action buttons */}
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: 12 }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <h2>🅿️ Quản lý Chỗ đỗ</h2>
           <p>Tạo, sửa, xóa và quản lý trạng thái từng ô đỗ xe</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* View toggle */}
-          <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 8, padding: 3, border: '1px solid var(--border-color)' }}>
-            <button onClick={() => setViewMode('table')}
-              style={{ padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s', background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent', color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: viewMode === 'table' ? 'var(--shadow-sm)' : 'none' }}>
-              <List size={14} /> Bảng
-            </button>
-            <button onClick={() => setViewMode('grid')}
-              style={{ padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s', background: viewMode === 'grid' ? 'var(--bg-card)' : 'transparent', color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: viewMode === 'grid' ? 'var(--shadow-sm)' : 'none' }}>
-              <Grid3x3 size={14} /> Sơ đồ
-            </button>
-          </div>
-          <button className="btn-primary" onClick={() => { setShowBulkForm(true); setBulkResult(null); }}
-            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', whiteSpace: 'nowrap' }}>
-            <Layers size={15} /> Tạo hàng loạt
-          </button>
-          <button className="btn-primary" onClick={() => setShowForm(true)}
-            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-            <Plus size={15} /> Thêm chỗ đỗ
-          </button>
         </div>
       </div>
 
@@ -337,24 +325,49 @@ export default function ManageParkingSlots() {
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
 
       {/* Filter bar */}
-      <div className="card" style={{ padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input type="text" className="form-input" placeholder="Tìm theo mã chỗ đỗ..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: 36, width: '100%', padding: '8px 12px 8px 36px' }} />
+      <div className="card" style={{ padding: '16px 20px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', flex: 2, minWidth: '400px' }}>
+          <div className="form-input-wrapper" style={{ flex: 1, minWidth: '200px' }}>
+            <Search className="input-icon" size={18} />
+            <input type="text" className="form-input" placeholder="Tìm mã chỗ đỗ..." style={{ padding: '10px 14px 10px 40px', width: '100%' }}
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <select className="form-select" value={filterZone}
+            onChange={e => { setFilterZone(e.target.value); setSearchParams(e.target.value ? { zoneId: e.target.value } : {}); }}
+            style={{ minWidth: 160, padding: '10px 14px' }}>
+            <option value="">Tất cả khu vực</option>
+            {zones.map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+          </select>
+          <select className="form-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ minWidth: 140, padding: '10px 14px' }}>
+            <option value="">Tất cả trạng thái</option>
+            {MAINTENANCE_STATUS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
+          </select>
         </div>
-        <select className="form-select" value={filterZone}
-          onChange={e => { setFilterZone(e.target.value); setSearchParams(e.target.value ? { zoneId: e.target.value } : {}); }}
-          style={{ minWidth: 160, padding: '8px 12px' }}>
-          <option value="">Tất cả khu vực</option>
-          {zones.map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
-        </select>
-        <select className="form-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ minWidth: 140, padding: '8px 12px' }}>
-          <option value="">Tất cả trạng thái</option>
-          {MAINTENANCE_STATUS.map(status => <option key={status} value={status}>{statusLabel(status)}</option>)}
-        </select>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{filteredSlots.length}/{slots.length} chỗ</span>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* View toggle */}
+          <div style={{ display: 'flex', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <button onClick={() => setViewMode('table')}
+              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: viewMode === 'table' ? '#fff' : 'transparent', color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: viewMode === 'table' ? 'var(--shadow-sm)' : 'none' }}>
+              <List size={16} /> Bảng
+            </button>
+            <button onClick={() => setViewMode('grid')}
+              style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: viewMode === 'grid' ? '#fff' : 'transparent', color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-muted)', boxShadow: viewMode === 'grid' ? 'var(--shadow-sm)' : 'none' }}>
+              <Grid3x3 size={16} /> Sơ đồ
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+            <button onClick={() => { setShowBulkForm(true); setBulkResult(null); }}
+              style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: 'transparent', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+              <Layers size={16} /> Tạo hàng loạt
+            </button>
+            <button onClick={() => setShowForm(true)}
+              style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', color: '#fff', boxShadow: '0 4px 12px rgba(79,70,229,0.3)', whiteSpace: 'nowrap' }}>
+              <Plus size={16} /> Thêm chỗ đỗ
+            </button>
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -375,6 +388,55 @@ export default function ManageParkingSlots() {
       ) : viewMode === 'table' ? (
         /* ═══ TABLE VIEW ═══ */
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Pagination Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 20px',
+            borderBottom: '1px solid var(--border-color)',
+            background: 'var(--bg-secondary)',
+          }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              Tổng <strong style={{ color: 'var(--text-primary)' }}>{filteredSlots.length}</strong> chỗ đỗ — Trang <strong style={{ color: 'var(--accent-primary)' }}>{currentPage}</strong>/{totalPages}
+            </span>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-color)', background: 'transparent', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                  .reduce((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) => p === '...' ? (
+                    <span key={`ell-${idx}`} style={{ padding: '0 4px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>...</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${p === currentPage ? 'var(--accent-primary)' : 'var(--border-color)'}`, background: p === currentPage ? 'var(--accent-primary)' : 'transparent', color: p === currentPage ? '#fff' : 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: p === currentPage ? 700 : 400 }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border-color)', background: 'transparent', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
           <table className="data-table" style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -386,7 +448,7 @@ export default function ManageParkingSlots() {
               </tr>
             </thead>
             <tbody>
-              {filteredSlots.map(slot => {
+              {pagedSlots.map(slot => {
                 const hasActiveSession = !!slot.currentSessionId;
                 const stColor = statusColor(slot.maintenanceStatus);
                 return (

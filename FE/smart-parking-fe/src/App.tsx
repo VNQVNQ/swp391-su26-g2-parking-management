@@ -58,11 +58,15 @@ import MonthlyPass from "./pages/driver/MonthlyPass";
 // @ts-ignore
 import ManageFloors from "./pages/manager/ManageFloors";
 // @ts-ignore
+import BuildingOverview from "./pages/manager/BuildingOverview";
+// @ts-ignore
 import ManageZones from "./pages/manager/ManageZones";
 // @ts-ignore
 import ManageParkingSlots from "./pages/manager/ManageParkingSlots";
 // @ts-ignore
 import RevenueReport from "./pages/manager/RevenueReport";
+// @ts-ignore
+import Profile from "./pages/Profile";
 
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // FIX: Đọc từ cả role lẫn roleCode, normalize về uppercase
@@ -277,6 +281,14 @@ function AppShell() {
               }
             />
             <Route
+              path="/building-overview"
+              element={
+                <RoleRoute allowedRoles={["ADMIN", "PARKING_MANAGER", "PARKING_STAFF"]}>
+                  <BuildingOverview />
+                </RoleRoute>
+              }
+            />
+            <Route
               path="/PARKING_MANAGER/zones"
               element={
                 <RoleRoute allowedRoles={["PARKING_MANAGER"]}>
@@ -347,6 +359,15 @@ function AppShell() {
               element={
                 <RoleRoute allowedRoles={["PARKING_STAFF"]}>
                   <Exceptions />
+                </RoleRoute>
+              }
+            />
+
+            <Route
+              path="/profile"
+              element={
+                <RoleRoute allowedRoles={["ADMIN", "PARKING_MANAGER", "PARKING_STAFF", "DRIVER"]}>
+                  <Profile />
                 </RoleRoute>
               }
             />

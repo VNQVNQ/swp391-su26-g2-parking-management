@@ -143,10 +143,6 @@ export default function ManageFloors() {
           <h2>🏢 Quản lý Tầng</h2>
           <p>Tạo, sửa, xóa tầng đỗ xe — click vào tầng để xem khu vực</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(true)}
-          style={{ padding: '10px 20px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-          <Plus size={16} /> Thêm tầng mới
-        </button>
       </div>
 
       {/* Stats */}
@@ -170,6 +166,20 @@ export default function ManageFloors() {
 
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
 
+      {/* Filter bar */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '300px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Quản lý và xem danh sách các tầng của bãi đỗ xe</span>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <button onClick={() => setShowForm(true)}
+            style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', color: '#fff', boxShadow: '0 4px 12px rgba(79,70,229,0.3)', whiteSpace: 'nowrap' }}>
+            <Plus size={16} /> Thêm tầng mới
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
           <div style={{ width: 32, height: 32, border: '3px solid rgba(59,130,246,0.15)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
@@ -188,7 +198,6 @@ export default function ManageFloors() {
           <table className="data-table" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th>Tầng</th>
                 <th>Tên Tầng</th>
                 <th>Mô tả</th>
                 <th>Khu vực</th>
@@ -207,11 +216,6 @@ export default function ManageFloors() {
                     onClick={() => navigate(`/PARKING_MANAGER/zones?floorId=${floor.id}`)}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
-                    <td onClick={e => e.stopPropagation()} style={{ width: 90 }}>
-                      <span style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', padding: '4px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
-                        Tầng {floor.levelNumber}
-                      </span>
-                    </td>
                     <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {floor.name}

@@ -413,11 +413,11 @@ export default function Settings() {
               </div>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Email *</label>
-                <input style={inputSt} placeholder="email@parking.com" value={createForm.email} onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))} />
+                <input type="email" style={inputSt} placeholder="email@parking.com" value={createForm.email} onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))} autoComplete="off" />
               </div>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Số điện thoại *</label>
-                <input style={inputSt} placeholder="0901234567" value={createForm.phone} onChange={e => setCreateForm(p => ({ ...p, phone: e.target.value }))} />
+                <input type="tel" style={inputSt} placeholder="0901234567" value={createForm.phone} onChange={e => setCreateForm(p => ({ ...p, phone: e.target.value }))} autoComplete="new-password" />
               </div>
             </div>
 
@@ -425,7 +425,7 @@ export default function Settings() {
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Mật khẩu *</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={showCreatePassword ? 'text' : 'password'} style={inputSt} placeholder="Tối thiểu 6 ký tự" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} />
+                  <input type={showCreatePassword ? 'text' : 'password'} style={inputSt} placeholder="Tối thiểu 6 ký tự" value={createForm.password} onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))} autoComplete="new-password" />
                   <button type="button" onClick={() => setShowCreatePassword(!showCreatePassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
                     {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>

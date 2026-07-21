@@ -1,5 +1,6 @@
 import { LayoutGrid, List, Search, Filter, AlertTriangle, Info, CheckCircle2, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import { compareSlotCodes } from '../../utils/slotHelper';
 
@@ -58,9 +59,11 @@ export default function SlotManagement() {
   const [zonesData, setZonesData] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const location = useLocation();
   const [viewMode, setViewMode] = useState('grid');
   const [search, setSearch] = useState('');
   const [filterFloor, setFilterFloor] = useState('Tất cả tầng');
+  const [filterZone, setFilterZone] = useState('Tất cả khu vực');
   const [filterType, setFilterType] = useState('Tất cả loại xe');
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -100,6 +103,25 @@ export default function SlotManagement() {
         return { ...z, slots: zoneSlots };
       }).sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
       setZonesData(mappedZones);
+
+      // Parse query params to set initial filters
+      const params = new URLSearchParams(location.search);
+      const queryFloorId = params.get('floorId');
+      const queryZoneId = params.get('zoneId');
+      
+      if (queryZoneId) {
+        const targetZone = mappedZones.find(z => String(z.id) === queryZoneId);
+        if (targetZone) {
+          setFilterZone(targetZone.name);
+          if (targetZone.floorName) setFilterFloor(targetZone.floorName);
+        }
+      } else if (queryFloorId) {
+        const targetFloorZone = mappedZones.find(z => String(z.floor?.id || z.floorId) === queryFloorId);
+        if (targetFloorZone && targetFloorZone.floorName) {
+          setFilterFloor(targetFloorZone.floorName);
+        }
+      }
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -137,6 +159,7 @@ export default function SlotManagement() {
   const filteredZones = useMemo(() => {
     return zonesData.map(z => {
       if (filterFloor !== 'Tất cả tầng' && z.floorName !== filterFloor) return null;
+      if (filterZone !== 'Tất cả khu vực' && z.name !== filterZone) return null;
       
       const typeMap = {
         'Ô tô': 'CAR',
@@ -156,9 +179,10 @@ export default function SlotManagement() {
       if (filteredSlots.length === 0 && search) return null;
       return { ...z, slots: filteredSlots };
     }).filter(Boolean);
-  }, [zonesData, search, filterFloor, filterType]);
+  }, [zonesData, search, filterFloor, filterZone, filterType]);
 
-  const uniqueFloors = [...new Set(zonesData.map(z => z.floorName))];
+  const uniqueFloors = [...new Set(zonesData.map(z => z.floorName))].filter(Boolean);
+  const uniqueZones = [...new Set(zonesData.filter(z => filterFloor === 'Tất cả tầng' || z.floorName === filterFloor).map(z => z.name))].filter(Boolean);
 
   const handleSlotClick = (zone, slot) => {
     setSelectedSlot({ ...slot, zoneId: zone.id, zoneName: zone.name, floor: zone.floorName });
@@ -232,10 +256,16 @@ export default function SlotManagement() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select style={selectStyle} value={filterFloor} onChange={e => setFilterFloor(e.target.value)}>
+          <select style={selectStyle} value={filterFloor} onChange={e => { setFilterFloor(e.target.value); setFilterZone('Tất cả khu vực'); }}>
             <option>Tất cả tầng</option>
             {uniqueFloors.map(f => (
               <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <select style={selectStyle} value={filterZone} onChange={e => setFilterZone(e.target.value)}>
+            <option>Tất cả khu vực</option>
+            {uniqueZones.map(z => (
+              <option key={z} value={z}>{z}</option>
             ))}
           </select>
           <select style={selectStyle} value={filterType} onChange={e => setFilterType(e.target.value)}>
