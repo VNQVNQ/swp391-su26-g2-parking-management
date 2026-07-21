@@ -422,7 +422,7 @@ public class BookingServiceImpl implements BookingService {
         List<Zone> zones = zoneRepository.findByVehicleType(vehicle.getVehicleType());
         
         for (Zone zone : zones) {
-            List<ParkingSlot> availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId());
+            List<ParkingSlot> availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId(), java.time.LocalDateTime.now().plusMinutes(30));
             
             for (ParkingSlot slot : availableSlots) {
                 if (isSlotAvailableForBooking(slot.getId(), startTime, endTime)) {

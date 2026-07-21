@@ -136,7 +136,7 @@ public class ZoneServiceImpl implements ZoneService {
     }
 
     private ZoneResponse mapToResponse(Zone zone) {
-        int availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId()).size();
+        int availableSlots = parkingSlotRepository.findAvailableSlotsByZone(zone.getId(), java.time.LocalDateTime.now().plusMinutes(30)).size();
         int createdSlots = parkingSlotRepository.findByZoneId(zone.getId()).size();
         return new ZoneResponse(
                 zone.getId(),

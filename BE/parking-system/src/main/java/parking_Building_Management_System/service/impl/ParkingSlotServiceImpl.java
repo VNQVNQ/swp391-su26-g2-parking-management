@@ -168,7 +168,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
     @Override
     public List<AvailableSlotResponse> getAvailableSlotsByZone(UUID zoneId) {
-        return parkingSlotRepository.findAvailableSlotsByZone(zoneId)
+        return parkingSlotRepository.findAvailableSlotsByZone(zoneId, java.time.LocalDateTime.now().plusMinutes(30))
                 .stream()
                 .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .map(this::mapToAvailableResponse)

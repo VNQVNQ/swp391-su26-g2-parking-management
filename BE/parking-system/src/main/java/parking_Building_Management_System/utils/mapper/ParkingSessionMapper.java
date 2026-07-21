@@ -20,7 +20,8 @@ public class ParkingSessionMapper {
             ParkingSlot slot,
             Long availableCount,
             Long occupiedCount,
-            Long totalSlots) {
+            Long totalSlots,
+            boolean hasUpcomingBooking) {
 
         return AvailableSlotsForEntryResponse.builder()
                 .slotId(slot.getId())
@@ -34,6 +35,7 @@ public class ParkingSessionMapper {
                 .availableCount(availableCount)
                 .occupiedCount(occupiedCount)
                 .totalSlots(totalSlots)
+                .hasUpcomingBooking(hasUpcomingBooking)
                 .build();
     }
 
