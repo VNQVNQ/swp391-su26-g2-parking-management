@@ -181,6 +181,7 @@ export default function VehicleEntry() {
 
   // ── Step 2: Chọn zone ─────────────────────────────────────────────────────
   const handleSelectZone = async (zone) => {
+    setError('');
     setSelectedZone(zone);
     setLoading(true);
     try {
@@ -508,9 +509,16 @@ export default function VehicleEntry() {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 24, color: 'var(--text-primary)' }}>4. Xác nhận thông tin</h3>
 
               {error && (
-                <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <AlertCircle size={18} /> <span>{error}</span>
-                </div>
+                  <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                    <AlertCircle size={18} /><span>{error}</span>
+                  </div>
+              )}
+
+              {availableSlots.some(s => s.hasUpcomingBooking) && (
+                  <div style={{ padding: '12px 16px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                    <AlertCircle size={18} />
+                    <span>⚠️ Khu vực này có một số chỗ đang được khách khác đặt trước trong 1-3 tiếng tới. Có thể xếp xe vào tạm, nhưng chỉ nên cho đỗ đến trước giờ đặt 30 phút — cần dặn khách di chuyển hoặc chuẩn bị đổi chỗ trước thời điểm đó.</span>
+                  </div>
               )}
 
               <div style={{ border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', marginBottom: 32, background: 'var(--bg-input)' }}>

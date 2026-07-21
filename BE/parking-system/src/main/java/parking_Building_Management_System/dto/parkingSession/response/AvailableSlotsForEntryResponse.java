@@ -30,5 +30,6 @@ public class AvailableSlotsForEntryResponse {
     Long availableCount;
     Long occupiedCount;
     Long totalSlots;
+    Boolean hasUpcomingBooking;
 }
 
