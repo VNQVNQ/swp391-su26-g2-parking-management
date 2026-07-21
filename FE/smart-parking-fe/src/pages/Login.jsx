@@ -37,9 +37,20 @@ export default function Login() {
     if (result.success) {
       // Role-aware redirect after login
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
-      const role = stored.role || 'PARKING_STAFF';
-      const defaults = { ADMIN: '/admin/dashboard', PARKING_MANAGER: '/PARKING_MANAGER/dashboard', PARKING_STAFF: '/entry' };
-      navigate(defaults[role] || '/entry');
+      const rawRole = stored.role || stored.roleCode || stored.roleName || '';
+      const r = String(rawRole).toUpperCase().trim();
+      let role = 'DRIVER';
+      if (r.includes("ADMIN")) role = "ADMIN";
+      else if (r.includes("MANAGER")) role = "PARKING_MANAGER";
+      else if (r.includes("STAFF")) role = "PARKING_STAFF";
+      
+      const defaults = { 
+        ADMIN: '/admin/dashboard', 
+        PARKING_MANAGER: '/PARKING_MANAGER/dashboard', 
+        PARKING_STAFF: '/entry',
+        DRIVER: '/driver/dashboard' 
+      };
+      navigate(defaults[role] || '/driver/dashboard');
     }
   };
 

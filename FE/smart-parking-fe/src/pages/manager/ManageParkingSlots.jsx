@@ -109,12 +109,14 @@ export default function ManageParkingSlots() {
   const [form, setForm] = useState({ zoneId: zoneIdFromUrl, slotCode: '', vehicleType: 'CAR', maintenanceStatus: 'AVAILABLE' });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, slotCode }
+  const [exceptionConfirmed, setExceptionConfirmed] = useState(false);
 
   // Bulk Create State
   const [showBulkForm, setShowBulkForm] = useState(false);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
   const [bulkForm, setBulkForm] = useState({ zoneId: '', vehicleType: 'CAR', prefix: '', startNum: 1, endNum: 10, maintenanceStatus: 'AVAILABLE' });
+  const [bulkExceptionConfirmed, setBulkExceptionConfirmed] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -178,7 +180,13 @@ export default function ManageParkingSlots() {
     }
   };
 
-  const handleReset = () => { setShowForm(false); setEditingId(null); setForm({ zoneId: zoneIdFromUrl, slotCode: '', vehicleType: 'CAR', maintenanceStatus: 'AVAILABLE' }); setError(''); };
+  const handleReset = () => { setShowForm(false); setEditingId(null); setForm({ zoneId: zoneIdFromUrl, slotCode: '', vehicleType: 'CAR', maintenanceStatus: 'AVAILABLE' }); setError(''); setExceptionConfirmed(false); };
+
+  // Helper: check if this is a cross-type exception (CAR in TRUCK zone)
+  const isExceptionCase = (zoneId, vehicleType) => {
+    const zone = zones.find(z => z.id === zoneId);
+    return zone && zone.vehicleType === 'TRUCK' && vehicleType === 'CAR';
+  };
 
   const getZoneName = (zoneId) => { const zone = zones.find(z => z.id === zoneId); return zone ? zone.name : '—'; };
 
@@ -474,10 +482,29 @@ export default function ManageParkingSlots() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label className="form-label">Loại xe <span className="required">*</span></label>
-              <select className="form-select" value={form.vehicleType} onChange={e => setForm({ ...form, vehicleType: e.target.value })} style={{ padding: '12px 14px' }}>
+              <select className="form-select" value={form.vehicleType} onChange={e => { setForm({ ...form, vehicleType: e.target.value }); setExceptionConfirmed(false); }} style={{ padding: '12px 14px' }}>
                 {VEHICLE_TYPES.map(type => <option key={type} value={type}>{vehicleTypeLabel(type)}</option>)}
               </select>
             </div>
+            {/* Exception warning: CAR in TRUCK zone */}
+            {isExceptionCase(form.zoneId, form.vehicleType) && (
+              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1.5px solid rgba(245,158,11,0.4)', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <AlertTriangle size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.88rem', marginBottom: 4 }}>⚠️ Ngoại lệ loại xe</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      Bạn đang gán <strong>Ô tô (CAR)</strong> vào khu <strong>Xe tải (TRUCK)</strong>. Đây là ngoại lệ — chỉ nên áp dụng khi khu xe hơi đã đầy.
+                    </p>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#f59e0b' }}>
+                      <input type="checkbox" checked={exceptionConfirmed} onChange={e => setExceptionConfirmed(e.target.checked)}
+                        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#f59e0b' }} />
+                      Tôi xác nhận đây là ngoại lệ cho phép
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom: 24 }}>
               <label className="form-label">Trạng thái <span className="required">*</span></label>
               <select className="form-select" value={form.maintenanceStatus} onChange={e => setForm({ ...form, maintenanceStatus: e.target.value })} style={{ padding: '12px 14px' }}>
@@ -487,7 +514,8 @@ export default function ManageParkingSlots() {
             {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 16 }}>⚠️ {error}</div>}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={handleReset}>Hủy</button>
-              <button className="btn-sm btn-sm-primary" style={{ padding: '10px 20px' }} onClick={handleSubmit} disabled={submitting}>
+              <button className="btn-sm btn-sm-primary" style={{ padding: '10px 20px', opacity: (isExceptionCase(form.zoneId, form.vehicleType) && !exceptionConfirmed) ? 0.5 : 1 }}
+                onClick={handleSubmit} disabled={submitting || (isExceptionCase(form.zoneId, form.vehicleType) && !exceptionConfirmed)}>
                 {submitting ? 'Đang xử lý...' : editingId ? 'Cập nhật Chỗ đỗ' : 'Thêm Chỗ đỗ'}
               </button>
             </div>
@@ -520,10 +548,29 @@ export default function ManageParkingSlots() {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label className="form-label">Loại xe <span className="required">*</span></label>
-              <select className="form-select" value={bulkForm.vehicleType} onChange={e => setBulkForm({ ...bulkForm, vehicleType: e.target.value })} style={{ padding: '12px 14px' }}>
+              <select className="form-select" value={bulkForm.vehicleType} onChange={e => { setBulkForm({ ...bulkForm, vehicleType: e.target.value }); setBulkExceptionConfirmed(false); }} style={{ padding: '12px 14px' }}>
                 {VEHICLE_TYPES.map(type => <option key={type} value={type}>{vehicleTypeLabel(type)}</option>)}
               </select>
             </div>
+            {/* Exception warning for bulk */}
+            {isExceptionCase(bulkForm.zoneId, bulkForm.vehicleType) && (
+              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1.5px solid rgba(245,158,11,0.4)', borderRadius: 10, padding: '12px 16px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <AlertTriangle size={18} color="#f59e0b" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.85rem', marginBottom: 4 }}>⚠️ Ngoại lệ loại xe (Hàng loạt)</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      Tạo <strong>Ô tô</strong> trong khu <strong>Xe tải</strong>. Chỉ áp dụng khi khu xe hơi đầy.
+                    </p>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer', fontSize: '0.83rem', fontWeight: 600, color: '#f59e0b' }}>
+                      <input type="checkbox" checked={bulkExceptionConfirmed} onChange={e => setBulkExceptionConfirmed(e.target.checked)}
+                        style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#f59e0b' }} />
+                      Tôi xác nhận đây là ngoại lệ cho phép
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: 16 }}>
               <div><label className="form-label">Tiền tố mã <span className="required">*</span></label><input type="text" className="form-input" placeholder="VD: A-, B1-" value={bulkForm.prefix} onChange={e => setBulkForm({ ...bulkForm, prefix: e.target.value.toUpperCase() })} style={{ padding: '12px 14px' }} /></div>
               <div><label className="form-label">Số bắt đầu</label><input type="number" className="form-input" min="0" value={bulkForm.startNum} onChange={e => setBulkForm({ ...bulkForm, startNum: e.target.value })} style={{ padding: '12px 14px' }} /></div>
@@ -546,8 +593,9 @@ export default function ManageParkingSlots() {
               {bulkForm.prefix && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 500 }}>Tổng cộng: <strong style={{ color: '#8b5cf6' }}>{generateSlotCodes().length}</strong> chỗ đỗ</p>}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={() => { setShowBulkForm(false); setBulkResult(null); }}>Hủy</button>
-              <button className="btn-sm btn-sm-primary" style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleBulkSubmit} disabled={bulkSubmitting}>
+              <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={() => { setShowBulkForm(false); setBulkResult(null); setBulkExceptionConfirmed(false); }}>Hủy</button>
+              <button className="btn-sm btn-sm-primary" style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', display: 'flex', alignItems: 'center', gap: '6px', opacity: (isExceptionCase(bulkForm.zoneId, bulkForm.vehicleType) && !bulkExceptionConfirmed) ? 0.5 : 1 }}
+                onClick={handleBulkSubmit} disabled={bulkSubmitting || (isExceptionCase(bulkForm.zoneId, bulkForm.vehicleType) && !bulkExceptionConfirmed)}>
                 {bulkSubmitting ? 'Đang tạo...' : <><Layers size={16} /> Tạo hàng loạt</>}
               </button>
             </div>

@@ -38,10 +38,19 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     private final VehicleRepository vehicleRepository;
     private final ParkingSlotRepository parkingSlotRepository;
 
+    private static final int MAX_ACTIVE_PASSES = 350;
+
     @Override
     @Transactional
     public MonthlyPassResponse createMonthlyPass(MonthlyPassRequest request) {
         log.info("Creating monthly pass for vehicle ID: {}", request.getVehicleId());
+
+        // BR: Giới hạn tối đa 350 vé tháng active
+        long currentActiveCount = monthlyPassRepository.countByIsActiveTrueAndEndDateGreaterThanEqual(LocalDate.now());
+        if (currentActiveCount >= MAX_ACTIVE_PASSES) {
+            throw new IllegalStateException("Bãi đỗ xe đã đạt giới hạn tối đa " + MAX_ACTIVE_PASSES
+                    + " vé tháng đang hoạt động. Không thể tạo thêm vé.");
+        }
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new RuntimeException("Vehicle not found with ID: " + request.getVehicleId()));

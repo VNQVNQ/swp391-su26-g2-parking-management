@@ -1,7 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Search, MapPin, Car, Bike, Truck, ChevronRight, AlertTriangle, Activity } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, MapPin, Car, Bike, Truck, ChevronRight, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
+
+/* ─── Toast Notification ─────────────────────────────────────── */
+function Toast({ toasts }) {
+  return (
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
+      {toasts.map(t => (
+        <div key={t.id} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: t.type === 'success' ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)',
+          color: '#fff', padding: '12px 18px', borderRadius: 12,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          fontSize: '0.88rem', fontWeight: 600,
+          animation: 'slideInRight 0.3s ease',
+          pointerEvents: 'auto', minWidth: 260, maxWidth: 380,
+        }}>
+          {t.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+          {t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const VEHICLE_TYPES = ['MOTORBIKE', 'CAR', 'TRUCK'];
 const vehicleTypeLabel = (t) => ({ MOTORBIKE: 'Xe máy', CAR: 'Ô tô', TRUCK: 'Xe tải' }[t] || t);
@@ -50,6 +72,13 @@ export default function ManageZones() {
   const [form, setForm] = useState({ floorId: floorIdFromUrl, name: '', vehicleType: 'CAR', totalSlots: '' });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  };
 
   useEffect(() => { loadData(); }, []);
 
@@ -84,12 +113,18 @@ export default function ManageZones() {
     setSubmitting(true);
     try {
       const payload = { floorId: form.floorId, name: form.name, vehicleType: form.vehicleType, totalSlots: parseInt(form.totalSlots) };
-      if (editingId) { await api.put(`/api/v1/zones/${editingId}`, payload); }
-      else { await api.post('/api/v1/zones', payload); }
+      if (editingId) {
+        await api.put(`/api/v1/zones/${editingId}`, payload);
+        showToast(`✅ Đã cập nhật khu vực "${form.name}" thành công`);
+      } else {
+        await api.post('/api/v1/zones', payload);
+        showToast(`✅ Đã thêm khu vực "${form.name}" thành công`);
+      }
       setShowForm(false); setEditingId(null); setForm({ floorId: floorIdFromUrl, name: '', vehicleType: 'CAR', totalSlots: '' });
       await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Lỗi khi lưu khu vực');
+      showToast(err.response?.data?.message || 'Lỗi khi lưu khu vực', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -102,12 +137,16 @@ export default function ManageZones() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
+    const zoneName = deleteTarget.name;
     try {
       await api.delete(`/api/v1/zones/${deleteTarget.id}`);
       setDeleteTarget(null);
       await loadData();
+      showToast(`🗑️ Đã xóa khu vực "${zoneName}" thành công`);
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể xóa khu vực');
+      const msg = err.response?.data?.message || 'Không thể xóa khu vực';
+      setError(msg);
+      showToast(msg, 'error');
       setDeleteTarget(null);
     }
   };
@@ -349,6 +388,7 @@ export default function ManageZones() {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
       />
+      <Toast toasts={toasts} />
     </div>
   );
 }
