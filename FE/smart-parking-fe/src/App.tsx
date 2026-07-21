@@ -61,6 +61,8 @@ import ManageFloors from "./pages/manager/ManageFloors";
 import ManageZones from "./pages/manager/ManageZones";
 // @ts-ignore
 import ManageParkingSlots from "./pages/manager/ManageParkingSlots";
+// @ts-ignore
+import RevenueReport from "./pages/manager/RevenueReport";
 
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // FIX: Đọc từ cả role lẫn roleCode, normalize về uppercase
@@ -69,10 +71,10 @@ function mapRole(user: any): string {
   const rawRole = user?.role || user?.roleCode || user?.roleName || "";
   const r = String(rawRole).toUpperCase().trim();
 
-  if (r === "SYSTEM_ADMIN" || r === "ADMIN") return "ADMIN";
-  if (r === "PARKING_MANAGER") return "PARKING_MANAGER";
-  if (r === "PARKING_STAFF") return "PARKING_STAFF";
-  if (r === "DRIVER") return "DRIVER";
+  if (r.includes("ADMIN")) return "ADMIN";
+  if (r.includes("MANAGER")) return "PARKING_MANAGER";
+  if (r.includes("STAFF")) return "PARKING_STAFF";
+  if (r.includes("DRIVER")) return "DRIVER";
 
   // FIX: Nếu không map được, log để debug thay vì silently fallback
   console.warn("[mapRole] Unknown role:", rawRole, "| user:", user);
@@ -302,7 +304,15 @@ function AppShell() {
               path="/PARKING_MANAGER/reports"
               element={
                 <RoleRoute allowedRoles={["PARKING_MANAGER"]}>
-                  <Reports />
+                  <RevenueReport />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/PARKING_MANAGER/revenue"
+              element={
+                <RoleRoute allowedRoles={["PARKING_MANAGER"]}>
+                  <RevenueReport />
                 </RoleRoute>
               }
             />

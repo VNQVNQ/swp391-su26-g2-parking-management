@@ -1,6 +1,8 @@
-import { CalendarCheck, CreditCard, Car, Bike, Truck, Search, Filter } from 'lucide-react';
+import { CalendarCheck, CreditCard, Car, Bike, Truck, Search, Plus, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+
+const MAX_PASSES = 350;
 
 // Helper: extract vehicle type from pass object (handles nested vehicle object)
 const getVehicleType = (p) =>
@@ -42,34 +44,41 @@ export default function PassesBookings() {
   const [passSearch, setPassSearch] = useState('');
   const [passVehicleFilter, setPassVehicleFilter] = useState('');
   const [passStatusFilter, setPassStatusFilter] = useState('');
+  const [activePassCount, setActivePassCount] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Create pass form state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({ licensePlate: '', vehicleType: 'CAR', durationMonths: 1, startDate: new Date().toISOString().split('T')[0] });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createSuccess, setCreateSuccess] = useState('');
+  const [vehicleLookup, setVehicleLookup] = useState(null); // found vehicle
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [passesRes, bookingsRes, pricingRes] = await Promise.all([
+      const [passesRes, bookingsRes, pricingRes, countRes] = await Promise.all([
         api.get('/api/v1/monthly-passes').catch(() => ({ data: { data: [] } })),
         api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } })),
-        api.get('/api/v1/pricing-rules/ticket-type/MONTHLY').catch(() => ({ data: { data: [] } }))
+        api.get('/api/v1/pricing-rules/ticket-type/MONTHLY').catch(() => ({ data: { data: [] } })),
+        api.get('/api/v1/monthly-passes/stats/active-count').catch(() => ({ data: { data: 0 } }))
       ]);
 
       const passesData = passesRes.data?.data ?? passesRes.data ?? [];
       const bookingsData = bookingsRes.data?.data ?? bookingsRes.data ?? [];
       let rulesData = pricingRes.data?.data ?? pricingRes.data ?? [];
+      const cnt = countRes.data?.data ?? countRes.data ?? 0;
+      setActivePassCount(Number(cnt) || 0);
 
       if (!Array.isArray(rulesData) || rulesData.length === 0) {
         try {
           const allRulesRes = await api.get('/api/v1/pricing-rules');
           const allRules = allRulesRes.data?.data ?? allRulesRes.data ?? [];
-          if (Array.isArray(allRules)) {
-            rulesData = allRules.filter(r => (r.ticketType || '').toUpperCase() === 'MONTHLY');
-          }
-        } catch (e) {
-          console.error(e);
-        }
+          if (Array.isArray(allRules)) rulesData = allRules.filter(r => (r.ticketType || '').toUpperCase() === 'MONTHLY');
+        } catch (e) { console.error(e); }
       }
 
       const prices = { CAR: 2500000, MOTORBIKE: 500000, TRUCK: 4000000 };
@@ -83,23 +92,61 @@ export default function PassesBookings() {
         });
       }
       setMonthlyPrices(prices);
-
-      const parsedPasses = Array.isArray(passesData) ? passesData : [];
-      const parsedBookings = Array.isArray(bookingsData) ? bookingsData : [];
-
-      // Debug: log first pass to understand structure
-      if (parsedPasses.length > 0) {
-        console.log('[PassesBookings] Sample pass object:', parsedPasses[0]);
-      }
-
-      setPasses(parsedPasses);
-      setBookings(parsedBookings);
+      setPasses(Array.isArray(passesData) ? passesData : []);
+      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
     } catch (err) {
       console.error(err);
       setError('Không thể tải dữ liệu');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Lookup vehicle by license plate
+  const handleLookupVehicle = async () => {
+    if (!createForm.licensePlate.trim()) return;
+    setLookupLoading(true);
+    setVehicleLookup(null);
+    setCreateError('');
+    try {
+      const res = await api.get(`/api/v1/vehicles/plate/${createForm.licensePlate.trim().toUpperCase()}`);
+      const v = res.data?.data ?? res.data;
+      if (v && v.id) {
+        setVehicleLookup(v);
+        setCreateForm(f => ({ ...f, vehicleType: v.vehicleType || f.vehicleType }));
+      } else { setCreateError('Không tìm thấy xe với biển số này'); }
+    } catch { setCreateError('Không tìm thấy xe với biển số này. Vui lòng kiểm tra lại.'); }
+    finally { setLookupLoading(false); }
+  };
+
+  // Calculate fee
+  const calcFee = () => (monthlyPrices[createForm.vehicleType] || 0) * (parseInt(createForm.durationMonths) || 1);
+
+  // Calculate endDate from startDate + durationMonths
+  const calcEndDate = () => {
+    const start = new Date(createForm.startDate);
+    start.setMonth(start.getMonth() + (parseInt(createForm.durationMonths) || 1));
+    return start.toISOString().split('T')[0];
+  };
+
+  // Submit create monthly pass
+  const handleCreatePass = async () => {
+    if (!vehicleLookup) { setCreateError('Vui lòng tìm và xác nhận xe trước'); return; }
+    if (activePassCount >= MAX_PASSES) { setCreateError(`Bãi đã đạt giới hạn ${MAX_PASSES} vé tháng`); return; }
+    setCreateLoading(true); setCreateError(''); setCreateSuccess('');
+    try {
+      const payload = {
+        vehicleId: vehicleLookup.id,
+        fee: calcFee(),
+        startDate: createForm.startDate,
+        endDate: calcEndDate(),
+      };
+      await api.post('/api/v1/monthly-passes', payload);
+      setCreateSuccess(`✅ Đã tạo vé tháng cho xe ${vehicleLookup.licensePlate} thành công!`);
+      setTimeout(() => { setShowCreateForm(false); setCreateSuccess(''); setVehicleLookup(null); setCreateForm({ licensePlate: '', vehicleType: 'CAR', durationMonths: 1, startDate: new Date().toISOString().split('T')[0] }); loadData(); }, 2000);
+    } catch (err) {
+      setCreateError(err.response?.data?.message || 'Lỗi khi tạo vé tháng');
+    } finally { setCreateLoading(false); }
   };
 
   const handleCancelBooking = async (id) => {
@@ -146,9 +193,21 @@ export default function PassesBookings() {
 
   return (
     <div className="page-full-width">
-      <div className="page-header">
-        <h2>🎫 Vé tháng &amp; Đặt trước</h2>
-        <p>Quản lý vé tháng và các đơn đặt chỗ trước</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          <h2>🎫 Vé tháng &amp; Đặt trước</h2>
+          <p>Quản lý vé tháng và các đơn đặt chỗ trước</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <button className="btn-primary" onClick={() => { setShowCreateForm(true); setCreateError(''); setCreateSuccess(''); }}
+            disabled={activePassCount >= MAX_PASSES}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: '0.88rem', opacity: activePassCount >= MAX_PASSES ? 0.5 : 1 }}>
+            <Plus size={16} /> Tạo vé tháng
+          </button>
+          <span style={{ fontSize: '0.78rem', color: activePassCount >= MAX_PASSES ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
+            {activePassCount}/{MAX_PASSES} vé đang hoạt động
+          </span>
+        </div>
       </div>
 
       <div className="stats-grid">
@@ -173,6 +232,106 @@ export default function PassesBookings() {
         <button className={`tab-btn ${tab === 'passes' ? 'active' : ''}`} onClick={() => setTab('passes')}>Danh sách Vé tháng</button>
         <button className={`tab-btn ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>Danh sách Đặt chỗ</button>
       </div>
+
+      {/* Create Monthly Pass Modal */}
+      {showCreateForm && (
+        <div className="modal-overlay" onClick={() => setShowCreateForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CreditCard size={20} style={{ color: '#10b981' }} /> Tạo Vé tháng mới
+              </h3>
+              <button onClick={() => setShowCreateForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
+            </div>
+
+            {/* Slot limit banner */}
+            {activePassCount >= MAX_PASSES && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>
+                <AlertTriangle size={16} /> Bãi đã đạt giới hạn {MAX_PASSES} vé tháng. Không thể tạo thêm.
+              </div>
+            )}
+            {activePassCount >= MAX_PASSES * 0.9 && activePassCount < MAX_PASSES && (
+              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.85rem', color: '#f59e0b', fontWeight: 600 }}>
+                <AlertTriangle size={16} /> Gần đầy: {activePassCount}/{MAX_PASSES} vé đang hoạt động
+              </div>
+            )}
+
+            {/* License plate lookup */}
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label">Biển số xe <span className="required">*</span></label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input type="text" className="form-input" placeholder="VD: 51G-12345"
+                  value={createForm.licensePlate}
+                  onChange={e => { setCreateForm(f => ({ ...f, licensePlate: e.target.value.toUpperCase() })); setVehicleLookup(null); }}
+                  onKeyDown={e => e.key === 'Enter' && handleLookupVehicle()}
+                  style={{ flex: 1, padding: '10px 14px' }} />
+                <button className="btn-sm btn-sm-primary" onClick={handleLookupVehicle} disabled={lookupLoading}
+                  style={{ whiteSpace: 'nowrap', padding: '10px 16px' }}>
+                  {lookupLoading ? '...' : <><Search size={14} /> Tìm</>}
+                </button>
+              </div>
+              {vehicleLookup && (
+                <div style={{ marginTop: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.83rem' }}>
+                  <CheckCircle2 size={15} color="#10b981" />
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>Tìm thấy:</span>
+                  <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>{vehicleLookup.licensePlate}</span>
+                  <VehicleTypeBadge type={vehicleLookup.vehicleType} />
+                </div>
+              )}
+            </div>
+
+            {/* Vehicle type (auto-filled from lookup) */}
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label">Loại xe</label>
+              <select className="form-select" value={createForm.vehicleType} onChange={e => setCreateForm(f => ({ ...f, vehicleType: e.target.value }))} style={{ padding: '10px 14px' }} disabled={!!vehicleLookup}>
+                <option value="CAR">🚗 Ô tô</option>
+                <option value="MOTORBIKE">🏍️ Xe máy</option>
+                <option value="TRUCK">🚛 Xe tải</option>
+              </select>
+            </div>
+
+            {/* Start date */}
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label">Ngày bắt đầu</label>
+              <input type="date" className="form-input" value={createForm.startDate}
+                onChange={e => setCreateForm(f => ({ ...f, startDate: e.target.value }))}
+                style={{ padding: '10px 14px' }} />
+            </div>
+
+            {/* Duration */}
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label">Thời hạn</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[1, 3, 6, 12].map(m => (
+                  <button key={m} onClick={() => setCreateForm(f => ({ ...f, durationMonths: m }))}
+                    style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${createForm.durationMonths === m ? '#3b82f6' : 'var(--border-color)'}`, background: createForm.durationMonths === m ? 'rgba(59,130,246,0.15)' : 'var(--bg-secondary)', color: createForm.durationMonths === m ? '#3b82f6' : 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.15s' }}>
+                    {m} tháng
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 6 }}>Kết thúc: <strong>{calcEndDate()}</strong></p>
+            </div>
+
+            {/* Fee summary */}
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Tổng phí:</span>
+              <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-primary)' }}>₫{calcFee().toLocaleString('vi-VN')}</span>
+            </div>
+
+            {createError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 12, display: 'flex', gap: 6, alignItems: 'center' }}><AlertTriangle size={14} />{createError}</div>}
+            {createSuccess && <div style={{ color: '#10b981', fontSize: '0.88rem', marginBottom: 12, fontWeight: 600 }}>{createSuccess}</div>}
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={() => setShowCreateForm(false)}>Hủy</button>
+              <button className="btn-sm btn-sm-primary" style={{ padding: '10px 24px' }}
+                onClick={handleCreatePass}
+                disabled={createLoading || !vehicleLookup || activePassCount >= MAX_PASSES}>
+                {createLoading ? 'Đang tạo...' : 'Tạo Vé tháng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>

@@ -37,4 +37,6 @@ public interface MonthlyPassRepository extends JpaRepository<MonthlyPass, UUID> 
     List<MonthlyPass> findByEndDateLessThanAndIsActiveTrue(LocalDate date);
 
     long countByIsActiveTrueAndPaymentStatus(PaymentStatus status);
+
+    long countByIsActiveTrueAndEndDateGreaterThanEqual(LocalDate date);
 }
