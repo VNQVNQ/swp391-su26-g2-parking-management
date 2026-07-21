@@ -34,8 +34,8 @@ public interface ParkingSlotRepository extends JpaRepository<ParkingSlot, UUID> 
     @Query("SELECT ps FROM ParkingSlot ps WHERE ps.floor.id = :floorId AND ps.vehicleType = :vehicleType AND ps.currentSession IS NULL AND ps.maintenanceStatus = 'AVAILABLE' AND ps NOT IN (SELECT b.slot FROM Booking b WHERE b.status IN ('CONFIRMED', 'PENDING') AND b.endTime >= CURRENT_TIMESTAMP)")
     List<ParkingSlot> findAvailableSlotsByFloorAndVehicleType(@Param("floorId") UUID floorId, @Param("vehicleType") VehicleType vehicleType);
 
-    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.zone.id = :zoneId AND ps.currentSession IS NULL AND ps.maintenanceStatus = 'AVAILABLE' AND ps NOT IN (SELECT b.slot FROM Booking b WHERE b.status IN ('CONFIRMED', 'PENDING') AND b.endTime >= CURRENT_TIMESTAMP)")
-    List<ParkingSlot> findAvailableSlotsByZone(@Param("zoneId") UUID zoneId);
+    @Query("SELECT ps FROM ParkingSlot ps WHERE ps.zone.id = :zoneId AND ps.currentSession IS NULL AND ps.maintenanceStatus = 'AVAILABLE' AND ps NOT IN (SELECT b.slot FROM Booking b WHERE b.status IN ('CONFIRMED', 'PENDING') AND b.endTime >= CURRENT_TIMESTAMP AND b.startTime <= :cutoffTime)")
+    List<ParkingSlot> findAvailableSlotsByZone(@Param("zoneId") UUID zoneId, @Param("cutoffTime") java.time.LocalDateTime cutoffTime);
 
     long countByZoneIdAndMaintenanceStatus(UUID zoneId, SlotMaintenanceStatus maintenanceStatus);
 

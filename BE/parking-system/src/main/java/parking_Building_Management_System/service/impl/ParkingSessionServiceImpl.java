@@ -22,6 +22,7 @@ import parking_Building_Management_System.repository.ParkingSessionRepository;
 import parking_Building_Management_System.repository.ParkingSlotRepository;
 import parking_Building_Management_System.repository.VehicleRepository;
 import parking_Building_Management_System.repository.ZoneRepository;
+import parking_Building_Management_System.repository.BookingRepository;
 import parking_Building_Management_System.repository.UserRepository;
 import parking_Building_Management_System.repository.PenaltyConfigRepository;
 import parking_Building_Management_System.entity.ParkingException;
@@ -66,6 +67,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
     private final AuditLogRepository auditLogRepository;
     private final ParkingExceptionRepository parkingExceptionRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
     private final ParkingSessionMapper parkingSessionMapper;
     private final PricingRuleService pricingRuleService;
     private final MonthlyPassService monthlyPassService;
@@ -196,19 +198,24 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new RuntimeException("Zone not found: " + zoneId));
 
-        var vehicle = vehicleRepository.findByLicensePlate(licensePlate)
-                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + licensePlate));
-
-        if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
-            log.warn("Vehicle type {} does not match zone vehicle type {}",
-                    vehicle.getVehicleType(), zone.getVehicleType());
-            return List.of();
+        var vehicleOpt = vehicleRepository.findByLicensePlate(licensePlate);
+        UUID vehicleIdForAutoDetect = null;
+        if (vehicleOpt.isPresent()) {
+            var vehicle = vehicleOpt.get();
+            if (!vehicle.getVehicleType().equals(zone.getVehicleType())) {
+                log.warn("Vehicle type {} does not match zone vehicle type {}",
+                        vehicle.getVehicleType(), zone.getVehicleType());
+                return List.of();
+            }
+            vehicleIdForAutoDetect = vehicle.getId();
+        } else {
+            log.info("Guest vehicle {} not yet registered — skip type check (zone already filtered by type in FE)", licensePlate);
         }
 
         // Phase 4: Auto-detect booking if not provided but vehicle has an active one
-        if ((bookingCode == null || bookingCode.trim().isEmpty()) && vehicle.getId() != null) {
+        if ((bookingCode == null || bookingCode.trim().isEmpty()) && vehicleIdForAutoDetect != null) {
             try {
-                List<BookingResponse> vehicleBookings = bookingService.getBookingsByVehicle(vehicle.getId());
+                List<BookingResponse> vehicleBookings = bookingService.getBookingsByVehicle(vehicleIdForAutoDetect);
                 LocalDateTime now = LocalDateTime.now();
                 Optional<BookingResponse> validBooking = vehicleBookings.stream()
                         .filter(b -> BookingStatus.PENDING.equals(b.getStatus()) 
@@ -242,46 +249,52 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
             }
         }
 
+        // Phase 4: If we have a booked slot, put it first
         List<ParkingSlot> availableSlots = parkingSlotRepository
-                .findAvailableSlotsByZone(zoneId)
+                .findAvailableSlotsByZone(zoneId, java.time.LocalDateTime.now().plusMinutes(30))
                 .stream()
                 .sorted((a, b) -> compareSlotCodeNatural(a.getSlotCode(), b.getSlotCode()))
                 .collect(Collectors.toList());
-
         long availableCount = availableSlots.size();
         long occupiedCount = zone.getTotalSlots() - availableCount;
-
         log.info("Found {} available slots in zone {}", availableCount, zoneId);
+
+        // BR-XX: Đánh dấu slot có booking trong khoảng 30 phút - 3 tiếng tới, không loại khỏi danh sách
+        java.time.LocalDateTime warningWindowEnd = java.time.LocalDateTime.now().plusHours(3);
+        java.util.function.Function<ParkingSlot, Boolean> checkUpcoming = s -> {
+            List<Booking> upcoming = bookingRepository.findBySlotIdAndStatus(s.getId(), BookingStatus.PENDING);
+            return upcoming.stream().anyMatch(b -> b.getStartTime() != null && b.getStartTime().isBefore(warningWindowEnd));
+        };
 
         // Phase 4: If we have a booked slot, put it first
         List<AvailableSlotsForEntryResponse> result;
         final ParkingSlot finalBookedSlot = bookedSlot;
-
         if (finalBookedSlot != null && availableSlots.contains(finalBookedSlot)) {
             result = new java.util.ArrayList<>();
             result.add(parkingSessionMapper.toAvailableSlotResponse(
                     finalBookedSlot,
                     availableCount,
                     occupiedCount,
-                    (long) zone.getTotalSlots()));
-
+                    (long) zone.getTotalSlots(),
+                    false));
             availableSlots.stream()
                     .filter(slot -> !slot.getId().equals(finalBookedSlot.getId()))
                     .forEach(slot -> result.add(parkingSessionMapper.toAvailableSlotResponse(
                             slot,
                             availableCount,
                             occupiedCount,
-                            (long) zone.getTotalSlots())));
+                            (long) zone.getTotalSlots(),
+                            checkUpcoming.apply(slot))));
         } else {
             result = availableSlots.stream()
                     .map(slot -> parkingSessionMapper.toAvailableSlotResponse(
                             slot,
                             availableCount,
                             occupiedCount,
-                            (long) zone.getTotalSlots()))
+                            (long) zone.getTotalSlots(),
+                            checkUpcoming.apply(slot)))
                     .collect(Collectors.toList());
         }
-
         return result;
     }
 
@@ -322,7 +335,7 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
         }
 
         List<ParkingSlot> availableSlots = parkingSlotRepository
-                .findAvailableSlotsByZone(request.getZoneId());
+                .findAvailableSlotsByZone(request.getZoneId(), java.time.LocalDateTime.now().plusMinutes(30));
 
         if (availableSlots.isEmpty()) {
             log.warn("No available slots in zone: {}", request.getZoneId());
