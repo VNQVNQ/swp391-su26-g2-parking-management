@@ -44,7 +44,7 @@ export default function ManageFloors() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ level: '', name: '', description: '' });
+  const [form, setForm] = useState({ level: '', name: '', description: '', type: 'above' });
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
 
@@ -59,7 +59,7 @@ export default function ManageFloors() {
       ]);
       const floorsData = floorsRes.data.data ?? floorsRes.data ?? [];
       const zonesData = zonesRes.data?.data ?? zonesRes.data ?? [];
-      setFloors(Array.isArray(floorsData) ? floorsData.sort((a, b) => (a.levelNumber || 0) - (b.levelNumber || 0)) : []);
+      setFloors(Array.isArray(floorsData) ? floorsData.sort((a, b) => (b.levelNumber || 0) - (a.levelNumber || 0)) : []);
       setZones(Array.isArray(zonesData) ? zonesData : []);
       setError('');
     } catch (err) {
@@ -80,7 +80,7 @@ export default function ManageFloors() {
       } else {
         await api.post('/api/v1/floors', payload);
       }
-      setShowForm(false); setEditingId(null); setForm({ level: '', name: '', description: '' });
+      setShowForm(false); setEditingId(null); setForm({ level: '', name: '', description: '', type: 'above' });
       await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Lỗi khi lưu tầng');
@@ -89,8 +89,18 @@ export default function ManageFloors() {
     }
   };
 
+  const handleAddClick = () => {
+    const aboveLevels = floors.filter(f => f.levelNumber > 0).map(f => f.levelNumber);
+    const nextAboveLevel = aboveLevels.length > 0 ? Math.max(...aboveLevels) + 1 : 1;
+    
+    setForm({ level: nextAboveLevel, name: `Tầng ${nextAboveLevel}`, description: '', type: 'above' });
+    setEditingId(null);
+    setShowForm(true);
+    setError('');
+  };
+
   const handleEdit = (floor) => {
-    setForm({ level: floor.levelNumber || '', name: floor.name || '', description: floor.description || '' });
+    setForm({ level: floor.levelNumber || '', name: floor.name || '', description: floor.description || '', type: 'above' });
     setEditingId(floor.id);
     setShowForm(true);
     setError('');
@@ -99,7 +109,42 @@ export default function ManageFloors() {
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     try {
+      const floorToDelete = floors.find(f => f.id === deleteTarget.id);
+      
       await api.delete(`/api/v1/floors/${deleteTarget.id}`);
+
+      if (floorToDelete && floorToDelete.levelNumber) {
+        const isAbove = floorToDelete.levelNumber > 0;
+        const deletedLevel = floorToDelete.levelNumber;
+        
+        const floorsToUpdate = floors.filter(f => {
+          if (isAbove) {
+            return f.levelNumber > deletedLevel;
+          } else {
+            return f.levelNumber < deletedLevel;
+          }
+        });
+        
+        if (floorsToUpdate.length > 0) {
+          const updatePromises = floorsToUpdate.map(f => {
+            const newLevel = isAbove ? f.levelNumber - 1 : f.levelNumber + 1;
+            let newName = f.name;
+            if (isAbove && f.name.includes(f.levelNumber.toString())) {
+              newName = f.name.replace(f.levelNumber.toString(), newLevel.toString());
+            } else if (!isAbove && f.name.includes(Math.abs(f.levelNumber).toString())) {
+              newName = f.name.replace(Math.abs(f.levelNumber).toString(), Math.abs(newLevel).toString());
+            }
+            
+            return api.put(`/api/v1/floors/${f.id}`, {
+              levelNumber: newLevel,
+              name: newName,
+              description: f.description || ''
+            });
+          });
+          await Promise.all(updatePromises);
+        }
+      }
+
       setDeleteTarget(null);
       await loadData();
     } catch (err) {
@@ -108,7 +153,7 @@ export default function ManageFloors() {
     }
   };
 
-  const handleReset = () => { setShowForm(false); setEditingId(null); setForm({ level: '', name: '', description: '' }); setError(''); };
+  const handleReset = () => { setShowForm(false); setEditingId(null); setForm({ level: '', name: '', description: '', type: 'above' }); setError(''); };
 
   const getZoneCount = (floorId) => zones.filter(z => z.floorId === floorId).length;
   const getOccupancyForFloor = (floorId) => {
@@ -173,7 +218,7 @@ export default function ManageFloors() {
         </div>
         
         <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={handleAddClick}
             style={{ padding: '6px 16px', borderRadius: 'var(--radius-sm)', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', color: '#fff', boxShadow: '0 4px 12px rgba(79,70,229,0.3)', whiteSpace: 'nowrap' }}>
             <Plus size={16} /> Thêm tầng mới
           </button>
@@ -189,7 +234,7 @@ export default function ManageFloors() {
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
           <p style={{ fontSize: '3rem', marginBottom: 12, opacity: 0.5 }}>🏢</p>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Chưa có tầng nào</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)} style={{ margin: '0 auto' }}>
+          <button className="btn-primary" onClick={handleAddClick} style={{ margin: '0 auto' }}>
             <Plus size={16} /> Tạo tầng đầu tiên
           </button>
         </div>
@@ -274,10 +319,44 @@ export default function ManageFloors() {
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{editingId ? 'Chỉnh sửa tầng' : 'Thêm tầng mới'}</h3>
               <button onClick={handleReset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
+            {!editingId && (
+              <div style={{ marginBottom: 20 }}>
+                <label className="form-label">Loại tầng <span className="required">*</span></label>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input type="radio" name="floorType" value="above" 
+                      checked={form.type === 'above'}
+                      onChange={() => {
+                        const aboveLevels = floors.filter(f => f.levelNumber > 0).map(f => f.levelNumber);
+                        const nextLevel = aboveLevels.length > 0 ? Math.max(...aboveLevels) + 1 : 1;
+                        setForm({ ...form, type: 'above', level: nextLevel, name: `Tầng ${nextLevel}` });
+                      }}
+                    />
+                    <span style={{ fontSize: '0.95rem' }}>Tầng trên (Above ground)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input type="radio" name="floorType" value="basement" 
+                      checked={form.type === 'basement'}
+                      onChange={() => {
+                        const basementLevels = floors.filter(f => f.levelNumber < 0).map(f => f.levelNumber);
+                        const nextLevel = basementLevels.length > 0 ? Math.min(...basementLevels) - 1 : -1;
+                        setForm({ ...form, type: 'basement', level: nextLevel, name: `Tầng hầm B${Math.abs(nextLevel)}` });
+                      }}
+                    />
+                    <span style={{ fontSize: '0.95rem' }}>Tầng hầm (Basement)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+            
             <div style={{ marginBottom: 20 }}>
               <label className="form-label">Cấp tầng (Level) <span className="required">*</span></label>
               <input type="number" className="form-input" placeholder="VD: -1 (hầm), 0, 1, 2..."
-                value={form.level} onChange={e => setForm({ ...form, level: e.target.value })} style={{ padding: '12px 14px' }} />
+                value={form.level} 
+                disabled={true} 
+                onChange={e => setForm({ ...form, level: e.target.value })} 
+                style={{ padding: '12px 14px', background: 'var(--bg-secondary)', cursor: 'not-allowed', color: 'var(--text-muted)' }} />
+              {!editingId && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>Cấp tầng được tự động sinh.</div>}
             </div>
             <div style={{ marginBottom: 20 }}>
               <label className="form-label">Tên Tầng <span className="required">*</span></label>
