@@ -1,16 +1,18 @@
 import { useState, useMemo } from 'react';
 import api from '../../services/api';
+import { createVnPayUrl } from '../../services/vnpayApi';
 import { Car, Bike, Truck, CheckCircle2, AlertCircle, Check } from 'lucide-react';
 
 const VEHICLE_TYPES = [
-  { id: 'MOTORBIKE', label: 'Xe máy', icon: <Bike size={42} strokeWidth={1.5} />, price: '5.000đ/lượt' },
-  { id: 'CAR',       label: 'Ô tô',   icon: <Car size={42} strokeWidth={1.5} />, price: '15.000đ/lượt' },
-  { id: 'TRUCK',     label: 'Xe tải', icon: <Truck size={42} strokeWidth={1.5} />, price: '30.000đ/lượt' },
+  { id: 'MOTORBIKE', label: 'Xe máy', icon: <Bike size={42} strokeWidth={1.5} />, price: '5.000đ/lượt', feeValue: 5000 },
+  { id: 'CAR',       label: 'Ô tô',   icon: <Car size={42} strokeWidth={1.5} />, price: '15.000đ/lượt', feeValue: 15000 },
+  { id: 'TRUCK',     label: 'Xe tải', icon: <Truck size={42} strokeWidth={1.5} />, price: '30.000đ/lượt', feeValue: 30000 },
 ];
 
 export default function RegisterVehicle() {
   const [plate,       setPlate]       = useState('');
   const [type,        setType]        = useState('MOTORBIKE');
+  const [paymentMethod, setPaymentMethod] = useState('VNPAY');
   const [loading,     setLoading]     = useState(false);
   const [success,     setSuccess]     = useState(null);
   const [error,       setError]       = useState('');
@@ -30,8 +32,24 @@ export default function RegisterVehicle() {
         licensePlate: plate.trim().toUpperCase(),
         vehicleType: type,
         hasMonthlyPass: false,
+        paymentMethod
       });
-      setSuccess(res.data.data ?? res.data);
+      const newVehicle = res.data.data ?? res.data;
+      if (paymentMethod === 'VNPAY') {
+        const selectedVehicleData = VEHICLE_TYPES.find(v => v.id === type);
+        const paymentUrl = await createVnPayUrl({
+          amount: selectedVehicleData?.feeValue || 15000,
+          orderInfo: `Thanh toan phi dang ky xe ${plate.trim().toUpperCase()}`,
+          orderType: 'billpayment',
+          targetId: newVehicle.id,
+          targetType: 'VEHICLE'
+        });
+        if (paymentUrl) {
+          window.location.href = paymentUrl;
+          return;
+        }
+      }
+      setSuccess(newVehicle);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally { setLoading(false); }
@@ -146,13 +164,31 @@ export default function RegisterVehicle() {
             </div>
           </div>
 
+          <div className="form-group" style={{ marginTop: 28 }}>
+            <label className="saas-label">Phương thức thanh toán phí đăng ký <span className="req">*</span></label>
+            <select
+              className="saas-input"
+              style={{ height: 56, width: '100%', borderRadius: 16, border: '1.5px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', padding: '0 16px', fontSize: '15.5px', fontWeight: 600 }}
+              value={paymentMethod}
+              onChange={e => setPaymentMethod(e.target.value)}>
+              <option value="VNPAY">🔥 Cổng thanh toán trực tuyến VNPay (VNPAY-QR / Thẻ ATM / Visa)</option>
+              <option value="FREE">✓ Miễn phí đăng ký (Hoặc thanh toán tiền mặt tại bãi)</option>
+            </select>
+          </div>
+
           {/* Live Preview Box */}
           <div className="live-preview-box">
-            <div className="preview-info-row">
+            <div className="preview-info-row" style={{ marginBottom: 12 }}>
               <span className="preview-lbl">Xe chuẩn bị đăng ký:</span>
               <span className="preview-val">
                 <strong className={plate ? 'val-plate' : 'val-empty'}>{plate || 'CHƯA NHẬP BIỂN SỐ'}</strong>
                 <span className="val-type">({selectedVehicleData?.label})</span>
+              </span>
+            </div>
+            <div className="preview-info-row" style={{ borderTop: '1px dashed var(--border-color)', paddingTop: 12 }}>
+              <span className="preview-lbl">Phí đăng ký ({selectedVehicleData?.label}):</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: '#f59e0b' }}>
+                {selectedVehicleData?.price}
               </span>
             </div>
           </div>
@@ -190,10 +226,9 @@ const saasStyles = `
 
   .saas-page {
     font-family: 'Inter', sans-serif;
-    background-color: var(--bg-primary);
-    min-height: calc(100vh - 80px);
+    background: transparent;
     color: var(--text-primary);
-    padding: 30px 20px 60px 20px;
+    padding: 0;
   }
 
   .fade-in {

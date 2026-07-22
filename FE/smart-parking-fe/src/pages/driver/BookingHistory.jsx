@@ -148,7 +148,7 @@ export default function BookingHistory() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="driver-booking-stats-grid">
         {[
           { label: 'Tổng đặt chỗ',    value: stats.total,     color: 'var(--text-primary)' },
           { label: 'Chưa vào',         value: stats.pending,   color: '#f59e0b' },

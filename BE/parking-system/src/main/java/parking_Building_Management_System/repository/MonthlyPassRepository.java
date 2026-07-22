@@ -22,7 +22,7 @@ public interface MonthlyPassRepository extends JpaRepository<MonthlyPass, UUID> 
 
     List<MonthlyPass> findByEndDateGreaterThanEqual(LocalDate endDate);
 
-    Optional<MonthlyPass> findByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqualOrderByEndDateDesc(
+    Optional<MonthlyPass> findFirstByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqualOrderByEndDateDesc(
             UUID vehicleId, LocalDate date);
 
     boolean existsByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqual(UUID vehicleId, LocalDate date);

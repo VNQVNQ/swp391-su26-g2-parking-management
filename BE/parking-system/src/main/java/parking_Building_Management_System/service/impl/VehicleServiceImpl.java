@@ -67,6 +67,11 @@ public class VehicleServiceImpl implements VehicleService {
             // Nếu xe chưa có chủ (user_id == NULL, từ sample data), cho phép driver "claim" xe này
             existing.setUser(currentUser);
             existing.setVehicleType(request.getVehicleType());
+            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+                existing.setIsActive(false);
+            } else {
+                existing.setIsActive(true);
+            }
             existing = vehicleRepository.save(existing);
             log.info("Existing unowned vehicle claimed by userId: {}", currentUser != null ? currentUser.getUserId() : "null");
             return mapToResponse(existing);
@@ -78,6 +83,11 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setVehicleType(request.getVehicleType());
         vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
         vehicle.setUser(currentUser);
+        if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+            vehicle.setIsActive(false);
+        } else {
+            vehicle.setIsActive(true);
+        }
         if (currentUser != null) {
             log.info("Associating vehicle with userId: {}", currentUser.getUserId());
         }

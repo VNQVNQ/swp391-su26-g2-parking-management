@@ -20,7 +20,7 @@ const navItems = [
   // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
   { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'], group: 'MAIN' },
   { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
-  { to: '/building-overview',       label: 'Mặt cắt tòa nhà',      icon: Layers,          roles: ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF'], group: 'MONITOR' },
+  { to: '/building-overview',       label: 'Mặt cắt tòa nhà',      icon: Layers,          roles: ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF', 'DRIVER'], group: 'MONITOR' },
   { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: Search,       roles: ['PARKING_MANAGER'], group: 'MONITOR' },
@@ -95,6 +95,25 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
     return acc;
   }, {} as Record<string, typeof navItems>);
 
+  const getGroupOrder = (role: string) => {
+    if (role === 'DRIVER') {
+      return ['MAIN', 'VEHICLE', 'MONITOR', 'SERVICE', 'OTHER'];
+    }
+    if (role === 'PARKING_STAFF' || role === 'STAFF') {
+      return ['ACTION', 'MONITOR', 'MAIN', 'OTHER'];
+    }
+    return ['MAIN', 'MANAGEMENT', 'MONITOR', 'SYSTEM', 'OTHER'];
+  };
+
+  const order = getGroupOrder(userRole);
+  const sortedGroupEntries = Object.entries(groupedItems).sort(([groupA], [groupB]) => {
+    const idxA = order.indexOf(groupA);
+    const idxB = order.indexOf(groupB);
+    const posA = idxA !== -1 ? idxA : 999;
+    const posB = idxB !== -1 ? idxB : 999;
+    return posA - posB;
+  });
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       {/* Brand & Header */}
@@ -122,7 +141,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, user, onLogout }:
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        {Object.entries(groupedItems).map(([group, items], index) => (
+        {sortedGroupEntries.map(([group, items], index) => (
           <div key={group} className="nav-group" style={{ marginBottom: '16px', paddingTop: index > 0 ? '16px' : '0', borderTop: index > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
             {!collapsed && GROUP_LABELS[group] && (
               <div className="nav-group-label" style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 14px', marginBottom: '8px' }}>

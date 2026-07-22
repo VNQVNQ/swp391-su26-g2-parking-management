@@ -462,12 +462,13 @@ export default function ManageParkingSlots() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: '0.8rem', background: stColor.bg, color: stColor.color, padding: '4px 10px', borderRadius: '8px', fontWeight: 600, width: 'fit-content' }}>
-                          {statusLabel(slot.maintenanceStatus)}
-                        </span>
-                        {hasActiveSession && (
-                          <span style={{ fontSize: '0.72rem', background: 'rgba(249,115,22,0.1)', color: '#f97316', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, width: 'fit-content' }}>
+                        {hasActiveSession ? (
+                          <span style={{ fontSize: '0.8rem', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '4px 10px', borderRadius: '8px', fontWeight: 600, width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             🚗 Đang có xe {slot.licensePlate ? `— ${slot.licensePlate}` : ''}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.8rem', background: stColor.bg, color: stColor.color, padding: '4px 10px', borderRadius: '8px', fontWeight: 600, width: 'fit-content' }}>
+                            {statusLabel(slot.maintenanceStatus)}
                           </span>
                         )}
                       </div>

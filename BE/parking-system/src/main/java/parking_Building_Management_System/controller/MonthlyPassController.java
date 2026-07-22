@@ -61,6 +61,15 @@ public class MonthlyPassController {
         return ResponseEntity.ok(apiResponse);
     }
 
+    @GetMapping("/stats/max-limit")
+    @PreAuthorize("hasAnyRole('PARKING_MANAGER', 'DRIVER', 'PARKING_STAFF')")
+    public ResponseEntity<ApiResponse<Long>> getMaxMonthlyPassLimit() {
+        log.info("GET /api/v1/monthly-passes/stats/max-limit - Getting max monthly pass limit (70% total slots)");
+        long maxLimit = monthlyPassService.getMaxActivePasses();
+        ApiResponse<Long> apiResponse = ApiResponseFactory.success(maxLimit, "Max monthly pass limit: " + maxLimit);
+        return ResponseEntity.ok(apiResponse);
+    }
+
     @GetMapping("/expiring")
     @PreAuthorize("hasRole('PARKING_MANAGER')")
     public ResponseEntity<ApiResponse<List<MonthlyPassResponse>>> getExpiringMonthlyPasses(

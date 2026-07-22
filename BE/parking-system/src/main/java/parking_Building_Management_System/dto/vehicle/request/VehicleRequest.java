@@ -28,4 +28,6 @@ public class VehicleRequest {
     Long userId;
 
     Boolean hasMonthlyPass;
+
+    String paymentMethod;
 }

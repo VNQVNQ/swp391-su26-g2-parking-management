@@ -194,7 +194,7 @@ export default function Dashboard() {
 
   return (
     <div className="page-full">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+      <div className="dashboard-main-grid">
         {/* Main Content */}
         <div>
           <div className="page-header">
@@ -203,7 +203,7 @@ export default function Dashboard() {
           </div>
 
           {/* Key Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+          <div className="dashboard-metrics-grid">
             {metricsData.map((metric, i) => {
               const Icon = metric.icon;
               return (
@@ -241,7 +241,7 @@ export default function Dashboard() {
           </div>
 
           {/* Main content grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '20px', marginBottom: '32px' }}>
+          <div className="dashboard-tables-grid">
             {/* Status by Floor */}
             <div className="glass-card" style={{ padding: '24px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>

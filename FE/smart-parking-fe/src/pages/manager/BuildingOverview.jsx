@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../store/authStore';
 import { Building2, Layers, AlertCircle, RefreshCw, ZoomIn, ZoomOut, Maximize, ChevronRight } from 'lucide-react';
 import '../../hung_style.css'; 
 
 export default function BuildingOverview() {
   const navigate = useNavigate();
+  const authContext = useAuth() || {};
+  const authStoreUser = useAuthStore(state => state.user);
+  const user = authContext.user || authStoreUser;
+
+  const handleNavigateSlots = (params) => {
+    const query = new URLSearchParams(params).toString();
+    const rawRole = user?.role || user?.roleCode || user?.roleName || '';
+    const r = String(rawRole).toUpperCase().trim();
+    if (r.includes('DRIVER')) {
+      navigate(`/driver/slots?${query}`);
+    } else if (r.includes('STAFF')) {
+      navigate(`/PARKING_STAFF/slots?${query}`);
+    } else {
+      navigate(`/PARKING_MANAGER/slots?${query}`);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [floors, setFloors] = useState([]);
   const [zones, setZones] = useState([]);
@@ -236,7 +254,7 @@ export default function BuildingOverview() {
 
                   return (
                     <div key={floor.id} 
-                      onClick={() => navigate(`/PARKING_MANAGER/slots?floorId=${floor.id}`)}
+                      onClick={() => handleNavigateSlots({ floorId: floor.id })}
                       style={{
                         background: 'var(--bg-primary)',
                         border: '1px solid #4b5563',
@@ -274,7 +292,7 @@ export default function BuildingOverview() {
                             const zFill = z.total > 0 ? (z.occupied / z.total) * 100 : 0;
                             return (
                               <div key={z.id} 
-                                onClick={(e) => { e.stopPropagation(); navigate(`/PARKING_MANAGER/slots?zoneId=${z.id}`); }}
+                                onClick={(e) => { e.stopPropagation(); handleNavigateSlots({ zoneId: z.id }); }}
                                 title={`${z.name}: ${z.occupied}/${z.total} (Bấm để xem khu vực)`} style={{
                                 padding: '2px 6px',
                                 fontSize: '0.7rem',
@@ -362,7 +380,7 @@ export default function BuildingOverview() {
 
                     return (
                       <div key={floor.id} 
-                        onClick={() => navigate(`/PARKING_MANAGER/slots?floorId=${floor.id}`)}
+                        onClick={() => handleNavigateSlots({ floorId: floor.id })}
                         style={{
                           background: 'var(--bg-primary)',
                           border: '1px solid #4b5563',
@@ -398,7 +416,7 @@ export default function BuildingOverview() {
                               const zFill = z.total > 0 ? (z.occupied / z.total) * 100 : 0;
                               return (
                                 <div key={z.id} 
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/PARKING_MANAGER/slots?zoneId=${z.id}`); }}
+                                  onClick={(e) => { e.stopPropagation(); handleNavigateSlots({ zoneId: z.id }); }}
                                   title={`${z.name}: ${z.occupied}/${z.total} (Bấm để xem khu vực)`} style={{
                                   padding: '2px 6px',
                                   fontSize: '0.7rem',

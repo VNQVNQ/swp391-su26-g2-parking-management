@@ -23,7 +23,9 @@ import parking_Building_Management_System.service.MonthlyPassService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,18 +40,17 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     private final VehicleRepository vehicleRepository;
     private final ParkingSlotRepository parkingSlotRepository;
 
-    private static final int MAX_ACTIVE_PASSES = 350;
-
     @Override
     @Transactional
     public MonthlyPassResponse createMonthlyPass(MonthlyPassRequest request) {
         log.info("Creating monthly pass for vehicle ID: {}", request.getVehicleId());
 
-        // BR: Giới hạn tối đa 350 vé tháng active
+        // BR: Giới hạn tối đa vé tháng chỉ chiếm 70% tổng số vị trí của cả hệ thống
+        long maxActivePasses = getMaxActivePasses();
         long currentActiveCount = monthlyPassRepository.countByIsActiveTrueAndEndDateGreaterThanEqual(LocalDate.now());
-        if (currentActiveCount >= MAX_ACTIVE_PASSES) {
-            throw new IllegalStateException("Bãi đỗ xe đã đạt giới hạn tối đa " + MAX_ACTIVE_PASSES
-                    + " vé tháng đang hoạt động. Không thể tạo thêm vé.");
+        if (currentActiveCount >= maxActivePasses) {
+            throw new IllegalStateException("Bãi đỗ xe đã đạt giới hạn tối đa " + maxActivePasses
+                    + " vé tháng đang hoạt động (70% tổng vị trí của cả hệ thống). Không thể tạo thêm vé.");
         }
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
@@ -83,15 +84,26 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
         pass.setStartDate(startDate);
         pass.setEndDate(endDate);
         pass.setFee(request.getFee());
+        boolean isVnPayOnline = request.getPaymentMethod() != null && "VNPAY".equalsIgnoreCase(request.getPaymentMethod());
         pass.setPaymentStatus(PaymentStatus.UNPAID);
-        pass.setIsActive(true);
+        pass.setIsActive(!isVnPayOnline);
+
+        // Clean up old UNPAID/inactive passes for this vehicle to avoid clutter
+        List<MonthlyPass> existingPasses = monthlyPassRepository.findByVehicleId(request.getVehicleId());
+        for (MonthlyPass oldPass : existingPasses) {
+            if (PaymentStatus.UNPAID.equals(oldPass.getPaymentStatus()) && !Boolean.TRUE.equals(oldPass.getIsActive())) {
+                monthlyPassRepository.delete(oldPass);
+            }
+        }
 
         pass = monthlyPassRepository.save(pass);
-        log.info("Monthly pass created successfully with ID: {}", pass.getId());
+        log.info("Monthly pass created successfully with ID: {} (isVnPayOnline: {})", pass.getId(), isVnPayOnline);
 
-        vehicle.setHasMonthlyPass(true);
-        vehicle.setMonthlyPassExpiry(endDate);
-        vehicleRepository.save(vehicle);
+        if (!isVnPayOnline) {
+            vehicle.setHasMonthlyPass(true);
+            vehicle.setMonthlyPassExpiry(endDate);
+            vehicleRepository.save(vehicle);
+        }
 
         return mapToResponse(pass);
     }
@@ -116,7 +128,7 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     public Optional<MonthlyPassDetailResponse> findActiveMonthlyPassByVehicle(UUID vehicleId) {
         log.info("Finding active monthly pass for vehicle ID: {}", vehicleId);
         Optional<MonthlyPass> pass = monthlyPassRepository
-                .findByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqualOrderByEndDateDesc(vehicleId, LocalDate.now());
+                .findFirstByVehicleIdAndIsActiveTrueAndEndDateGreaterThanEqualOrderByEndDateDesc(vehicleId, LocalDate.now());
         return pass.map(this::mapToDetailResponse);
     }
 
@@ -138,15 +150,35 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     }
 
     @Override
+    @Transactional
     public List<MonthlyPassResponse> getMyMonthlyPasses() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
         String email = authentication.getName();
-
         log.info("Getting monthly passes for current user email: {}", email);
+        List<MonthlyPass> allPasses = monthlyPassRepository.findByVehicle_User_Email(email);
 
-        return monthlyPassRepository.findByVehicle_User_Email(email)
-                .stream()
+        // Self-healing DB cleanup: if a vehicle has multiple active passes due to past tests/duplicates, keep only the latest one
+        Map<UUID, MonthlyPass> latestActivePerVehicle = new HashMap<>();
+        for (MonthlyPass p : allPasses) {
+            if (Boolean.TRUE.equals(p.getIsActive()) && p.getVehicle() != null) {
+                UUID vId = p.getVehicle().getId();
+                if (!latestActivePerVehicle.containsKey(vId)) {
+                    latestActivePerVehicle.put(vId, p);
+                } else {
+                    MonthlyPass existing = latestActivePerVehicle.get(vId);
+                    if (p.getEndDate() != null && existing.getEndDate() != null && p.getEndDate().isAfter(existing.getEndDate())) {
+                        existing.setIsActive(false);
+                        monthlyPassRepository.save(existing);
+                        latestActivePerVehicle.put(vId, p);
+                    } else {
+                        p.setIsActive(false);
+                        monthlyPassRepository.save(p);
+                    }
+                }
+            }
+        }
+
+        return allPasses.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -297,7 +329,14 @@ public class MonthlyPassServiceImpl implements MonthlyPassService {
     @Override
     public long getActiveMonthlyPassCount() {
         log.info("Getting active monthly pass count");
-        return monthlyPassRepository.countByIsActiveTrueAndPaymentStatus(PaymentStatus.PAID);
+        return monthlyPassRepository.countByIsActiveTrueAndEndDateGreaterThanEqual(LocalDate.now());
+    }
+
+    @Override
+    public long getMaxActivePasses() {
+        log.info("Getting max active monthly pass limit (70% of total system slots)");
+        long totalSlots = parkingSlotRepository.count();
+        return (long) Math.round(totalSlots * 0.7);
     }
 
     @Override

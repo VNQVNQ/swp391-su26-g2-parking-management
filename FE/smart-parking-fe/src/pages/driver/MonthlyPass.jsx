@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import api from '../../services/api';
+import { createVnPayUrl } from '../../services/vnpayApi';
 
 const MONTH_DURATIONS = [
   { months: 1, label: '1 Tháng' },
@@ -12,7 +13,16 @@ const MONTH_DURATIONS = [
 
 export default function MonthlyPass() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState('available');
+  const location = useLocation();
+  const [tab, setTab] = useState(() => {
+    if (location?.state?.action === 'renew' || location?.state?.hasMonthlyPass) {
+      return 'active';
+    }
+    if (location?.state?.action === 'register' || location?.state?.vehicleId) {
+      return 'register';
+    }
+    return 'available';
+  });
   const [vehicles, setVehicles] = useState([]);
   const [passes, setPasses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,13 +40,14 @@ export default function MonthlyPass() {
   const [renewDuration, setRenewDuration] = useState(1);
   const [renewLoading, setRenewLoading] = useState(false);
   const [renewError, setRenewError] = useState('');
+  const [renewPaymentMethod, setRenewPaymentMethod] = useState('VNPAY');
 
-  const [form, setForm] = useState({
-    vehicleId: '',
-    vehicleType: 'CAR',
+  const [form, setForm] = useState(() => ({
+    vehicleId: location?.state?.vehicleId || '',
+    vehicleType: location?.state?.vehicleType || 'CAR',
     duration: 1,
-    paymentMethod: 'CARD'
-  });
+    paymentMethod: 'VNPAY'
+  }));
 
   // Load vehicles, passes and pricing rules on mount
   useEffect(() => {
@@ -54,6 +65,18 @@ export default function MonthlyPass() {
 
         setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
         setPasses(Array.isArray(passesData) ? passesData : []);
+
+        if (location?.state?.action === 'renew' || location?.state?.hasMonthlyPass) {
+          const vId = location.state.vehicleId;
+          const lPlate = location.state.licensePlate;
+          const passesList = Array.isArray(passesData) ? passesData : [];
+          const passToRenew = passesList.find(p => p.vehicleId === vId || p.licensePlate === lPlate || (p.vehicle && p.vehicle.id === vId));
+          if (passToRenew) {
+            setRenewModal(passToRenew);
+            setRenewDuration(1);
+            setRenewError('');
+          }
+        }
 
         const updatedPricing = {
           MOTORBIKE: { price1: 500000, price3: 1350000, price6: 2400000, price12: 4200000 },
@@ -85,6 +108,28 @@ export default function MonthlyPass() {
     load();
   }, []);
 
+  const activePasses = useMemo(() => {
+    const map = new Map();
+    passes
+      .filter(p => p.isActive !== false && p.paymentStatus !== 'UNPAID')
+      .forEach(p => {
+        const key = p.vehicleId || p.licensePlate || (p.vehicle && (p.vehicle.id || p.vehicle.licensePlate));
+        if (!key) return;
+        if (!map.has(key)) {
+          map.set(key, p);
+        } else {
+          // If duplicate passes exist for the same vehicle, keep the one with the latest endDate
+          const existing = map.get(key);
+          const existingEnd = new Date(existing.endDate || 0);
+          const currentEnd = new Date(p.endDate || 0);
+          if (currentEnd > existingEnd) {
+            map.set(key, p);
+          }
+        }
+      });
+    return Array.from(map.values());
+  }, [passes]);
+
   const getPassPrice = (vehicleType, months) => {
     const vType = (vehicleType || 'CAR').toUpperCase();
     const prices = pricing[vType] || pricing.CAR;
@@ -109,10 +154,25 @@ export default function MonthlyPass() {
         vehicleId: form.vehicleId,
         fee: getPassPrice(vehicle?.vehicleType, form.duration),
         startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
+        endDate: endDate.toISOString().split('T')[0],
+        paymentMethod: form.paymentMethod
       });
 
       const newPassData = response.data.data;
+
+      if (form.paymentMethod === 'VNPAY') {
+        const paymentUrl = await createVnPayUrl({
+          amount: newPassData.fee || getPassPrice(vehicle?.vehicleType, form.duration),
+          orderInfo: `Thanh toan ve thang xe ${vehicle?.licensePlate || ''}`,
+          orderType: 'billpayment',
+          targetId: newPassData.id,
+          targetType: 'MONTHLY_PASS'
+        });
+        if (paymentUrl) {
+          window.location.href = paymentUrl;
+          return;
+        }
+      }
 
       const newPass = {
         id: newPassData.id,
@@ -154,6 +214,20 @@ export default function MonthlyPass() {
       const pass = renewModal;
       const vehicleType = pass.vehicleType || vehicles.find(v => v.id === pass.vehicleId)?.vehicleType || 'CAR';
       const newFee = getPassPrice(vehicleType, renewDuration);
+
+      if (renewPaymentMethod === 'VNPAY') {
+        const paymentUrl = await createVnPayUrl({
+          amount: newFee,
+          orderInfo: `Gia han ve thang xe ${pass.licensePlate || ''} them ${renewDuration} thang`,
+          orderType: 'billpayment',
+          targetId: `${pass.id}_${renewDuration}`,
+          targetType: 'RENEWPASS'
+        });
+        if (paymentUrl) {
+          window.location.href = paymentUrl;
+          return;
+        }
+      }
 
       // Calculate new end date from current end date (or today if expired)
       const currentEnd = pass.endDate ? new Date(pass.endDate) : new Date();
@@ -205,7 +279,7 @@ export default function MonthlyPass() {
           <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: '0.85rem', color: '#10b981' }}>
             ℹ️ Pass của bạn sẽ hết hạn vào <strong>{new Date(new Date().getFullYear(), new Date().getMonth() + form.duration, new Date().getDate()).toLocaleDateString('vi-VN')}</strong>
           </div>
-          <button className="btn-primary" onClick={() => { setSuccess(false); setForm({ vehicleId: '', vehicleType: 'CAR', duration: 1, paymentMethod: 'CARD' }); }}>
+          <button className="btn-primary" onClick={() => { setSuccess(false); setForm({ vehicleId: '', vehicleType: 'CAR', duration: 1, paymentMethod: 'VNPAY' }); }}>
             <span>🎫 Đăng ký thêm</span>
           </button>
         </div>
@@ -226,7 +300,7 @@ export default function MonthlyPass() {
           Đăng ký Pass
         </button>
         <button className={`tab-btn ${tab === 'active' ? 'active' : ''}`} onClick={() => setTab('active')}>
-          Pass đang hoạt động ({passes.filter(p => p.isActive !== false).length})
+          Pass đang hoạt động ({activePasses.length})
         </button>
       </div>
 
@@ -247,7 +321,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'MOTORBIKE', duration: d.months, paymentMethod: 'CARD' });
+                    setForm({ vehicleId: '', vehicleType: 'MOTORBIKE', duration: d.months, paymentMethod: 'VNPAY' });
                     setTab('register');
                   }}
                   style={{
@@ -287,7 +361,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'CAR', duration: d.months, paymentMethod: 'CARD' });
+                    setForm({ vehicleId: '', vehicleType: 'CAR', duration: d.months, paymentMethod: 'VNPAY' });
                     setTab('register');
                   }}
                   style={{
@@ -327,7 +401,7 @@ export default function MonthlyPass() {
                 <button
                   key={d.months}
                   onClick={() => {
-                    setForm({ vehicleId: '', vehicleType: 'TRUCK', duration: d.months, paymentMethod: 'CARD' });
+                    setForm({ vehicleId: '', vehicleType: 'TRUCK', duration: d.months, paymentMethod: 'VNPAY' });
                     setTab('register');
                   }}
                   style={{
@@ -374,6 +448,20 @@ export default function MonthlyPass() {
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Vui lòng chọn thông tin xe và gói thời hạn</p>
               </div>
             </div>
+
+            {location?.state?.licensePlate && (
+              <div style={{ padding: '14px 16px', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.35)', borderRadius: 16, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.6rem' }}>🚗</span>
+                <div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#2563eb' }}>
+                    Đang đăng ký vé tháng cho biển số: {location.state.licensePlate}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Loại xe: {location.state.vehicleType === 'MOTORBIKE' ? 'Xe máy' : location.state.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Vehicle Selection */}
             <div className="form-group">
@@ -460,6 +548,7 @@ export default function MonthlyPass() {
                 style={{ height: 48, fontSize: '1rem', fontWeight: 600 }}
                 value={form.paymentMethod}
                 onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                <option value="VNPAY">🔥 Cổng thanh toán trực tuyến VNPay (VNPAY-QR / Thẻ ATM / Visa)</option>
                 <option value="CARD">💳 Thẻ ngân hàng (ATM / Visa / MasterCard)</option>
                 <option value="TRANSFER">🏦 Chuyển khoản QR Code (MoMo / ZaloPay / VietQR)</option>
               </select>
@@ -618,7 +707,7 @@ export default function MonthlyPass() {
       {/* Tab: Active Passes */}
       {tab === 'active' && (
         <>
-          {passes.filter(p => p.isActive !== false).length === 0 ? (
+          {activePasses.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: 60 }}>
               <p style={{ fontSize: '2rem', marginBottom: 12 }}>🎫</p>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>Bạn chưa có pass nào đang hoạt động</p>
@@ -628,20 +717,21 @@ export default function MonthlyPass() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-              {passes.filter(p => p.isActive !== false).map(pass => {
+              {activePasses.map(pass => {
                 const endDate = pass.endDate ? new Date(pass.endDate) : null;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const remainingDays = endDate ? Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)) : 0;
-                const isExpiringSoon = remainingDays >= 0 && remainingDays <= 7;
-                const isExpired = remainingDays < 0;
+                const isUnpaid = pass.paymentStatus === 'UNPAID' || pass.isActive === false;
+                const isExpiringSoon = remainingDays >= 0 && remainingDays <= 7 && !isUnpaid;
+                const isExpired = remainingDays < 0 && !isUnpaid;
                 
                 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
                 const vehicleOfPass = vehicles.find(v => v.id === pass.vehicleId || v.licensePlate === pass.licensePlate);
                 const vehicleTypeStr = pass.vehicleType || vehicleOfPass?.vehicleType || 'CAR';
 
                 return (
-                  <div key={pass.id} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 20, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative', borderTop: isExpired ? '4px solid #ef4444' : isExpiringSoon ? '4px solid #f59e0b' : '4px solid #10b981' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
+                  <div key={pass.id} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 20, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative', borderTop: isUnpaid ? '4px solid #ef4444' : isExpired ? '4px solid #ef4444' : isExpiringSoon ? '4px solid #f59e0b' : '4px solid #10b981' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' }}>
@@ -659,11 +749,11 @@ export default function MonthlyPass() {
                       
                       <span style={{
                         padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-                        background: isExpired ? 'rgba(239,68,68,0.12)' : isExpiringSoon ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
-                        color: isExpired ? '#ef4444' : isExpiringSoon ? '#f59e0b' : '#10b981',
-                        border: `1px solid ${isExpired ? 'rgba(239,68,68,0.3)' : isExpiringSoon ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        background: isUnpaid ? 'rgba(239,68,68,0.12)' : isExpired ? 'rgba(239,68,68,0.12)' : isExpiringSoon ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
+                        color: isUnpaid ? '#ef4444' : isExpired ? '#ef4444' : isExpiringSoon ? '#f59e0b' : '#10b981',
+                        border: `1px solid ${isUnpaid ? 'rgba(239,68,68,0.3)' : isExpired ? 'rgba(239,68,68,0.3)' : isExpiringSoon ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
                       }}>
-                        {isExpired ? 'Hết hạn' : isExpiringSoon ? `Còn ${remainingDays} ngày` : 'Đang hoạt động'}
+                        {isUnpaid ? '⏳ Chưa thanh toán' : isExpired ? 'Hết hạn' : isExpiringSoon ? `Còn ${remainingDays} ngày` : 'Đang hoạt động'}
                       </span>
                     </div>
 
@@ -681,11 +771,46 @@ export default function MonthlyPass() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
-                      {(isExpired || isExpiringSoon) ? (
+                      {isUnpaid ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const paymentUrl = await createVnPayUrl({
+                                amount: pass.fee || 0,
+                                orderInfo: `Thanh toan ve thang xe ${pass.licensePlate || ''}`,
+                                orderType: 'billpayment',
+                                targetId: pass.id,
+                                targetType: 'MONTHLY_PASS'
+                              });
+                              if (paymentUrl) window.location.href = paymentUrl;
+                            } catch (e) {
+                              alert('Lỗi tạo cổng thanh toán: ' + (e.response?.data?.message || e.message));
+                            }
+                          }}
+                          style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+                          💳 Thanh toán VNPay ngay
+                        </button>
+                      ) : (isExpired || isExpiringSoon) ? (
                         <button
                           onClick={() => { setRenewModal(pass); setRenewDuration(1); setRenewError(''); }}
-                          style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          🔄 Gia hạn vé tháng
+                          style={{
+                            flex: 1,
+                            padding: '14px',
+                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                            border: 'none',
+                            borderRadius: 14,
+                            color: '#ffffff',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            fontSize: '0.95rem',
+                            transition: 'all 0.25s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
+                          }}>
+                          ✨ Gia hạn vé tháng
                         </button>
                       ) : (
                         <div style={{ flex: 1, display: 'flex', gap: 12 }}>
@@ -694,8 +819,24 @@ export default function MonthlyPass() {
                            </div>
                            <button
                               onClick={() => { setRenewModal(pass); setRenewDuration(1); setRenewError(''); }}
-                              style={{ flex: 1, background: 'var(--bg-input)', border: '1.5px solid var(--border-color)', borderRadius: 16, color: 'var(--text-primary)', padding: '12px', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}>
-                              🔄 Gia hạn
+                              style={{
+                                flex: 1,
+                                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                                border: 'none',
+                                borderRadius: 14,
+                                color: '#ffffff',
+                                padding: '12px',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                transition: 'all 0.25s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                              }}>
+                              ✨ Gia hạn
                            </button>
                         </div>
                       )}
@@ -776,6 +917,19 @@ export default function MonthlyPass() {
               </div>
             </div>
 
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Phương thức thanh toán online</label>
+              <select
+                className="form-select"
+                style={{ height: 44, fontSize: '0.92rem', fontWeight: 600 }}
+                value={renewPaymentMethod}
+                onChange={e => setRenewPaymentMethod(e.target.value)}>
+                <option value="VNPAY">🔥 Cổng thanh toán trực tuyến VNPay (VNPAY-QR / Thẻ ATM / Visa)</option>
+                <option value="CARD">💳 Thẻ ngân hàng (ATM / Visa / MasterCard)</option>
+                <option value="TRANSFER">🏦 Chuyển khoản QR Code (MoMo / ZaloPay / VietQR)</option>
+              </select>
+            </div>
+
             {renewError && (
               <div className="error-banner" style={{ marginBottom: 16 }}>
                 <span>⚠️ {renewError}</span>
@@ -798,13 +952,14 @@ export default function MonthlyPass() {
                 onClick={handleRenew}
                 disabled={renewLoading}
                 style={{
-                  flex: 2, padding: '12px', background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  flex: 2, padding: '12px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                   border: 'none', borderRadius: 'var(--radius-md)',
                   color: '#fff', cursor: renewLoading ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 700,
+                  fontFamily: 'inherit', fontSize: '0.92rem', fontWeight: 700,
                   opacity: renewLoading ? 0.7 : 1,
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
                 }}>
-                {renewLoading ? '⏳ Đang gia hạn...' : '🔄 Xác nhận gia hạn'}
+                {renewLoading ? '⏳ Đang gia hạn...' : '✨ Xác nhận gia hạn'}
               </button>
             </div>
           </div>

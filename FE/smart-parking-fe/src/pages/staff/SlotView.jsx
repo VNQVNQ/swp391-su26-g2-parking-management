@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { compareSlotCodes } from '../../utils/slotHelper';
 
 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
 export default function SlotView() {
+  const [searchParams] = useSearchParams();
   const [zones,        setZones]        = useState([]);
   const [slots,        setSlots]        = useState([]);
   const [activeZone,   setActiveZone]   = useState(null);
@@ -23,7 +25,15 @@ export default function SlotView() {
         const data = res.data.data ?? res.data ?? [];
         setZones(data);
         if (data.length > 0) {
-          setActiveZone(data[0]);
+          const zId = searchParams.get('zoneId');
+          const fId = searchParams.get('floorId');
+          let targetZone = data[0];
+          if (zId) {
+            targetZone = data.find(z => String(z.id) === String(zId)) || data[0];
+          } else if (fId) {
+            targetZone = data.find(z => String(z.floor?.id || z.floorId) === String(fId)) || data[0];
+          }
+          setActiveZone(targetZone);
         }
       } catch (err) {
         setError('Không thể tải dữ liệu zones');
@@ -32,7 +42,7 @@ export default function SlotView() {
       }
     };
     load();
-  }, []);
+  }, [searchParams]);
 
   // ── Load slots + booking count khi đổi zone ────────────────────────────────
   const loadSlots = useCallback(async (zone) => {

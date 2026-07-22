@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { createVnPayUrl } from '../../services/vnpayApi';
 
 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
@@ -31,10 +32,6 @@ export default function MyVehicles() {
           <h2>🚗 Xe của tôi</h2>
           <p>Danh sách xe đã đăng ký trong hệ thống</p>
         </div>
-        <button className="btn-primary" onClick={() => navigate('/driver/register-vehicle')}
-          style={{ padding: '8px 16px', fontSize: '0.88rem' }}>
-          ➕ Đăng ký xe mới
-        </button>
       </div>
 
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
@@ -72,8 +69,8 @@ export default function MyVehicles() {
               <div style={{ padding: '16px', background: 'var(--bg-input)', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Trạng thái:</span>
-                  <span style={{ fontSize: '0.8rem', background: v.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.1)', color: v.isActive ? '#10b981' : '#94a3b8', border: `1px solid ${v.isActive ? 'rgba(16,185,129,0.3)' : 'rgba(100,116,139,0.3)'}`, padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
-                    {v.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
+                  <span style={{ fontSize: '0.8rem', background: v.isActive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: v.isActive ? '#10b981' : '#ef4444', border: `1px solid ${v.isActive ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
+                    {v.isActive ? 'Đang hoạt động' : '⏳ Chưa thanh toán'}
                   </span>
                 </div>
                 {v.hasMonthlyPass && v.monthlyPassExpiry && (
@@ -87,11 +84,62 @@ export default function MyVehicles() {
               </div>
               
               <div style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
-                <button 
-                  onClick={() => navigate('/driver/monthly-pass')}
-                  style={{ flex: 1, padding: '12px', background: v.hasMonthlyPass ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--bg-input)', border: v.hasMonthlyPass ? 'none' : '1.5px solid var(--border-color)', borderRadius: 16, color: v.hasMonthlyPass ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', transition: 'all 0.2s' }}>
-                  {v.hasMonthlyPass ? '🔄 Gia hạn vé tháng' : '🎫 Đăng ký vé tháng'}
-                </button>
+                {!v.isActive ? (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const VEHICLE_FEES = { MOTORBIKE: 5000, CAR: 15000, TRUCK: 30000 };
+                        const fee = VEHICLE_FEES[v.vehicleType] || 15000;
+                        const paymentUrl = await createVnPayUrl({
+                          amount: fee,
+                          orderInfo: `Thanh toan phi dang ky xe ${v.licensePlate}`,
+                          orderType: 'billpayment',
+                          targetId: v.id,
+                          targetType: 'VEHICLE'
+                        });
+                        if (paymentUrl) window.location.href = paymentUrl;
+                      } catch (e) {
+                        alert('Lỗi tạo cổng thanh toán: ' + (e.response?.data?.message || e.message));
+                      }
+                    }}
+                    style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+                    💳 Thanh toán phí đăng ký VNPay
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => navigate('/driver/monthly-pass', {
+                      state: {
+                        vehicleId: v.id,
+                        vehicleType: v.vehicleType,
+                        licensePlate: v.licensePlate,
+                        hasMonthlyPass: v.hasMonthlyPass,
+                        action: v.hasMonthlyPass ? 'renew' : 'register'
+                      }
+                    })}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      background: v.hasMonthlyPass
+                        ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+                        : 'var(--bg-input)',
+                      border: v.hasMonthlyPass ? 'none' : '1.5px solid var(--border-color)',
+                      borderRadius: 14,
+                      color: v.hasMonthlyPass ? '#ffffff' : 'var(--text-primary)',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.92rem',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      boxShadow: v.hasMonthlyPass
+                        ? '0 4px 14px rgba(99, 102, 241, 0.35)'
+                        : 'none'
+                    }}>
+                    {v.hasMonthlyPass ? '✨ Gia hạn vé tháng' : '🎫 Đăng ký vé tháng'}
+                  </button>
+                )}
               </div>
             </div>
           ))}

@@ -32,4 +32,6 @@ public class MonthlyPassRequest {
     LocalDate endDate;
     
     Boolean autoRenew;
+    
+    String paymentMethod;
 }

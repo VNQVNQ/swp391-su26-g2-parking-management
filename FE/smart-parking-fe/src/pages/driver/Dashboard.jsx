@@ -129,7 +129,7 @@ function DriverDashboard() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 32 }}>
+      <div className="driver-dashboard-stats-grid">
         <div className="card" style={{ padding: '24px 28px', borderRadius: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ width: 52, height: 52, borderRadius: '14px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
             <Car size={26} strokeWidth={2.5} />

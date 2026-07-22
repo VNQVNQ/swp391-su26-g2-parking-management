@@ -328,7 +328,7 @@ export default function Booking() {
         <p>Giữ chỗ đỗ xe theo thời gian và tự do chọn vị trí</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 28 }}>
+      <div className="dashboard-main-grid">
         {/* Form chính */}
         <div className="card" style={{ padding: 32, borderRadius: 24 }}>
           {/* Warning banner */}
@@ -608,7 +608,7 @@ export default function Booking() {
             </div>
 
             {/* Content modal */}
-            <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', flex: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 240px) 1fr', flex: 1, overflow: 'hidden' }}>
               {/* Sidebar Zones */}
               <div style={{ borderRight: '1px solid var(--border-color)', overflowY: 'auto', background: 'var(--bg-card)' }}>
                 <div style={{ padding: '16px 20px', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -677,7 +677,7 @@ export default function Booking() {
                     ) : slots.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)', flex: 1 }}>Không có chỗ nào trong khu vực này</div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 10, marginBottom: 20 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 20 }}>
                         {slots.map(slot => {
                           const isOccupied = !!slot.currentSessionId;
                           const isMaintenance = slot.maintenanceStatus === 'MAINTENANCE';

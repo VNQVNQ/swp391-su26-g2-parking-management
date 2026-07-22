@@ -67,6 +67,8 @@ import ManageParkingSlots from "./pages/manager/ManageParkingSlots";
 import RevenueReport from "./pages/manager/RevenueReport";
 // @ts-ignore
 import Profile from "./pages/Profile";
+// @ts-ignore
+import VnPayReturn from "./pages/VnPayReturn";
 
 // ── Role mapping ──────────────────────────────────────────────────────────────
 // FIX: Đọc từ cả role lẫn roleCode, normalize về uppercase
@@ -181,8 +183,9 @@ function AppShell() {
   if (loading) return <AuthLoading />;
 
   const isPublicRoute =
-    ["/", "/login", "/register", "/forgot-password"].includes(location.pathname) ||
-    location.pathname.startsWith("/reset-password");
+    ["/", "/login", "/register", "/forgot-password", "/payment/vnpay-return"].includes(location.pathname) ||
+    location.pathname.startsWith("/reset-password") ||
+    location.pathname.startsWith("/payment/vnpay-return");
   const hasStoredSession = hasStoredAuthSession();
 
   if (!isAuthenticated && !hasStoredSession && !isPublicRoute) {
@@ -200,6 +203,7 @@ function AppShell() {
           path="/reset-password/:tokenResetPassword"
           element={<ResetPassword />}
         />
+        <Route path="/payment/vnpay-return" element={<VnPayReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -220,6 +224,7 @@ function AppShell() {
         <main className={`main-content ${sidebarCollapsed ? "collapsed" : ""}`}>
           <Routes>
             <Route path="/" element={<Navigate to={defaultPage} replace />} />
+            <Route path="/payment/vnpay-return" element={<VnPayReturn />} />
 
             {/* ═══ ADMIN ═══ */}
             <Route
@@ -283,7 +288,7 @@ function AppShell() {
             <Route
               path="/building-overview"
               element={
-                <RoleRoute allowedRoles={["ADMIN", "PARKING_MANAGER", "PARKING_STAFF"]}>
+                <RoleRoute allowedRoles={["ADMIN", "PARKING_MANAGER", "PARKING_STAFF", "DRIVER"]}>
                   <BuildingOverview />
                 </RoleRoute>
               }

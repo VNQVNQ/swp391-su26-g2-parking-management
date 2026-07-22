@@ -42,5 +42,7 @@ public interface MonthlyPassService {
     
     long getActiveMonthlyPassCount();
     
+    long getMaxActivePasses();
+    
     void markAsExpired(UUID id);
 }

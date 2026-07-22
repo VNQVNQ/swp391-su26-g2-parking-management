@@ -2,7 +2,7 @@ import { CalendarCheck, CreditCard, Car, Bike, Truck, Search, Plus, X, CheckCirc
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 
-const MAX_PASSES = 350;
+
 
 // Helper: extract vehicle type from pass object (handles nested vehicle object)
 const getVehicleType = (p) =>
@@ -45,6 +45,7 @@ export default function PassesBookings() {
   const [passVehicleFilter, setPassVehicleFilter] = useState('');
   const [passStatusFilter, setPassStatusFilter] = useState('');
   const [activePassCount, setActivePassCount] = useState(0);
+  const [maxPasses, setMaxPasses] = useState(350);
 
   // Create pass form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -60,18 +61,31 @@ export default function PassesBookings() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [passesRes, bookingsRes, pricingRes, countRes] = await Promise.all([
+      const [passesRes, bookingsRes, pricingRes, countRes, limitRes, slotsRes] = await Promise.all([
         api.get('/api/v1/monthly-passes').catch(() => ({ data: { data: [] } })),
         api.get('/api/v1/bookings').catch(() => ({ data: { data: [] } })),
         api.get('/api/v1/pricing-rules/ticket-type/MONTHLY').catch(() => ({ data: { data: [] } })),
-        api.get('/api/v1/monthly-passes/stats/active-count').catch(() => ({ data: { data: 0 } }))
+        api.get('/api/v1/monthly-passes/stats/active-count').catch(() => ({ data: { data: 0 } })),
+        api.get('/api/v1/monthly-passes/stats/max-limit').catch(() => ({ data: null })),
+        api.get('/api/v1/parking-slots').catch(() => ({ data: { data: [] } }))
       ]);
 
       const passesData = passesRes.data?.data ?? passesRes.data ?? [];
+      const passesArr = Array.isArray(passesData) ? passesData : [];
+      const activeInArr = passesArr.filter(p => {
+        const s = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
+        return s === 'ACTIVE' || s === 'Active';
+      }).length;
       const bookingsData = bookingsRes.data?.data ?? bookingsRes.data ?? [];
       let rulesData = pricingRes.data?.data ?? pricingRes.data ?? [];
       const cnt = countRes.data?.data ?? countRes.data ?? 0;
-      setActivePassCount(Number(cnt) || 0);
+      const slotsData = slotsRes.data?.data ?? slotsRes.data ?? [];
+      const slotsArr = Array.isArray(slotsData) ? slotsData : [];
+      const computedLimit = slotsArr.length > 0 ? Math.round(slotsArr.length * 0.7) : 350;
+      const lim = limitRes.data?.data ?? limitRes.data;
+      const resolvedLimit = (lim !== null && lim !== undefined && !isNaN(Number(lim)) && Number(lim) > 0 && limitRes.data !== null) ? Number(lim) : computedLimit;
+      setActivePassCount(Math.max(Number(cnt) || 0, activeInArr));
+      setMaxPasses(resolvedLimit);
 
       if (!Array.isArray(rulesData) || rulesData.length === 0) {
         try {
@@ -92,7 +106,7 @@ export default function PassesBookings() {
         });
       }
       setMonthlyPrices(prices);
-      setPasses(Array.isArray(passesData) ? passesData : []);
+      setPasses(passesArr);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
     } catch (err) {
       console.error(err);
@@ -132,7 +146,7 @@ export default function PassesBookings() {
   // Submit create monthly pass
   const handleCreatePass = async () => {
     if (!vehicleLookup) { setCreateError('Vui lòng tìm và xác nhận xe trước'); return; }
-    if (activePassCount >= MAX_PASSES) { setCreateError(`Bãi đã đạt giới hạn ${MAX_PASSES} vé tháng`); return; }
+    if (displayActiveCount >= maxPasses) { setCreateError(`Bãi đã đạt giới hạn ${maxPasses} vé tháng`); return; }
     setCreateLoading(true); setCreateError(''); setCreateSuccess('');
     try {
       const payload = {
@@ -164,6 +178,7 @@ export default function PassesBookings() {
     const s = p.status || (p.isActive ? 'ACTIVE' : 'EXPIRED');
     return s === 'ACTIVE' || s === 'Active';
   });
+  const displayActiveCount = Math.max(activePassCount, activePasses.length);
   const carPasses = passes.filter(p => {
     const t = getVehicleType(p).toUpperCase();
     return t === 'CAR';
@@ -200,12 +215,12 @@ export default function PassesBookings() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
           <button className="btn-primary" onClick={() => { setShowCreateForm(true); setCreateError(''); setCreateSuccess(''); }}
-            disabled={activePassCount >= MAX_PASSES}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: '0.88rem', opacity: activePassCount >= MAX_PASSES ? 0.5 : 1 }}>
+            disabled={displayActiveCount >= maxPasses}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', fontSize: '0.88rem', opacity: displayActiveCount >= maxPasses ? 0.5 : 1 }}>
             <Plus size={16} /> Tạo vé tháng
           </button>
-          <span style={{ fontSize: '0.78rem', color: activePassCount >= MAX_PASSES ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
-            {activePassCount}/{MAX_PASSES} vé đang hoạt động
+          <span style={{ fontSize: '0.78rem', color: displayActiveCount >= maxPasses ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
+            {displayActiveCount}/{maxPasses} vé đang hoạt động
           </span>
         </div>
       </div>
@@ -245,14 +260,14 @@ export default function PassesBookings() {
             </div>
 
             {/* Slot limit banner */}
-            {activePassCount >= MAX_PASSES && (
+            {displayActiveCount >= maxPasses && (
               <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>
-                <AlertTriangle size={16} /> Bãi đã đạt giới hạn {MAX_PASSES} vé tháng. Không thể tạo thêm.
+                <AlertTriangle size={16} /> Bãi đã đạt giới hạn {maxPasses} vé tháng. Không thể tạo thêm.
               </div>
             )}
-            {activePassCount >= MAX_PASSES * 0.9 && activePassCount < MAX_PASSES && (
+            {displayActiveCount >= maxPasses * 0.9 && displayActiveCount < maxPasses && (
               <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.85rem', color: '#f59e0b', fontWeight: 600 }}>
-                <AlertTriangle size={16} /> Gần đầy: {activePassCount}/{MAX_PASSES} vé đang hoạt động
+                <AlertTriangle size={16} /> Gần đầy: {displayActiveCount}/{maxPasses} vé đang hoạt động
               </div>
             )}
 
@@ -325,7 +340,7 @@ export default function PassesBookings() {
               <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={() => setShowCreateForm(false)}>Hủy</button>
               <button className="btn-sm btn-sm-primary" style={{ padding: '10px 24px' }}
                 onClick={handleCreatePass}
-                disabled={createLoading || !vehicleLookup || activePassCount >= MAX_PASSES}>
+                disabled={createLoading || !vehicleLookup || displayActiveCount >= maxPasses}>
                 {createLoading ? 'Đang tạo...' : 'Tạo Vé tháng'}
               </button>
             </div>

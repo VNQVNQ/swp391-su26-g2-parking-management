@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { compareSlotCodes } from '../../utils/slotHelper';
 
 const VEHICLE_ICON = { MOTORBIKE: '🏍️', CAR: '🚗', TRUCK: '🚛' };
 
 export default function DriverSlotView() {
+  const [searchParams] = useSearchParams();
   const [zones,        setZones]        = useState([]);
   const [slots,        setSlots]        = useState([]);
   const [activeZone,   setActiveZone]   = useState(null);
@@ -21,7 +23,17 @@ export default function DriverSlotView() {
         const res = await api.get('/api/v1/zones');
         const data = res.data.data ?? res.data ?? [];
         setZones(data);
-        if (data.length > 0) setActiveZone(data[0]);
+        if (data.length > 0) {
+          const zId = searchParams.get('zoneId');
+          const fId = searchParams.get('floorId');
+          let targetZone = data[0];
+          if (zId) {
+            targetZone = data.find(z => String(z.id) === String(zId)) || data[0];
+          } else if (fId) {
+            targetZone = data.find(z => String(z.floor?.id || z.floorId) === String(fId)) || data[0];
+          }
+          setActiveZone(targetZone);
+        }
       } catch (err) {
         setError('Không thể tải dữ liệu khu vực');
       } finally {
@@ -29,7 +41,7 @@ export default function DriverSlotView() {
       }
     };
     load();
-  }, []);
+  }, [searchParams]);
 
   const loadSlots = useCallback(async (zone) => {
     if (!zone) return;
@@ -86,7 +98,7 @@ export default function DriverSlotView() {
 
       {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="driver-slots-stats-grid">
         {[
           { label: 'Tổng slot',    value: total,       color: 'var(--text-primary)' },
           { label: 'Đang đỗ',      value: occupied,    color: '#ef4444' },
@@ -103,7 +115,7 @@ export default function DriverSlotView() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 24 }}>
+      <div className="driver-slots-main-grid">
         <div className="card" style={{ padding: 0, overflow: 'hidden', alignSelf: 'start' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Khu vực</span>
@@ -187,7 +199,7 @@ export default function DriverSlotView() {
               ) : slots.length === 0 ? (
                 <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Không có slot nào</p>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
                   {slots.map(slot => {
                     const isOccupied    = !!slot.currentSessionId;
                     const isMaintenance = slot.maintenanceStatus === 'MAINTENANCE';
@@ -208,7 +220,7 @@ export default function DriverSlotView() {
                           background: slotBg,
                           border: `1.5px solid ${borderColor}`,
                           borderRadius: 'var(--radius-md)',
-                          padding: '10px 4px',
+                          padding: '10px 6px',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                           minHeight: (isOccupied || isBooked) ? 82 : 60,
                           cursor: 'default', transition: 'all 0.15s',
