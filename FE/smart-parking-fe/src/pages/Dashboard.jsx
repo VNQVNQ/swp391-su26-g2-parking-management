@@ -78,18 +78,30 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  // "Occupied" slots = slots that have a currentSessionId (nguồn sự thật khớp với Giám sát tòa nhà)
+  const occupiedSlots = useMemo(() => slots.filter(s => s.currentSessionId && s.maintenanceStatus !== 'MAINTENANCE'), [slots]);
+
+  // Valid active sessions = chỉ giữ các session có slot thực sự đang chiếm dụng
+  const validActiveSessions = useMemo(() => {
+    const occupiedSessionIds = new Set(slots.map(s => String(s.currentSessionId || '')).filter(Boolean));
+    const valid = activeSessions.filter(s => occupiedSessionIds.has(String(s.id || '')));
+    console.log('[Dashboard] activeSessions:', activeSessions.length, '=> validActiveSessions:', valid.length, '| occupiedSlots:', occupiedSlots.length);
+    return valid;
+  }, [activeSessions, slots, occupiedSlots]);
+
   const slotStats = useMemo(() => {
-    let available = 0, occupied = 0, maintenance = 0;
+    let maintenance = 0;
     slots.forEach(s => {
       if (s.maintenanceStatus === 'MAINTENANCE') maintenance++;
-      else if (s.currentSessionId) occupied++;
-      else available++;
     });
-    return { available, occupied, maintenance, total: available + occupied + maintenance };
-  }, [slots]);
+    const occupied = occupiedSlots.length;
+    const total = slots.length;
+    const available = Math.max(0, total - occupied - maintenance);
+    return { available, occupied, maintenance, total };
+  }, [slots, occupiedSlots]);
 
   const parkedVehicles = useMemo(() => {
-    return activeSessions.map(session => {
+    return validActiveSessions.map(session => {
       const typeStr = session.vehicleType || session.vehicle?.vehicleType;
       const typeLabel = typeStr === 'CAR' ? 'Ô tô' : typeStr === 'MOTORBIKE' ? 'Xe máy' : 'Xe tải';
       
@@ -132,7 +144,7 @@ export default function Dashboard() {
     },
     {
       label: "Xe đang đỗ",
-      value: String(activeSessions.length),
+      value: String(occupiedSlots.length),
       subtitle: `${overstayCount > 0 ? `${overstayCount} xe đỗ quá giờ` : 'Tất cả trong thời gian quy định'}`,
       icon: TrendingUp,
       color: '#00d084'
@@ -144,22 +156,27 @@ export default function Dashboard() {
       icon: AlertCircle,
       color: '#ffa500'
     },
-  ], [utilizationRate, slotStats, activeSessions.length, overstayCount]);
+  ], [utilizationRate, slotStats, validActiveSessions.length, overstayCount]);
 
   const getFloorStats = useMemo(() => {
     const floorsMap = {};
     zones.forEach(z => {
       if (!floorsMap[z.floorName]) {
-        floorsMap[z.floorName] = { name: z.floorName, total: 0, available: 0 };
+        floorsMap[z.floorName] = { name: z.floorName, total: 0, available: 0, used: 0, maintenance: 0 };
       }
     });
     slots.forEach(s => {
-      if (floorsMap[s.floorName]) {
-        floorsMap[s.floorName].total++;
-        if (s.maintenanceStatus !== 'MAINTENANCE' && !s.currentSessionId) {
-          floorsMap[s.floorName].available++;
-        }
+      const floorName = s.floorName || 'Unknown';
+      if (!floorsMap[floorName]) floorsMap[floorName] = { name: floorName, total: 0, available: 0, used: 0, maintenance: 0 };
+      floorsMap[floorName].total++;
+      if (s.maintenanceStatus === 'MAINTENANCE') {
+        floorsMap[floorName].maintenance++;
+      } else if (s.currentSessionId) {
+        floorsMap[floorName].used++;
       }
+    });
+    Object.values(floorsMap).forEach(f => {
+      f.available = Math.max(0, f.total - f.used - f.maintenance);
     });
     return Object.values(floorsMap);
   }, [zones, slots]);
@@ -167,12 +184,15 @@ export default function Dashboard() {
   const zoneStatus = useMemo(() => {
     return zones.map(z => {
       const zoneSlots = slots.filter(s => s.zoneId === z.id);
-      const available = zoneSlots.filter(s => s.maintenanceStatus !== 'MAINTENANCE' && !s.currentSessionId).length;
+      const maintenance = zoneSlots.filter(s => s.maintenanceStatus === 'MAINTENANCE').length;
+      const used = zoneSlots.filter(s => s.currentSessionId && s.maintenanceStatus !== 'MAINTENANCE').length;
+      const total = zoneSlots.length;
+      const available = Math.max(0, total - used - maintenance);
       return {
         zone: z.name,
         location: z.floorName,
         available: available,
-        total: zoneSlots.length || z.totalSlots || 0,
+        total: total,
       };
     });
   }, [zones, slots]);

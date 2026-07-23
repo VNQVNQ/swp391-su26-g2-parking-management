@@ -158,10 +158,9 @@ export default function ManageFloors() {
   const getZoneCount = (floorId) => zones.filter(z => z.floorId === floorId).length;
   const getOccupancyForFloor = (floorId) => {
     const floorZones = zones.filter(z => z.floorId === floorId);
-    const total = floorZones.reduce((sum, z) => sum + (z.totalSlots || 0), 0);
-    const created = floorZones.reduce((sum, z) => sum + (z.createdSlots || 0), 0);
+    const total = floorZones.reduce((sum, z) => sum + (z.createdSlots || 0), 0);
     const avail = floorZones.reduce((sum, z) => sum + (z.availableSlots || 0), 0);
-    const used = created - avail;
+    const used = total - avail;
     return { total, used, pct: total > 0 ? Math.round((used / total) * 100) : 0 };
   };
 
@@ -171,7 +170,7 @@ export default function ManageFloors() {
   const stats = [
     { label: 'Tổng số tầng', value: floors.length, icon: Layers, color: '#3b82f6', sub: `${avgZonesPerFloor} khu/tầng TB` },
     { label: 'Tổng khu vực', value: totalZones, icon: MapPin, color: '#10b981', sub: 'Trên tất cả tầng' },
-    { label: 'Tổng chỗ đỗ', value: zones.reduce((s, z) => s + (z.totalSlots || 0), 0), icon: Building2, color: '#8b5cf6', sub: 'Toàn bãi xe' },
+    { label: 'Tổng chỗ đỗ', value: zones.reduce((s, z) => s + (z.createdSlots || 0), 0), icon: Building2, color: '#8b5cf6', sub: 'Thực tế đã tạo' },
   ];
 
   return (
@@ -313,7 +312,7 @@ export default function ManageFloors() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={handleReset}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{editingId ? 'Chỉnh sửa tầng' : 'Thêm tầng mới'}</h3>

@@ -143,6 +143,23 @@ export default function BuildingOverview() {
       }
     });
     
+    // After slot-based stats, also inject zones that have no slots yet (so they appear on the floor)
+    zones.forEach(z => {
+      const fId = z.floor?.id || z.floorId;
+      if (!fId || !stats[fId]) return;
+      if (!stats[fId].zones[z.id]) {
+        // Only add if zone has slots created (createdSlots > 0), otherwise skip from zone badge display
+        // But we do register it so the floor can show it has a zone configured
+        stats[fId].zones[z.id] = {
+          id: z.id,
+          name: z.name || `Khu ${z.id}`,
+          total: z.createdSlots || 0,
+          occupied: 0,
+          createdSlots: z.createdSlots || 0
+        };
+      }
+    });
+
     return { floorStats: stats, totalSlots: tSlots, totalOccupied: tOccupied };
   }, [sortedFloors, zones, slots, activeSessions]);
 

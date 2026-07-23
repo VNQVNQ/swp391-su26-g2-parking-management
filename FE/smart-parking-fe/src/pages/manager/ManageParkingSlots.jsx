@@ -163,7 +163,11 @@ export default function ManageParkingSlots() {
       setShowForm(false); setEditingId(null); setForm({ zoneId: zoneIdFromUrl, slotCode: '', vehicleType: 'CAR', maintenanceStatus: 'AVAILABLE' });
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.message || 'Lỗi khi lưu chỗ đỗ');
+      let msg = err.response?.data?.message || 'Lỗi khi lưu chỗ đỗ';
+      if (msg.includes('Slot code already exists')) {
+        msg = `Mã chỗ đỗ "${form.slotCode}" đã tồn tại. Vui lòng chọn mã khác.`;
+      }
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -221,7 +225,11 @@ export default function ManageParkingSlots() {
       await loadData();
       setTimeout(() => { setShowBulkForm(false); setBulkResult(null); setBulkForm({ zoneId: '', vehicleType: 'CAR', prefix: '', startNum: 1, endNum: 10, maintenanceStatus: 'AVAILABLE' }); }, 2000);
     } catch (err) {
-      setBulkResult({ type: 'error', text: err.response?.data?.message || err.response?.data || 'Lỗi khi tạo hàng loạt chỗ đỗ' });
+      let msg = err.response?.data?.message || err.response?.data || 'Lỗi khi tạo hàng loạt chỗ đỗ';
+      if (typeof msg === 'string' && msg.includes('Slot code already exists')) {
+        msg = 'Một hoặc nhiều mã chỗ đỗ đã tồn tại. Vui lòng kiểm tra lại tiền tố hoặc khoảng số.';
+      }
+      setBulkResult({ type: 'error', text: msg });
     } finally {
       setBulkSubmitting(false);
     }
@@ -525,7 +533,7 @@ export default function ManageParkingSlots() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={handleReset}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{editingId ? 'Chỉnh sửa chỗ đỗ' : 'Thêm chỗ đỗ mới'}</h3>
@@ -588,7 +596,7 @@ export default function ManageParkingSlots() {
 
       {/* Bulk Create Modal */}
       {showBulkForm && (
-        <div className="modal-overlay" onClick={() => { setShowBulkForm(false); setBulkResult(null); }}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>

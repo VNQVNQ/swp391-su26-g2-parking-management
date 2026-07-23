@@ -178,14 +178,13 @@ export default function ManageZones() {
 
   // Occupancy per zone
   const getOccupancy = (zone) => {
-    const total = zone.totalSlots || 0;
-    const created = zone.createdSlots || 0;
+    const total = zone.createdSlots || 0;
     const avail = zone.availableSlots || 0;
-    const used = created - avail;
+    const used = total - avail;
     return { total, used, pct: total > 0 ? Math.round((used / total) * 100) : 0 };
   };
 
-  const totalSlots = zones.reduce((s, z) => s + (z.totalSlots || 0), 0);
+  const totalSlots = zones.reduce((s, z) => s + (z.createdSlots || 0), 0);
   const usedSlots = zones.reduce((s, z) => s + ((z.createdSlots || 0) - (z.availableSlots || 0)), 0);
   const overallOccupancy = totalSlots > 0 ? Math.round((usedSlots / totalSlots) * 100) : 0;
 
@@ -327,7 +326,7 @@ export default function ManageZones() {
                         {vts.icon} {vehicleTypeLabel(zone.vehicleType)}
                       </span>
                     </td>
-                    <td onClick={e => e.stopPropagation()} style={{ fontWeight: 600 }}>{zone.totalSlots}</td>
+                    <td onClick={e => e.stopPropagation()} style={{ fontWeight: 600 }}>{zone.createdSlots || 0}</td>
                     <td onClick={e => e.stopPropagation()} style={{ minWidth: 140 }}>
                       {occ.total > 0 ? (
                         <div>
@@ -370,7 +369,7 @@ export default function ManageZones() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={handleReset}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>{editingId ? 'Chỉnh sửa khu vực' : 'Thêm khu vực mới'}</h3>
@@ -394,11 +393,13 @@ export default function ManageZones() {
                 {VEHICLE_TYPES.map(type => <option key={type} value={type}>{vehicleTypeLabel(type)}</option>)}
               </select>
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <label className="form-label">Sức chứa (Tổng số chỗ đỗ) <span className="required">*</span></label>
-              <input type="number" className="form-input" placeholder="VD: 20, 50, 100..."
-                value={form.totalSlots} onChange={e => setForm({ ...form, totalSlots: e.target.value })} style={{ padding: '12px 14px' }} />
-            </div>
+            {!editingId && (
+              <div style={{ marginBottom: 24 }}>
+                <label className="form-label">Sức chứa (Tổng số chỗ đỗ) <span className="required">*</span></label>
+                <input type="number" className="form-input" placeholder="VD: 20, 50, 100..."
+                  value={form.totalSlots} onChange={e => setForm({ ...form, totalSlots: e.target.value })} style={{ padding: '12px 14px' }} />
+              </div>
+            )}
             {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 16 }}>⚠️ {error}</div>}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button className="btn-sm" style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '10px 20px' }} onClick={handleReset}>Hủy</button>

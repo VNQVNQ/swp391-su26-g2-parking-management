@@ -1,6 +1,7 @@
 import { BarChart3, DollarSign, Car, Activity, Clock, TrendingUp, Download, RefreshCw, Calendar } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { getActiveSessions, getCompletedSessions, getZones } from '../../services/sessionApi';
+import api from '../../services/api';
 
 /* ─── Tooltip hook ─────────────────────────────────────────── */
 function useTooltip() {
@@ -240,20 +241,23 @@ export default function Reports() {
   const [activeSessions, setActiveSessions] = useState([]);
   const [completedSessions, setCompletedSessions] = useState([]);
   const [zones, setZones] = useState([]);
+  const [slots, setSlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [active, completed, zoneList] = await Promise.all([
+      const [active, completed, zoneList, slotList] = await Promise.all([
         getActiveSessions(),
         getCompletedSessions(),
-        getZones()
+        getZones(),
+        api.get('/api/v1/parking-slots').catch(() => ({ data: { data: [] } }))
       ]);
       setActiveSessions(active);
       setCompletedSessions(completed);
       setZones(zoneList.data ?? zoneList ?? []);
+      setSlots(slotList.data?.data ?? slotList.data ?? []);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching report data', error);
@@ -264,7 +268,12 @@ export default function Reports() {
 
   useEffect(() => { loadData(); }, []);
 
-  const { revenueData, peakData, vehicleTypes, floorData, stats } = useMemo(() => {
+  const { revenueData, vehicleTypes, floorData, stats } = useMemo(() => {
+    // Nguồn sự thật: slot có currentSessionId = đang có xe (khớp với Giám sát tòa nhà)
+    const occupiedSlots = slots.filter(s => s.currentSessionId && s.maintenanceStatus !== 'MAINTENANCE');
+    const occupiedSessionIds = new Set(occupiedSlots.map(s => String(s.currentSessionId || '')).filter(Boolean));
+    const validActiveSessions = activeSessions.filter(s => occupiedSessionIds.has(String(s.id || '')));
+
     const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : new Date(0);
     const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date();
 
@@ -295,37 +304,9 @@ export default function Reports() {
       chartRev.push({ day: key, value: dayRevenueMap[key] || 0 });
     }
 
-    // Peak hours in range
-    const hoursMap = {};
-    for (let i = 6; i <= 20; i++) hoursMap[i] = { entries: 0, exits: 0 };
-    [...activeSessions, ...completedSessions].forEach(v => {
-      if (!v.entryTime || !isInRange(v.entryTime)) return;
-      const h = new Date(v.entryTime).getHours();
-      if (hoursMap[h]) hoursMap[h].entries++;
-    });
-    completedSessions.forEach(v => {
-      if (!v.exitTime || !isInRange(v.exitTime)) return;
-      const h = new Date(v.exitTime).getHours();
-      if (hoursMap[h]) hoursMap[h].exits++;
-    });
-    const chartPeak = Object.keys(hoursMap).map(h => ({
-      label: `${String(h).padStart(2, '0')}h`,
-      entries: hoursMap[h].entries,
-      exits: hoursMap[h].exits,
-    }));
-
-    let maxActivity = 0, peakHourStr = 'N/A';
-    Object.keys(hoursMap).forEach(h => {
-      const act = hoursMap[h].entries + hoursMap[h].exits;
-      if (act > maxActivity) {
-        maxActivity = act;
-        peakHourStr = `${String(h).padStart(2, '0')}:00 - ${String(Number(h) + 1).padStart(2, '0')}:00`;
-      }
-    });
-
-    // Vehicle types (active sessions)
+    // Vehicle types (chỉ từ xe đang thực sự chiếm chỗ)
     let cars = 0, bikes = 0, others = 0;
-    activeSessions.forEach(v => {
+    validActiveSessions.forEach(v => {
       if (v.vehicleType === 'CAR' || v.vehicleType === 'Car') cars++;
       else if (v.vehicleType === 'MOTORBIKE' || v.vehicleType === 'Motorbike') bikes++;
       else others++;
@@ -336,20 +317,22 @@ export default function Reports() {
       { name: 'Khác', value: others, color: '#10b981' },
     ];
 
-    // Floor occupancy
+    // Floor occupancy dựa trên slots thực tế (khớp với Giám sát)
     const floorMap = {};
-    let totalSlotsAll = 0, occupiedSlotsAll = 0;
-    zones.forEach(z => {
-      const total = z.totalSlots || 0;
-      const avail = z.availableSlots || 0;
-      const used = total - avail;
-      totalSlotsAll += total;
-      occupiedSlotsAll += used;
-      const floorName = z.floorName || z.floor || 'Unknown';
+    let totalSlotsAll = 0;
+    let occupiedSlotsAll = 0;
+
+    slots.forEach(s => {
+      const floorName = s.floorName || 'Unknown';
       if (!floorMap[floorName]) floorMap[floorName] = { total: 0, used: 0 };
-      floorMap[floorName].total += total;
-      floorMap[floorName].used += used;
+      floorMap[floorName].total++;
+      totalSlotsAll++;
+      if (s.currentSessionId && s.maintenanceStatus !== 'MAINTENANCE') {
+        floorMap[floorName].used++;
+        occupiedSlotsAll++;
+      }
     });
+
     const chartFloors = Object.keys(floorMap).map(k => ({ name: k, total: floorMap[k].total, used: floorMap[k].used }));
 
     // Entries in range
@@ -363,16 +346,14 @@ export default function Reports() {
     const summaryStats = [
       { label: 'Tổng doanh thu', value: `₫${totalRevenue.toLocaleString('vi-VN')}`, icon: DollarSign, color: '#10b981', trend: null },
       { label: 'Lượt xe vào', value: rangeEntriesCount.toString(), icon: Car, color: '#3b82f6', trend: null },
-      { label: 'Tỷ lệ lấp đầy', value: `${occupancyPct}%`, subValue: `${occupiedSlotsAll}/${totalSlotsAll} chỗ`, icon: Activity, color: '#f59e0b', trend: null, pct: parseFloat(occupancyPct) },
-      { label: 'Giờ cao điểm', value: peakHourStr, icon: Clock, color: '#8b5cf6', trend: null },
+      { label: 'Tỷ lệ lấp đầy', value: `${occupancyPct}%`, subValue: `${occupiedSlotsAll}/${totalSlotsAll} chỗ`, icon: Activity, color: '#f59e0b', trend: null, pct: parseFloat(occupancyPct) }
     ];
 
-    return { revenueData: chartRev, peakData: chartPeak, vehicleTypes: chartTypes, floorData: chartFloors, stats: summaryStats };
-  }, [activeSessions, completedSessions, zones, dateFrom, dateTo]);
+    return { revenueData: chartRev, vehicleTypes: chartTypes, floorData: chartFloors, stats: summaryStats };
+  }, [activeSessions, completedSessions, zones, slots, dateFrom, dateTo]);
 
   const TABS = [
     { key: 'revenue', label: 'Doanh thu', icon: '💰' },
-    { key: 'peak', label: 'Giờ cao điểm', icon: '⏰' },
     { key: 'vehicles', label: 'Loại xe', icon: '🚗' },
     { key: 'floor', label: 'Theo Tầng', icon: '🏢' },
   ];
@@ -501,16 +482,6 @@ export default function Reports() {
                   Doanh thu từ {dateFrom} đến {dateTo}
                 </h3>
                 <AreaChart data={revenueData} />
-              </>
-            )}
-            {tab === 'peak' && (
-              <>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                  <Clock size={18} style={{ color: '#8b5cf6' }} />
-                  Phân tích giờ cao điểm
-                  <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>Hover vào cột để xem chi tiết</span>
-                </h3>
-                <BarChartComponent data={peakData} />
               </>
             )}
             {tab === 'vehicles' && (

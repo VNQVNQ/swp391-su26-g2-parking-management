@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.Date;
+
 @AllArgsConstructor
 @Data
 @NoArgsConstructor
@@ -17,7 +19,11 @@ import lombok.experimental.FieldDefaults;
 public class UserRequestForUpdate {
     String email;
     String password;
+    String fullName;
     String phoneNumber;
+    String identifyNumber;
+    String gender;
+    Date dateOfBirth;
     Integer age;
     String address;
 }

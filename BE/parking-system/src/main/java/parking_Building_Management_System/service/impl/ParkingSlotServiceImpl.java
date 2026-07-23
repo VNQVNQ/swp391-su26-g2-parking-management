@@ -49,7 +49,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
         // Verify slot code is unique
         if (parkingSlotRepository.findBySlotCode(request.getSlotCode()).isPresent()) {
-            throw new RuntimeException("Slot code already exists: " + request.getSlotCode());
+            throw new RuntimeException("Mã chỗ đỗ đã tồn tại: " + request.getSlotCode());
         }
 
         ParkingSlot slot = new ParkingSlot();
@@ -84,7 +84,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
                 .map(slotCode -> {
                     // Verify slot code is unique
                     if (parkingSlotRepository.findBySlotCode(slotCode).isPresent()) {
-                        throw new RuntimeException("Slot code already exists: " + slotCode);
+                        throw new RuntimeException("Mã chỗ đỗ đã tồn tại: " + slotCode);
                     }
 
                     ParkingSlot slot = new ParkingSlot();
@@ -182,7 +182,7 @@ public class ParkingSlotServiceImpl implements ParkingSlotService {
 
         if (!slot.getSlotCode().equals(request.getSlotCode()) &&
             parkingSlotRepository.findBySlotCode(request.getSlotCode()).isPresent()) {
-            throw new RuntimeException("Slot code already exists: " + request.getSlotCode());
+            throw new RuntimeException("Mã chỗ đỗ đã tồn tại: " + request.getSlotCode());
         }
 
         slot.setSlotCode(request.getSlotCode());

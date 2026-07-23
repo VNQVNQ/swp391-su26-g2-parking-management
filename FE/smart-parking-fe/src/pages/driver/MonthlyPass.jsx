@@ -185,7 +185,8 @@ export default function MonthlyPass() {
         fee: newPassData.fee,
         status: newPassData.status || 'ACTIVE',
         isActive: newPassData.isActive,
-        paymentMethod: form.paymentMethod
+        paymentMethod: form.paymentMethod,
+        paymentStatus: newPassData.paymentStatus
       };
 
       setPasses(prev => [...prev, newPass]);
@@ -476,7 +477,7 @@ export default function MonthlyPass() {
                   onChange={e => setForm({ ...form, vehicleId: e.target.value })}>
                   <option value="">-- Chọn xe --</option>
                   {vehicles
-                    .filter(v => v.vehicleType === form.vehicleType)
+                    .filter(v => v.vehicleType === form.vehicleType && !passes.some(p => p.vehicleId === v.id && (p.isActive || p.paymentStatus === 'UNPAID')))
                     .map(v => (
                       <option key={v.id} value={v.id}>
                         {v.licensePlate} ({v.vehicleType === 'MOTORBIKE' ? 'Xe máy' : v.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'})
@@ -815,7 +816,7 @@ export default function MonthlyPass() {
                       ) : (
                         <div style={{ flex: 1, display: 'flex', gap: 12 }}>
                            <div style={{ flex: 2, padding: '12px 16px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: 16, fontSize: '0.85rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                              <span style={{ fontSize: '1.2rem' }}>✓</span> Không giới hạn đỗ xe
+                              <span style={{ fontSize: '1.2rem' }}>✓</span> Đảm bảo luôn có chỗ đỗ
                            </div>
                            <button
                               onClick={() => { setRenewModal(pass); setRenewDuration(1); setRenewError(''); }}

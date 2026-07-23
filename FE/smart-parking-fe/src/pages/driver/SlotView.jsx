@@ -69,17 +69,19 @@ export default function DriverSlotView() {
 
   useEffect(() => { loadSlots(activeZone); }, [activeZone, loadSlots]);
 
-  const total       = slots.length || activeZone?.totalSlots || 0;
+  const total       = slots.length || 0;
   const maintenance = slots.filter(s => s.maintenanceStatus === 'MAINTENANCE').length;
   const occupied    = slots.filter(s => s.currentSessionId).length;
   const available   = Math.max(0, total - occupied - maintenance);
 
-  const floorMap = zones.reduce((acc, z) => {
-    const key = z.floorName || 'Unknown';
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(z);
-    return acc;
-  }, {});
+  const floorMap = zones
+    .filter(z => (z.createdSlots ?? 0) > 0)
+    .reduce((acc, z) => {
+      const key = z.floorName || 'Unknown';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(z);
+      return acc;
+    }, {});
 
   return (
     <div className="page-full">
@@ -130,9 +132,9 @@ export default function DriverSlotView() {
                 </div>
                 {floorZones.map(zone => {
                   const isActive = activeZone?.id === zone.id;
-                  const zTotal = isActive ? total : (zone.totalSlots ?? 0);
-                  const zAvail = isActive ? available : null;
-                  const zOcc   = isActive ? occupied : null;
+                  const zTotal = isActive ? total : (zone.createdSlots ?? 0);
+                  const zAvail = isActive ? available : (zone.availableSlots ?? null);
+                  const zOcc   = isActive ? occupied  : (zAvail !== null ? zTotal - zAvail : null);
                   const zMaint = isActive ? maintenance : null;
                   return (
                     <button key={zone.id} onClick={() => setActiveZone(zone)}
@@ -145,19 +147,23 @@ export default function DriverSlotView() {
                       <p style={{ fontWeight: 600, color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)', fontSize: '0.85rem' }}>
                         {VEHICLE_ICON[zone.vehicleType]} {zone.name}
                       </p>
-                      {isActive ? (
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{zAvail} trống</span>
-                          {' · '}<span style={{ color: '#ef4444' }}>{zOcc} đỗ</span>
-                          {' · '}<span style={{ color: '#8b5cf6', fontWeight: 600 }}>{bookedCount} đặt</span>
-                          {zMaint > 0 && <span style={{ color: '#f59e0b' }}> · {zMaint} BT</span>}
-                          {' / '}{zTotal}
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {zone.vehicleType} · {zTotal} slots
-                        </p>
-                      )}
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {isActive ? (
+                          <>
+                            <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{zAvail} trống</span>
+                            {' · '}<span style={{ color: '#ef4444' }}>{zOcc} đỗ</span>
+                            {' · '}<span style={{ color: '#8b5cf6', fontWeight: 600 }}>{bookedCount} đặt</span>
+                            {zMaint > 0 && <><span style={{ color: '#f59e0b' }}> · {zMaint} BT</span></>}
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
+                              {zAvail !== null ? `${zAvail} trống` : `${zTotal} chỗ`}
+                            </span>
+                            {zAvail !== null && zOcc !== null && <span style={{ color: '#ef4444' }}>{' · '}{zOcc} đỗ</span>}
+                          </>
+                        )}
+                      </p>
                     </button>
                   );
                 })}

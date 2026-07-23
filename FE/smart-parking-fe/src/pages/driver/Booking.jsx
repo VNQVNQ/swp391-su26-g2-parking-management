@@ -634,7 +634,7 @@ export default function Booking() {
                           {zone.name}
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          Tầng: {zone.floorName || '—'} • {zone.totalSlots} chỗ
+                          Tầng: {zone.floorName || '—'} • {zone.createdSlots || 0} chỗ
                         </span>
                       </button>
                     );

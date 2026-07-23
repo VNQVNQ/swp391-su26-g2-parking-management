@@ -20,7 +20,7 @@ const navItems = [
   // PARKING_MANAGER (Parking Lot PARKING_MANAGER)
   { to: '/PARKING_MANAGER/dashboard',   label: 'Tổng quan',         icon: LayoutDashboard, roles: ['PARKING_MANAGER'], group: 'MAIN' },
   { to: '/PARKING_MANAGER/floors',      label: 'Quản lý Tầng',     icon: Building2,       roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
-  { to: '/building-overview',       label: 'Mặt cắt tòa nhà',      icon: Layers,          roles: ['ADMIN', 'PARKING_MANAGER', 'PARKING_STAFF', 'DRIVER'], group: 'MONITOR' },
+  { to: '/building-overview',       label: 'Mặt cắt tòa nhà',      icon: Layers,          roles: ['PARKING_MANAGER', 'PARKING_STAFF', 'DRIVER'], group: 'MONITOR' },
   { to: '/PARKING_MANAGER/zones',       label: 'Quản lý Khu vực',      icon: MapPin,          roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/parking-slots', label: 'Quản lý Chỗ đỗ',    icon: Grid3x3,         roles: ['PARKING_MANAGER'], group: 'MANAGEMENT' },
   { to: '/PARKING_MANAGER/slots',       label: 'Giám sát Chỗ đỗ',   icon: Search,       roles: ['PARKING_MANAGER'], group: 'MONITOR' },

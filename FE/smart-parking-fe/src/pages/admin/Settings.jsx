@@ -63,6 +63,12 @@ export default function Settings() {
   const [auditSearch, setAuditSearch] = useState('');
   const [auditFilterAction, setAuditFilterAction] = useState('');
   const [auditExpanded, setAuditExpanded] = useState(true);
+  const [auditPage, setAuditPage] = useState(1);
+  const AUDIT_PAGE_SIZE = 15;
+
+  // ── Trạng thái phân trang Users ──
+  const [usersPage, setUsersPage] = useState(1);
+  const USERS_PAGE_SIZE = 10;
 
   // Đồng bộ với store
   useEffect(() => {
@@ -536,7 +542,7 @@ export default function Settings() {
                   </td>
                 </tr>
               ) : (
-                users.map(u => (
+                users.slice((usersPage - 1) * USERS_PAGE_SIZE, usersPage * USERS_PAGE_SIZE).map(u => (
                   <tr key={u.id}>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>#{u.id}</td>
                     <td style={{ fontWeight: 500 }}>{u.fullName}</td>
@@ -659,6 +665,50 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang Người dùng */}
+        {!usersLoading && users.length > USERS_PAGE_SIZE && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '0 2px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Hiển thị {Math.min((usersPage - 1) * USERS_PAGE_SIZE + 1, users.length)}–{Math.min(usersPage * USERS_PAGE_SIZE, users.length)} / {users.length} người dùng
+            </span>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                disabled={usersPage === 1}
+                style={{
+                  padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                  background: usersPage === 1 ? 'transparent' : 'var(--bg-secondary)',
+                  color: usersPage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: usersPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                }}
+              >← Trước</button>
+              {Array.from({ length: Math.ceil(users.length / USERS_PAGE_SIZE) }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setUsersPage(page)}
+                  style={{
+                    padding: '5px 10px', borderRadius: '6px',
+                    border: page === usersPage ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                    background: page === usersPage ? 'rgba(16,185,129,0.15)' : 'var(--bg-secondary)',
+                    color: page === usersPage ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: page === usersPage ? 700 : 500,
+                  }}
+                >{page}</button>
+              ))}
+              <button
+                onClick={() => setUsersPage(p => Math.min(Math.ceil(users.length / USERS_PAGE_SIZE), p + 1))}
+                disabled={usersPage >= Math.ceil(users.length / USERS_PAGE_SIZE)}
+                style={{
+                  padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                  background: usersPage >= Math.ceil(users.length / USERS_PAGE_SIZE) ? 'transparent' : 'var(--bg-secondary)',
+                  color: usersPage >= Math.ceil(users.length / USERS_PAGE_SIZE) ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: usersPage >= Math.ceil(users.length / USERS_PAGE_SIZE) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                }}
+              >Sau →</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Thông tin Hệ thống */}
@@ -752,123 +802,151 @@ export default function Settings() {
               </div>
             )}
 
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table" id="audit-log-table">
-                <thead>
-                  <tr>
-                    <th>Thời gian</th>
-                    <th>Người thực hiện</th>
-                    <th>Hành động</th>
-                    <th>Đối tượng</th>
-                    <th>Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLoading ? (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                          <RefreshCw size={18} className="spin-animation" />
-                          Đang tải lịch sử hoạt động...
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (() => {
-                    const filtered = auditLogs.filter(log => {
-                      const matchSearch = !auditSearch ||
-                        (log.userName || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
-                        (log.action || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
-                        (log.userEmail || '').toLowerCase().includes(auditSearch.toLowerCase());
-                      const matchAction = !auditFilterAction || log.action === auditFilterAction;
-                      return matchSearch && matchAction;
-                    });
+            {/* Audit Log Table */}
+            {(() => {
+              const actionBadge = (action) => {
+                const map = {
+                  'USER_SELF_REGISTER': { label: 'Đăng ký', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+                  'ADMIN_CREATE_USER': { label: 'Admin tạo TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
+                  'ADMIN_UPDATE_USER_ROLE': { label: 'Đổi quyền', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                  'SESSION_CREATE': { label: 'Tạo phiên gửi', bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
+                  'PAYMENT_PROCESS': { label: 'Thanh toán', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
+                  'DELETE_USER': { label: 'Xóa TK', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
+                  'UPDATE_USER': { label: 'Cập nhật TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
+                  'FORGOT_PASSWORD': { label: 'Quên MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                  'RESET_PASSWORD': { label: 'Đặt lại MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                  'CHANGE_PASSWORD': { label: 'Đổi MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+                };
+                const info = map[action] || { label: action, bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' };
+                return (
+                  <span style={{
+                    fontSize: '0.78rem', fontWeight: 600, padding: '3px 10px',
+                    borderRadius: '8px', background: info.bg, color: info.color, whiteSpace: 'nowrap',
+                  }}>{info.label}</span>
+                );
+              };
 
-                    if (filtered.length === 0) {
-                      return (
+              const formatTime = (dt) => {
+                if (!dt) return '—';
+                try {
+                  const d = new Date(dt);
+                  return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                } catch { return dt; }
+              };
+
+              const filtered = auditLogs.filter(log => {
+                const matchSearch = !auditSearch ||
+                  (log.userName || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                  (log.action || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                  (log.userEmail || '').toLowerCase().includes(auditSearch.toLowerCase());
+                const matchAction = !auditFilterAction || log.action === auditFilterAction;
+                return matchSearch && matchAction;
+              });
+
+              const totalPages = Math.max(1, Math.ceil(filtered.length / AUDIT_PAGE_SIZE));
+              const safeAuditPage = Math.min(auditPage, totalPages);
+              const pageRows = filtered.slice((safeAuditPage - 1) * AUDIT_PAGE_SIZE, safeAuditPage * AUDIT_PAGE_SIZE);
+
+              return (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="data-table" id="audit-log-table">
+                      <thead>
                         <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                            Không tìm thấy bản ghi nào
-                          </td>
+                          <th>Thời gian</th>
+                          <th>Người thực hiện</th>
+                          <th>Hành động</th>
                         </tr>
-                      );
-                    }
+                      </thead>
+                      <tbody>
+                        {auditLoading ? (
+                          <tr>
+                            <td colSpan={3} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                <RefreshCw size={18} className="spin-animation" />
+                                Đang tải lịch sử hoạt động...
+                              </div>
+                            </td>
+                          </tr>
+                        ) : pageRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                              Không tìm thấy bản ghi nào
+                            </td>
+                          </tr>
+                        ) : pageRows.map(log => (
+                          <tr key={log.id}>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{formatTime(log.createdAt)}</td>
+                            <td>
+                              <span style={{ fontWeight: 500 }}>{log.userName || '—'}</span>
+                              {log.userEmail && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>{log.userEmail}</p>}
+                            </td>
+                            <td>{actionBadge(log.action)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                    const actionBadge = (action) => {
-                      const map = {
-                        'USER_SELF_REGISTER': { label: 'Đăng ký', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
-                        'ADMIN_CREATE_USER': { label: 'Admin tạo TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
-                        'ADMIN_UPDATE_USER_ROLE': { label: 'Đổi quyền', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-                        'SESSION_CREATE': { label: 'Tạo phiên gửi', bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
-                        'PAYMENT_PROCESS': { label: 'Thanh toán', bg: 'rgba(16,185,129,0.1)', color: '#10b981' },
-                        'GET_ALL_USERS': { label: 'Xem DS', bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' },
-                        'GET_USER_BY_ID': { label: 'Xem user', bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' },
-                        'DELETE_USER': { label: 'Xóa TK', bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
-                        'UPDATE_USER': { label: 'Cập nhật TK', bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
-                        'FORGOT_PASSWORD': { label: 'Quên MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-                        'RESET_PASSWORD': { label: 'Đặt lại MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-                        'CHANGE_PASSWORD': { label: 'Đổi MK', bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-                      };
-                      const info = map[action] || { label: action, bg: 'rgba(100,116,139,0.1)', color: '#94a3b8' };
-                      return (
-                        <span style={{
-                          fontSize: '0.78rem',
-                          fontWeight: 600,
-                          padding: '3px 10px',
-                          borderRadius: '8px',
-                          background: info.bg,
-                          color: info.color,
-                          whiteSpace: 'nowrap',
-                        }}>{info.label}</span>
-                      );
-                    };
-
-                    const formatTime = (dt) => {
-                      if (!dt) return '—';
-                      try {
-                        const d = new Date(dt);
-                        return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                      } catch { return dt; }
-                    };
-
-                    return filtered.slice(0, 100).map(log => (
-                      <tr key={log.id}>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{formatTime(log.createdAt)}</td>
-                        <td>
-                          <div>
-                            <span style={{ fontWeight: 500 }}>{log.userName || '—'}</span>
-                            {log.userEmail && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>{log.userEmail}</p>}
-                          </div>
-                        </td>
-                        <td>{actionBadge(log.action)}</td>
-                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                          {log.entityName && <span style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{log.entityName}{log.entityId ? ` #${log.entityId}` : ''}</span>}
-                          {!log.entityName && '—'}
-                        </td>
-                        <td style={{ maxWidth: '200px' }}>
-                          {log.newValues ? (
-                            <span style={{
-                              fontSize: '0.75rem',
-                              color: 'var(--text-muted)',
-                              fontFamily: 'monospace',
-                              display: 'block',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              maxWidth: '200px',
-                            }} title={log.newValues}>{log.newValues}</span>
-                          ) : '—'}
-                        </td>
-                      </tr>
-                    ));
-                  })()}
-                </tbody>
-              </table>
-            </div>
-            {!auditLoading && auditLogs.length > 100 && (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '12px' }}>
-                Hiển thị 100 / {auditLogs.length} bản ghi gần nhất
-              </p>
-            )}
+                  {/* Phân trang Audit Log */}
+                  {!auditLoading && filtered.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '0 2px' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        Hiển thị {Math.min((safeAuditPage - 1) * AUDIT_PAGE_SIZE + 1, filtered.length)}–{Math.min(safeAuditPage * AUDIT_PAGE_SIZE, filtered.length)} / {filtered.length} bản ghi
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                          disabled={safeAuditPage === 1}
+                          style={{
+                            padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                            background: safeAuditPage === 1 ? 'transparent' : 'var(--bg-secondary)',
+                            color: safeAuditPage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                            cursor: safeAuditPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                          }}
+                        >← Trước</button>
+                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                          // Show pages around current page
+                          let page;
+                          if (totalPages <= 7) {
+                            page = i + 1;
+                          } else if (safeAuditPage <= 4) {
+                            page = i + 1;
+                          } else if (safeAuditPage >= totalPages - 3) {
+                            page = totalPages - 6 + i;
+                          } else {
+                            page = safeAuditPage - 3 + i;
+                          }
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setAuditPage(page)}
+                              style={{
+                                padding: '5px 10px', borderRadius: '6px',
+                                border: page === safeAuditPage ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                                background: page === safeAuditPage ? 'rgba(16,185,129,0.15)' : 'var(--bg-secondary)',
+                                color: page === safeAuditPage ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                cursor: 'pointer', fontSize: '0.82rem', fontWeight: page === safeAuditPage ? 700 : 500,
+                              }}
+                            >{page}</button>
+                          );
+                        })}
+                        <button
+                          onClick={() => setAuditPage(p => Math.min(totalPages, p + 1))}
+                          disabled={safeAuditPage >= totalPages}
+                          style={{
+                            padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                            background: safeAuditPage >= totalPages ? 'transparent' : 'var(--bg-secondary)',
+                            color: safeAuditPage >= totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                            cursor: safeAuditPage >= totalPages ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                          }}
+                        >Sau →</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>

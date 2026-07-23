@@ -1,52 +1,53 @@
 import StatCards from "../../components/dashboard/StatCards";
 import SlotGrid from "../../components/dashboard/SlotGrid";
-import { RevenueChart, PeakHourChart, UtilizationChart } from "../../components/dashboard/Charts";
+import { RevenueChart, UtilizationChart } from "../../components/dashboard/Charts";
 import { compareSlotCodes } from "../../utils/slotHelper";
-import {
-  dashboardStats,
-  mockSlotsByFloor,
-  revenueData,
-  peakHourData,
-  utilizationData,
-} from "../../data/mockDashboard";
 import { useAuthStore } from "../../store/authStore";
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  const [stats, setStats] = useState(dashboardStats);
-  const [slotsData, setSlotsData] = useState(mockSlotsByFloor);
+  const [stats, setStats] = useState({
+    totalSlots: 0,
+    availableSlots: 0,
+    activeParkings: 0,
+    maintenanceSlots: 0,
+    utilization: 0
+  });
+  const [slotsData, setSlotsData] = useState([]);
+  const [realRevenueData, setRealRevenueData] = useState([]);
+  const [realUtilizationData, setRealUtilizationData] = useState([]);
 
   useEffect(() => {
     const loadRealData = async () => {
       try {
-        const [activeRes, floorsRes] = await Promise.all([
-          api.get('/api/v1/sessions/active'),
-          api.get('/api/v1/floors/with-slots')
+        const [activeRes, completedRes, floorsRes] = await Promise.all([
+          api.get('/api/v1/parking-sessions/active/all').catch(() => ({ data: { data: [] } })),
+          api.get('/api/v1/parking-sessions/completed/all').catch(() => ({ data: { data: [] } })),
+          api.get('/api/v1/floors/with-slots').catch(() => ({ data: { data: [] } }))
         ]);
         
-        const activeSessions = activeRes.data?.data || [];
-        const floors = floorsRes.data?.data || [];
+        const activeSessions = activeRes.data?.data || activeRes.data || [];
+        const completedSessions = completedRes.data?.data || completedRes.data || [];
+        const floors = floorsRes.data?.data || floorsRes.data || [];
 
         let totalSlots = 0;
         let maintenance = 0;
         
         const realSlotsByFloor = floors.map((f: any) => {
-          totalSlots += f.totalSlots || 0;
-          
-          let floorSlots = [];
+          let floorSlots: any[] = [];
           if (f.zones) {
             f.zones.forEach((z: any) => {
               if (z.slots) floorSlots.push(...z.slots);
             });
           }
           
+          totalSlots += floorSlots.length;
+          
           // Map to correct format for Grid
           const mappedSlots = floorSlots.map((s: any) => {
-            const isOccupied = activeSessions.some((session: any) => 
-              session.slotId === s.id || session.slot?.id === s.id || session.slotCode === s.slotCode
-            );
+            const isOccupied = !!s.currentSessionId;
             const isMaintenance = s.maintenanceStatus !== 'AVAILABLE';
             if (isMaintenance) maintenance++;
             
@@ -61,7 +62,7 @@ export default function Dashboard() {
           });
 
           return {
-            floor: { id: f.id, floorName: f.name, totalSlots: f.totalSlots },
+            floor: { id: f.id, floorName: f.name, totalSlots: mappedSlots.length },
             slots: mappedSlots.sort(compareSlotCodes)
           };
         });
@@ -81,6 +82,45 @@ export default function Dashboard() {
         if (realSlotsByFloor.length > 0) {
           setSlotsData(realSlotsByFloor);
         }
+
+        // Calculate Revenue Data (last 7 days)
+        const dayRevenueMap: Record<string, number> = {};
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+          const key = d.toLocaleDateString('vi-VN', { weekday: 'short' });
+          dayRevenueMap[key] = 0;
+        }
+
+        completedSessions.forEach((v: any) => {
+          if (!v.exitTime) return;
+          const exit = new Date(v.exitTime);
+          if (exit >= new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000)) {
+            const key = exit.toLocaleDateString('vi-VN', { weekday: 'short' });
+            if (dayRevenueMap[key] !== undefined) {
+              dayRevenueMap[key] += (v.totalFee || v.finalFee || 0);
+            }
+          }
+        });
+
+        const revChartData = Object.keys(dayRevenueMap).map(k => ({
+          name: k,
+          revenue: dayRevenueMap[k]
+        }));
+        setRealRevenueData(revChartData);
+
+        // Utilization data
+        const occupied = activeSessions.length; // Approximate utilization based on active sessions
+        const utilChartData = [
+          { name: 'Đang dùng', value: occupied, fill: '#00d084' },
+          { name: 'Trống', value: Math.max(0, totalSlots - occupied - maintenance), fill: '#e2e8f0' }
+        ];
+        if (maintenance > 0) {
+           utilChartData.push({ name: 'Bảo trì', value: maintenance, fill: '#f59e0b' });
+        }
+        setRealUtilizationData(utilChartData);
 
       } catch (err) {
         console.error("Failed to load real dashboard data", err);
@@ -109,14 +149,9 @@ export default function Dashboard() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* BR-47 */}
-        <RevenueChart data={revenueData} />
-        {/* BR-49 */}
-        <PeakHourChart data={peakHourData} />
+        <RevenueChart data={realRevenueData.length ? realRevenueData : [{name: 'Loading', revenue: 0}]} />
+        <UtilizationChart data={realUtilizationData.length ? realUtilizationData : [{name: 'Loading', value: 1, fill: '#e2e8f0'}]} />
       </div>
-
-      {/* BR-48 */}
-      <UtilizationChart data={utilizationData} />
     </div>
   );
 }

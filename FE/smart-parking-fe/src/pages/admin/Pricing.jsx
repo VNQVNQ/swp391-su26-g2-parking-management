@@ -1,5 +1,5 @@
 import { DollarSign, Clock, Settings, Shield, Plus, X, AlertTriangle, Trash2, Edit2, Car, Bike, Truck } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParkingStore } from '../../store/parkingStore';
 import api from '../../services/api';
 
@@ -187,7 +187,7 @@ function PenaltySection() {
 
       {/* Modal tạo / sửa phí phạt */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="modal-header">
               <h3>{editingId ? 'Chỉnh sửa mức phí phạt' : 'Thêm mức phí phạt'}</h3>
@@ -267,6 +267,9 @@ export default function Pricing() {
   };
   const [form, setForm] = useState(initialForm);
 
+  const [rulesPage, setRulesPage] = useState(1);
+  const RULES_PAGE_SIZE = 10;
+
   useEffect(() => { fetchRules(); }, []);
 
   const fetchRules = async () => {
@@ -292,12 +295,12 @@ export default function Pricing() {
     finally { setLoading(false); }
   };
 
-  const stats = [
-    { label: 'Chính sách đang áp dụng', value: rules.filter(p => p.isActive !== false).length, icon: Shield, color: '#10b981' },
-    { label: 'Tổng chính sách', value: rules.length, icon: Settings, color: '#3b82f6' },
-    { label: 'Giá cơ bản Ô tô', value: '₫20.000/giờ', icon: DollarSign, color: '#f59e0b' },
-    { label: 'Giờ cao điểm', value: '07:00 - 09:00', icon: Clock, color: '#8b5cf6' },
-  ];
+  const stats = useMemo(() => {
+    return [
+      { label: 'Chính sách đang áp dụng', value: rules.filter(p => p.isActive !== false).length, icon: Shield, color: '#10b981' },
+      { label: 'Tổng chính sách', value: rules.length, icon: Settings, color: '#3b82f6' },
+    ];
+  }, [rules]);
 
   const handleEdit = (p) => {
     setEditingId(p.id);
@@ -402,7 +405,7 @@ export default function Pricing() {
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Đang tải danh sách bảng giá...</td></tr>
             ) : rules.length === 0 ? (
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Chưa có chính sách nào được cấu hình</td></tr>
-            ) : rules.map(p => {
+            ) : rules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map(p => {
               const vType = (p.vehicleType || '').toUpperCase();
               const tType = (p.ticketType || '').toUpperCase();
               return (
@@ -456,6 +459,50 @@ export default function Pricing() {
             )})}
           </tbody>
         </table>
+
+        {/* Phân trang Bảng giá */}
+        {!loading && rules.length > RULES_PAGE_SIZE && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', padding: '0 16px 16px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Hiển thị {Math.min((rulesPage - 1) * RULES_PAGE_SIZE + 1, rules.length)}–{Math.min(rulesPage * RULES_PAGE_SIZE, rules.length)} / {rules.length} chính sách
+            </span>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                onClick={() => setRulesPage(p => Math.max(1, p - 1))}
+                disabled={rulesPage === 1}
+                style={{
+                  padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                  background: rulesPage === 1 ? 'transparent' : 'var(--bg-secondary)',
+                  color: rulesPage === 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: rulesPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                }}
+              >← Trước</button>
+              {Array.from({ length: Math.ceil(rules.length / RULES_PAGE_SIZE) }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setRulesPage(page)}
+                  style={{
+                    padding: '5px 10px', borderRadius: '6px',
+                    border: page === rulesPage ? '1.5px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                    background: page === rulesPage ? 'rgba(16,185,129,0.15)' : 'var(--bg-secondary)',
+                    color: page === rulesPage ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: page === rulesPage ? 700 : 500,
+                  }}
+                >{page}</button>
+              ))}
+              <button
+                onClick={() => setRulesPage(p => Math.min(Math.ceil(rules.length / RULES_PAGE_SIZE), p + 1))}
+                disabled={rulesPage >= Math.ceil(rules.length / RULES_PAGE_SIZE)}
+                style={{
+                  padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                  background: rulesPage >= Math.ceil(rules.length / RULES_PAGE_SIZE) ? 'transparent' : 'var(--bg-secondary)',
+                  color: rulesPage >= Math.ceil(rules.length / RULES_PAGE_SIZE) ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: rulesPage >= Math.ceil(rules.length / RULES_PAGE_SIZE) ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                }}
+              >Sau →</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Section Phí Phạt ── */}
@@ -483,7 +530,7 @@ export default function Pricing() {
 
       {/* Modal Tạo / Chỉnh sửa Giá Cơ Bản */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay">
           <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingId ? 'Chỉnh sửa chính sách' : 'Tạo chính sách mới'}</h3>

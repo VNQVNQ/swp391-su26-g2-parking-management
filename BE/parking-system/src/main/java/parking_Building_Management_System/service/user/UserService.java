@@ -308,13 +308,13 @@ public class UserService {
         User user = userRepository.findById(id).orElseThrow(() -> new NoSuchElementException("User not found"));
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
-        if (userRequest.getAge() > 0) {
+        if (userRequest.getAge() != null && userRequest.getAge() > 0) {
             user.setAge(userRequest.getAge());
         }
-        if (user.getPhoneNumber() != null) {
+        if (userRequest.getPhoneNumber() != null) {
             user.setPhoneNumber(userRequest.getPhoneNumber());
         }
-        if (user.getEmail() != null) {
+        if (userRequest.getEmail() != null) {
             user.setEmail(userRequest.getEmail());
         }
         if (userRequest.getPassword() != null) {
@@ -322,6 +322,18 @@ public class UserService {
         }
         if (userRequest.getAddress() != null) {
             user.setAddress(userRequest.getAddress());
+        }
+        if (userRequest.getFullName() != null) {
+            user.setFullName(userRequest.getFullName());
+        }
+        if (userRequest.getIdentifyNumber() != null) {
+            user.setIdentifyNumber(userRequest.getIdentifyNumber());
+        }
+        if (userRequest.getGender() != null) {
+            user.setGender(userRequest.getGender());
+        }
+        if (userRequest.getDateOfBirth() != null) {
+            user.setDateOfBirth(userRequest.getDateOfBirth().toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
         }
 
         userRepository.save(user);

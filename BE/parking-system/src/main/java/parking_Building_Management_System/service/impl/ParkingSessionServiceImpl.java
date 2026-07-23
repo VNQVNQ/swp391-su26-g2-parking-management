@@ -565,20 +565,28 @@ public class ParkingSessionServiceImpl implements ParkingSessionService {
 
         ParkingSession session = getParkingSessionById(request.getSessionId());
 
-
         if (session.getFinalFee() == null) {
             FeeCalculationResponse feeResponse = calculateParkingFee(request.getSessionId());
             session.setFinalFee(feeResponse.getTotalFee());
             session.setFee(feeResponse.getTotalFee());
         }
 
-
         session.setPaymentStatus(PaymentStatus.PAID);
         session.setExitTime(LocalDateTime.now());
         session.setStaffExit(createStaffUser(staffId));
+        // ✅ FIX: Đổi trạng thái session thành COMPLETED để không bị đếm là ACTIVE nữa
+        session.setStatus(ParkingSessionStatus.COMPLETED);
 
         parkingSessionRepository.save(session);
         log.info("Payment processed: {} - Amount: {}", request.getSessionId(), session.getFinalFee());
+
+        // ✅ FIX: Giải phóng slot — không để ghost session xuất hiện
+        ParkingSlot slot = session.getSlot();
+        if (slot != null) {
+            slot.setCurrentSession(null);
+            parkingSlotRepository.save(slot);
+            log.info("Slot {} released after payment for session {}", slot.getSlotCode(), session.getId());
+        }
 
         createAuditLog(staffId, "PAYMENT_PROCESS", "parking_sessions", session.getId().toString());
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Shield, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, Shield, Save, CheckCircle2, AlertCircle, CreditCard, Users, Calendar, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
@@ -8,6 +8,10 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    identifyNumber: '',
+    gender: 'Nam',
+    dateOfBirth: '',
+    address: ''
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
@@ -20,6 +24,10 @@ export default function Profile() {
       setFormData({
         fullName: user.fullName || '',
         phone: user.phoneNumber || user.phone || '',
+        identifyNumber: user.identityNumber || user.identifyNumber || '',
+        gender: user.gender || 'Nam',
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
+        address: user.address || ''
       });
     }
   }, [user]);
@@ -36,22 +44,29 @@ export default function Profile() {
     try {
       // Gọi API cập nhật thông tin (Dựa vào route @PutMapping("/users/{id}") trên BE)
       const res = await api.put(`/auth/users/${user.id}`, {
+        ...user,
         fullName: formData.fullName,
         phoneNumber: formData.phone,
-        // Giữ lại các trường quan trọng để BE không update null nếu required
         email: user.email,
         roleCode: user.roleCode,
-        gender: user.gender,
-        dateOfBirth: user.dateOfBirth,
-        address: user.address,
-        identifyNumber: user.identifyNumber,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth || null,
+        address: formData.address,
+        identifyNumber: formData.identifyNumber,
       });
       
       setMessage({ type: 'success', text: 'Cập nhật hồ sơ thành công! (Tải lại trang để thấy thay đổi)' });
       // Cập nhật localStorage và context nếu cần (Tạm thời yêu cầu user reload hoặc gọi lại fetchMe)
       const updatedUser = res.data?.data || res.data;
       if (updatedUser && updatedUser.fullName) {
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        // Normalize object to match authService mapping so it won't break on reload
+        const mappedUser = {
+          ...user,
+          ...updatedUser,
+          identityNumber: updatedUser.identifyNumber,
+          phone: updatedUser.phoneNumber
+        };
+        localStorage.setItem('user', JSON.stringify(mappedUser));
       }
     } catch (error) {
       console.error(error);
@@ -84,7 +99,7 @@ export default function Profile() {
       setPwdData({ password: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       console.error(error);
-      setPwdMessage({ type: 'error', text: error.response?.data?.message || typeof error.response?.data === 'string' ? error.response.data : 'Đổi mật khẩu thất bại' });
+      setPwdMessage({ type: 'error', text: error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : 'Đổi mật khẩu thất bại') });
     } finally {
       setPwdLoading(false);
     }
@@ -170,6 +185,85 @@ export default function Profile() {
                 type="tel"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)',
+                  fontSize: '0.95rem', transition: 'border-color 0.2s', outline: 'none'
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                <CreditCard size={16} /> CCCD / CMND
+              </label>
+              <input
+                type="text"
+                value={formData.identifyNumber}
+                onChange={e => setFormData({ ...formData, identifyNumber: e.target.value })}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)',
+                  fontSize: '0.95rem', transition: 'border-color 0.2s', outline: 'none'
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
+              />
+            </div>
+            
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                <Users size={16} /> Giới tính
+              </label>
+              <select
+                value={formData.gender}
+                onChange={e => setFormData({ ...formData, gender: e.target.value })}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)',
+                  fontSize: '0.95rem', transition: 'border-color 0.2s', outline: 'none'
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
+              >
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                <Calendar size={16} /> Ngày sinh
+              </label>
+              <input
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)',
+                  fontSize: '0.95rem', transition: 'border-color 0.2s', outline: 'none'
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
+              />
+            </div>
+            
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                <MapPin size={16} /> Địa chỉ
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
                 style={{
                   width: '100%', padding: '10px 14px', borderRadius: 8,
                   border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)',
