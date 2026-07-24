@@ -53,6 +53,9 @@ public class Vehicle {
     @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
     Boolean isActive;
 
+    @Column(name = "is_primary", nullable = false, columnDefinition = "boolean default false")
+    Boolean isPrimary;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 
@@ -68,6 +71,9 @@ public class Vehicle {
         }
         if (isActive == null) {
             isActive = true;
+        }
+        if (isPrimary == null) {
+            isPrimary = false;
         }
     }
 

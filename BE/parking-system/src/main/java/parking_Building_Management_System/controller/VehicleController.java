@@ -186,4 +186,26 @@ public class VehicleController {
         return ResponseEntity.ok(ApiResponseFactory.success(count,
                 "Found " + count + " active vehicles with valid monthly passes"));
     }
+
+    @PutMapping("/{id}/set-primary")
+    public ResponseEntity<ApiResponse<VehicleResponse>> setPrimaryVehicle(@PathVariable UUID id) {
+        log.info("PUT /api/v1/vehicles/{}/set-primary - Setting vehicle as primary", id);
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !(auth.getPrincipal() instanceof ParkingUserDetails userDetails)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body((ApiResponse) ApiResponseFactory.error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Người dùng chưa xác thực"));
+        }
+
+        Long userId = userDetails.getUserId();
+        try {
+            VehicleResponse response = vehicleService.setPrimaryVehicle(id, userId);
+            ApiResponse<VehicleResponse> apiResponse = ApiResponseFactory.success(response,
+                    "Đặt xe chính thành công");
+            return ResponseEntity.ok(apiResponse);
+        } catch (RuntimeException e) {
+            log.error("Error setting primary vehicle: {}", e.getMessage());
+            throw e;
+        }
+    }
 }
