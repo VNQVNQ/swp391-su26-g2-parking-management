@@ -34,4 +34,6 @@ public interface VehicleService {
     MonthlyPassCheckResponse checkMonthlyPassValidityById(UUID vehicleId);
 
     long countActiveVehiclesWithValidPass();
+
+    VehicleResponse setPrimaryVehicle(UUID vehicleId, Long userId);
 }

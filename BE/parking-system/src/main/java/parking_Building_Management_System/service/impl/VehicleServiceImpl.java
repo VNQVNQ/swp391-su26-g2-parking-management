@@ -50,6 +50,18 @@ public class VehicleServiceImpl implements VehicleService {
             log.warn("Could not determine current user when creating vehicle: {}", e.getMessage());
         }
 
+        // Kiểm tra xem user đã có xe nào chưa hoặc có yêu cầu xe chính không
+        boolean shouldBePrimary = Boolean.TRUE.equals(request.getIsPrimary());
+        if (currentUser != null) {
+            List<Vehicle> existingUserVehicles = vehicleRepository.findByUserId(currentUser.getUserId());
+            if (existingUserVehicles.isEmpty()) {
+                shouldBePrimary = true;
+            }
+            if (shouldBePrimary) {
+                vehicleRepository.unsetPrimaryForUser(currentUser.getUserId());
+            }
+        }
+
         // Kiểm tra biển số đã tồn tại chưa
         var existingVehicle = vehicleRepository.findByLicensePlate(request.getLicensePlate());
         if (existingVehicle.isPresent()) {
@@ -67,6 +79,7 @@ public class VehicleServiceImpl implements VehicleService {
             // Nếu xe chưa có chủ (user_id == NULL, từ sample data), cho phép driver "claim" xe này
             existing.setUser(currentUser);
             existing.setVehicleType(request.getVehicleType());
+            existing.setIsPrimary(shouldBePrimary);
             if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
                 existing.setIsActive(false);
             } else {
@@ -83,6 +96,7 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setVehicleType(request.getVehicleType());
         vehicle.setHasMonthlyPass(request.getHasMonthlyPass() != null ? request.getHasMonthlyPass() : false);
         vehicle.setUser(currentUser);
+        vehicle.setIsPrimary(shouldBePrimary);
         if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
             vehicle.setIsActive(false);
         } else {
@@ -218,6 +232,22 @@ public class VehicleServiceImpl implements VehicleService {
         return vehicleRepository.countActiveVehiclesWithValidPass(LocalDate.now());
     }
 
+    @Override
+    public VehicleResponse setPrimaryVehicle(UUID vehicleId, Long userId) {
+        log.info("Setting vehicle ID: {} as primary for userId: {}", vehicleId, userId);
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found with ID: " + vehicleId));
+
+        if (vehicle.getUser() == null || !vehicle.getUser().getUserId().equals(userId)) {
+            throw new RuntimeException("Phương tiện không thuộc về tài khoản người dùng hiện tại");
+        }
+
+        vehicleRepository.unsetPrimaryForUser(userId);
+        vehicle.setIsPrimary(true);
+        vehicle = vehicleRepository.save(vehicle);
+        return mapToResponse(vehicle);
+    }
+
     private VehicleResponse mapToResponse(Vehicle vehicle) {
         VehicleResponse response = new VehicleResponse();
         response.setId(vehicle.getId());
@@ -227,6 +257,7 @@ public class VehicleServiceImpl implements VehicleService {
         response.setHasMonthlyPass(vehicle.getHasMonthlyPass());
         response.setMonthlyPassExpiry(vehicle.getMonthlyPassExpiry());
         response.setIsActive(vehicle.getIsActive());
+        response.setIsPrimary(vehicle.getIsPrimary() != null ? vehicle.getIsPrimary() : false);
         response.setCreatedAt(vehicle.getCreatedAt());
         response.setUpdatedAt(vehicle.getUpdatedAt());
         return response;
