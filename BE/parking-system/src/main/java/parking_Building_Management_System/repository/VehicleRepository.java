@@ -1,9 +1,11 @@
 package parking_Building_Management_System.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import parking_Building_Management_System.entity.Vehicle;
 import parking_Building_Management_System.entity.enums.VehicleType;
 import java.time.LocalDate;
@@ -41,6 +43,14 @@ public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
 
     @Query("SELECT v FROM Vehicle v WHERE v.user.userId = :userId AND v.isActive = true")
     List<Vehicle> findActiveVehiclesByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Vehicle v SET v.isPrimary = false WHERE v.user.userId = :userId")
+    void unsetPrimaryForUser(@Param("userId") Long userId);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.user.userId = :userId AND v.isPrimary = true")
+    Optional<Vehicle> findFirstByUserIdAndIsPrimaryTrue(@Param("userId") Long userId);
 }
 
 

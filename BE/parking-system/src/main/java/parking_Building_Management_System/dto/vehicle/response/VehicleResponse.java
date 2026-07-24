@@ -22,6 +22,7 @@ public class VehicleResponse {
     Boolean hasMonthlyPass;
     LocalDate monthlyPassExpiry;
     Boolean isActive;
+    Boolean isPrimary;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

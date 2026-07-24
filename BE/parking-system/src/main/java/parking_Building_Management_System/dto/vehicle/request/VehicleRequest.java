@@ -30,4 +30,6 @@ public class VehicleRequest {
     Boolean hasMonthlyPass;
 
     String paymentMethod;
+
+    Boolean isPrimary;
 }
