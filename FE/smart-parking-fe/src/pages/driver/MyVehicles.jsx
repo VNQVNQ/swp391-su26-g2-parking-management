@@ -11,19 +11,29 @@ export default function MyVehicles() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
 
+  const loadVehicles = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/api/v1/vehicles/my-vehicles');
+      const data = res.data.data ?? res.data ?? [];
+      setVehicles(Array.isArray(data) ? data : []);
+    } catch {
+      setError('Không thể tải danh sách xe');
+    } finally { setLoading(false); }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get('/api/v1/vehicles/my-vehicles');
-        const data = res.data.data ?? res.data ?? [];
-        setVehicles(Array.isArray(data) ? data : []);
-      } catch {
-        setError('Không thể tải danh sách xe');
-      } finally { setLoading(false); }
-    };
-    load();
+    loadVehicles();
   }, []);
+
+  const handleSetPrimary = async (vehicleId) => {
+    try {
+      await api.put(`/api/v1/vehicles/${vehicleId}/set-primary`);
+      await loadVehicles();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi khi đặt xe chính');
+    }
+  };
 
   return (
     <div className="page-full">
@@ -51,15 +61,22 @@ export default function MyVehicles() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
           {vehicles.map(v => (
-            <div key={v.id} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 20, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
+            <div key={v.id} className="card" style={{ padding: 24, borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 20, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', border: v.isPrimary ? '2px solid #f59e0b' : '1px solid var(--border-color)' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{ width: 64, height: 64, borderRadius: 20, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
                   {VEHICLE_ICON[v.vehicleType] || '🚗'}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.3rem', letterSpacing: '0.5px' }}>
-                    {v.licensePlate}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.3rem', letterSpacing: '0.5px' }}>
+                      {v.licensePlate}
+                    </span>
+                    {v.isPrimary && (
+                      <span style={{ fontSize: '0.75rem', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#ffffff', padding: '3px 10px', borderRadius: 20, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)' }}>
+                        ⭐ Xe chính
+                      </span>
+                    )}
+                  </div>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
                     {v.vehicleType}
                   </p>
@@ -79,6 +96,41 @@ export default function MyVehicles() {
                     <span style={{ fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
                       Hạn: {new Date(v.monthlyPassExpiry).toLocaleDateString('vi-VN')}
                     </span>
+                  </div>
+                )}
+                {v.isPrimary ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(245, 158, 11, 0.08)', padding: '8px 12px', borderRadius: 12, border: '1px dashed rgba(245, 158, 11, 0.35)', marginTop: 2 }}>
+                    <span style={{ fontSize: '0.82rem', color: '#d97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      ⭐ Xe chính mặc định
+                    </span>
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.2)', color: '#b45309', padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>
+                      Ưu tiên gợi ý
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ paddingTop: 4 }}>
+                    <button
+                      onClick={() => handleSetPrimary(v.id)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        borderRadius: 12,
+                        color: '#d97706',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.18)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)'; e.currentTarget.style.transform = 'none'; }}>
+                      ⭐ Đặt xe này làm xe chính
+                    </button>
                   </div>
                 )}
               </div>

@@ -63,8 +63,21 @@ export default function MonthlyPass() {
         const passesData = passesRes.data.data ?? passesRes.data ?? [];
         const rulesData = pricingRes.data?.data ?? pricingRes.data ?? [];
 
-        setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
+        const vehiclesList = Array.isArray(vehiclesData) ? vehiclesData : [];
+        setVehicles(vehiclesList);
         setPasses(Array.isArray(passesData) ? passesData : []);
+
+        // Auto select primary vehicle if vehicleId was not provided via navigation
+        if (!location?.state?.vehicleId && vehiclesList.length > 0) {
+          const primaryVeh = vehiclesList.find(v => v.isPrimary);
+          if (primaryVeh) {
+            setForm(prev => ({
+              ...prev,
+              vehicleId: primaryVeh.id,
+              vehicleType: primaryVeh.vehicleType
+            }));
+          }
+        }
 
         if (location?.state?.action === 'renew' || location?.state?.hasMonthlyPass) {
           const vId = location.state.vehicleId;
@@ -464,6 +477,31 @@ export default function MonthlyPass() {
               </div>
             )}
 
+            {/* Primary Vehicle Auto Recommendation Notice */}
+            {(() => {
+              const selectedVeh = vehicles.find(v => v.id.toString() === form.vehicleId?.toString());
+              if (selectedVeh && selectedVeh.isPrimary) {
+                return (
+                  <div style={{
+                    padding: '12px 16px',
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    borderRadius: 16,
+                    marginBottom: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12
+                  }}>
+                    <span style={{ fontSize: '1.3rem' }}>⭐</span>
+                    <div style={{ fontSize: '0.86rem', color: '#d97706', fontWeight: 600 }}>
+                      Hệ thống đã tự động chọn xe chính của bạn: <strong style={{ color: 'var(--text-primary)' }}>{selectedVeh.licensePlate}</strong>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             {/* Vehicle Selection */}
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 700, marginBottom: 8, display: 'block' }}>Chọn xe <span className="required">*</span></label>
@@ -480,7 +518,7 @@ export default function MonthlyPass() {
                     .filter(v => v.vehicleType === form.vehicleType && !passes.some(p => p.vehicleId === v.id && (p.isActive || p.paymentStatus === 'UNPAID')))
                     .map(v => (
                       <option key={v.id} value={v.id}>
-                        {v.licensePlate} ({v.vehicleType === 'MOTORBIKE' ? 'Xe máy' : v.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'})
+                        {v.isPrimary ? '⭐ ' : ''}{v.licensePlate} ({v.vehicleType === 'MOTORBIKE' ? 'Xe máy' : v.vehicleType === 'CAR' ? 'Ô tô' : 'Xe tải'}){v.isPrimary ? ' — Xe chính đề xuất' : ''}
                       </option>
                     ))}
                 </select>

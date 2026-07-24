@@ -13,6 +13,7 @@ export default function RegisterVehicle() {
   const [plate,       setPlate]       = useState('');
   const [type,        setType]        = useState('MOTORBIKE');
   const [paymentMethod, setPaymentMethod] = useState('VNPAY');
+  const [isPrimary,   setIsPrimary]   = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [success,     setSuccess]     = useState(null);
   const [error,       setError]       = useState('');
@@ -32,7 +33,8 @@ export default function RegisterVehicle() {
         licensePlate: plate.trim().toUpperCase(),
         vehicleType: type,
         hasMonthlyPass: false,
-        paymentMethod
+        paymentMethod,
+        isPrimary
       });
       const newVehicle = res.data.data ?? res.data;
       if (paymentMethod === 'VNPAY') {
@@ -174,6 +176,73 @@ export default function RegisterVehicle() {
               <option value="VNPAY">🔥 Cổng thanh toán trực tuyến VNPay (VNPAY-QR / Thẻ ATM / Visa)</option>
               <option value="FREE">✓ Miễn phí đăng ký (Hoặc thanh toán tiền mặt tại bãi)</option>
             </select>
+          </div>
+
+          <div 
+            onClick={() => setIsPrimary(!isPrimary)}
+            style={{
+              marginTop: 24,
+              padding: '18px 22px',
+              background: isPrimary 
+                ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.04) 100%)'
+                : 'var(--bg-secondary)',
+              border: isPrimary ? '1.5px solid #f59e0b' : '1.5px solid var(--border-color)',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              boxShadow: isPrimary ? '0 4px 16px rgba(245, 158, 11, 0.15)' : 'none'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: '14px',
+                background: isPrimary ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--bg-card)',
+                color: isPrimary ? '#ffffff' : 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                boxShadow: isPrimary ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none',
+                transition: 'all 0.25s'
+              }}>
+                ⭐
+              </div>
+              <div>
+                <div style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Đặt làm xe chính (Mặc định)
+                </div>
+                <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Tự động ưu tiên đề xuất biển số này mỗi khi đăng ký vé tháng.
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              width: 48,
+              height: 26,
+              borderRadius: 13,
+              background: isPrimary ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--border-color)',
+              padding: 3,
+              transition: 'all 0.25s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isPrimary ? 'flex-end' : 'flex-start',
+              flexShrink: 0
+            }}>
+              <div style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: '#ffffff',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }} />
+            </div>
           </div>
 
           {/* Live Preview Box */}
