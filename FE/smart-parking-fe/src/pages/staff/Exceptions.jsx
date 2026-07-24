@@ -877,7 +877,7 @@ function UnpaidExitModal({ onClose, onSuccess }) {
 }
 
 // ─── MODAL: Chi tiết ngoại lệ ─────────────────────────────────────────────────
-function DetailModal({ ex, onClose, onResolve, isManager }) {
+function DetailModal({ ex, onClose, onResolve, onBypass, isManager }) {
   if (!ex) return null;
   const typeCfg = TYPE_CONFIG[ex.exceptionType] || {};
   const statusCfg = STATUS_CONFIG[ex.status] || {};
@@ -973,12 +973,25 @@ function DetailModal({ ex, onClose, onResolve, isManager }) {
       {/* Trạng thái được tự động cập nhật khi driver lấy xe ra và staff áp dụng phí phạt */}
       <div style={{
         padding: '14px 24px', borderTop: '1px solid var(--border-color, #2a2a4a)',
-        background: 'rgba(99,102,241,0.04)',
+        background: 'rgba(99,102,241,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
       }}>
         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted, #666)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: '0.85rem' }}>ℹ️</span>
           Trạng thái được cập nhật tự động khi driver lấy xe ra và phí phạt được áp dụng.
         </p>
+
+        {(ex.exceptionType === 'WRONG_ZONE' || ex.exceptionType === 'WRONG_SPOT') && (ex.status === 'PENDING' || ex.status === 'IN_PROGRESS') && (
+          <button
+            onClick={() => { if (onBypass) onBypass(ex); onClose(); }}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.4)',
+              background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', cursor: 'pointer',
+              fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)'
+            }}>
+            ⏭️ Bỏ qua ngoại lệ đỗ sai vị trí
+          </button>
+        )}
       </div>
     </ModalOverlay>
   );
@@ -1130,6 +1143,20 @@ export default function Exceptions() {
   const handleResolveClick = (ex, status) => {
     setDetailException(null);
     setResolveTarget({ ex, status });
+  };
+
+  const handleBypassException = async (ex) => {
+    if (!window.confirm(`Xác nhận bỏ qua ngoại lệ đỗ sai vị trí cho xe ${ex.licensePlate || ''}?`)) return;
+    try {
+      await api.put(`/api/v1/exceptions/${ex.id}/resolve`, {
+        status: 'RESOLVED',
+        resolution: 'Bỏ qua ngoại lệ đỗ sai vị trí — Cho phép đỗ xe không phạt'
+      });
+      alert('Đã bỏ qua ngoại lệ thành công!');
+      loadExceptions();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi khi bỏ qua ngoại lệ');
+    }
   };
 
   const filtered = exceptions.filter(ex => {
@@ -1376,7 +1403,7 @@ export default function Exceptions() {
                       {ex.createdAt ? new Date(ex.createdAt).toLocaleString('vi-VN') : '—'}
                     </td>
                     <td><Badge type={ex.status} config={STATUS_CONFIG} /></td>
-                    <td onClick={e => e.stopPropagation()}>
+                    <td onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <button
                         title="Xem chi tiết"
                         onClick={() => setDetailException(ex)}
@@ -1388,6 +1415,19 @@ export default function Exceptions() {
                       >
                         <Eye size={12} /> Chi tiết
                       </button>
+                      {(ex.exceptionType === 'WRONG_ZONE' || ex.exceptionType === 'WRONG_SPOT') && (ex.status === 'PENDING' || ex.status === 'IN_PROGRESS') && (
+                        <button
+                          title="Bỏ qua ngoại lệ đỗ sai vị trí (Miễn phạt)"
+                          onClick={() => handleBypassException(ex)}
+                          style={{
+                            padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.4)',
+                            background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b',
+                            cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          ⏭️ Bỏ qua
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -1410,7 +1450,7 @@ export default function Exceptions() {
             },
             {
               code: 'BR-42', icon: '🏍️', title: 'Xe máy đỗ sai khu',
-              desc: 'Xe máy đỗ vào khu xe ô tô hoặc ngược lại — phải di chuyển ngay. Tính phụ phí vi phạm',
+              desc: 'Xe máy đỗ vào khu xe ô tô hoặc ngược lại — phải di chuyển ngay. Bấm "Bỏ qua" nếu bãi đầy hoặc chấp nhận đỗ đè',
             },
             {
               code: 'BR-43', icon: '📋', title: 'Chiếm slot đặt trước',
@@ -1458,6 +1498,7 @@ export default function Exceptions() {
           ex={detailException}
           onClose={() => setDetailException(null)}
           onResolve={handleResolveClick}
+          onBypass={handleBypassException}
           isManager={true}
         />
       )}

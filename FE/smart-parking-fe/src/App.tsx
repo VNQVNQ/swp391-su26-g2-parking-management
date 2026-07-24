@@ -42,6 +42,8 @@ import VehicleExit from "./pages/staff/VehicleExit";
 // @ts-ignore
 import SlotView from "./pages/staff/SlotView";
 // @ts-ignore
+import EntryExitHistory from "./pages/staff/EntryExitHistory";
+// @ts-ignore
 import DriverDashboard from "./pages/driver/Dashboard";
 // @ts-ignore
 import RegisterVehicle from "./pages/driver/RegisterVehicle";
@@ -364,6 +366,14 @@ function AppShell() {
               element={
                 <RoleRoute allowedRoles={["PARKING_STAFF"]}>
                   <Exceptions />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/PARKING_STAFF/history"
+              element={
+                <RoleRoute allowedRoles={["PARKING_STAFF", "PARKING_MANAGER", "ADMIN"]}>
+                  <EntryExitHistory />
                 </RoleRoute>
               }
             />

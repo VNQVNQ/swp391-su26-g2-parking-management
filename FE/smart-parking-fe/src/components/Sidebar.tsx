@@ -30,6 +30,7 @@ const navItems = [
   { to: '/entry',       label: 'Cho xe vào',     icon: LogIn,           roles: ['PARKING_STAFF'], group: 'ACTION' },
   { to: '/exit',        label: 'Cho xe ra',      icon: LogOut,          roles: ['PARKING_STAFF'], group: 'ACTION' },
   { to: '/PARKING_STAFF/slots', label: 'Bản đồ chỗ đỗ',         icon: MapPin,          roles: ['PARKING_STAFF'], group: 'MONITOR' },
+  { to: '/PARKING_STAFF/history', label: 'Lịch sử ra vào',      icon: History,         roles: ['PARKING_STAFF', 'PARKING_MANAGER'], group: 'MONITOR' },
   { to: '/PARKING_STAFF/exceptions',  label: 'Xử lý Ngoại lệ',        icon: AlertTriangle,   roles: ['PARKING_STAFF'], group: 'MONITOR' },
   // DRIVER
   { to: '/driver/dashboard',        label: 'Tổng quan',         icon: LayoutDashboard, roles: ['DRIVER'], group: 'MAIN' },
